@@ -8,7 +8,17 @@ import {
   DayOfWeek,
 } from './types/timetable';
 import { DEFAULT_WEEK_TITLE, DAYS_OF_WEEK, DEFAULT_TIME_SLOTS } from './constants/timetableDefaults';
-import { generateSampleSongs } from './services/sampleData';
+import {
+  generateSampleSongs,
+  generateSingleTabSampleFiles,
+  generateMultiTabSampleFile,
+  generateMixedSampleFiles,
+} from './services/sampleData';
+import {
+  inspectExcelFiles,
+  parseSelectedSheets,
+  FileInspection,
+} from './services/excelParser';
 import { solveTimetable, detectConflicts, getSlotAttendance } from './services/scheduler';
 import { exportTimetableToExcel, downloadExcelTemplate } from './services/excelExporter';
 import { formatWeekRange } from './utils/dateUtils';
@@ -19,6 +29,7 @@ import { CalendarGrid } from './components/CalendarGrid';
 import { EventDetailModal } from './components/EventDetailModal';
 import { ConflictResolverModal } from './components/ConflictResolverModal';
 import { UploadModal } from './components/UploadModal';
+import { SheetSelectionModal } from './components/SheetSelectionModal';
 import { RawVoteModal } from './components/RawVoteModal';
 import { SlotAddModal } from './components/SlotAddModal';
 
@@ -52,6 +63,7 @@ export const App: React.FC = () => {
   const [activeVoteDetailSong, setActiveVoteDetailSong] = useState<SongVoteData | null>(null);
   const [isConflictResolverOpen, setIsConflictResolverOpen] = useState(false);
   const [slotAddCoord, setSlotAddCoord] = useState<{ day: DayOfWeek; slot: string } | null>(null);
+  const [sheetSelectionInspections, setSheetSelectionInspections] = useState<FileInspection[] | null>(null);
 
   // Auto-solve scheduler function
   const runScheduler = useCallback(
@@ -113,7 +125,37 @@ export const App: React.FC = () => {
     runScheduler([...songs, ...newSongs], settings);
   };
 
-  // Load sample dataset
+  // Load sample dataset: Multi-tab file (triggers sheet selection modal)
+  const handleLoadSampleMultiTab = async () => {
+    const file = generateMultiTabSampleFile();
+    const inspections = await inspectExcelFiles([file]);
+    setSheetSelectionInspections(inspections);
+  };
+
+  // Load sample dataset: Single-tab files (5 files, 1 tab each -> directly imported)
+  const handleLoadSampleSingleTab = async () => {
+    const files = generateSingleTabSampleFiles();
+    const inspections = await inspectExcelFiles(files);
+    const allKeys = new Set<string>();
+    for (const f of inspections) {
+      for (const s of f.sheets) {
+        if (s.isValid) allKeys.add(`${f.fileId}::${s.sheetName}`);
+      }
+    }
+    const samples = parseSelectedSheets(inspections, allKeys, 0);
+    setSongs(samples);
+    setWeekTitle(DEFAULT_WEEK_TITLE);
+    runScheduler(samples, settings);
+  };
+
+  // Load sample dataset: Mixed files (1 file 2 tabs, 1 file 3 tabs -> triggers sheet selection modal)
+  const handleLoadSampleMixed = async () => {
+    const files = generateMixedSampleFiles();
+    const inspections = await inspectExcelFiles(files);
+    setSheetSelectionInspections(inspections);
+  };
+
+  // Fallback: Default load sample
   const handleLoadSample = () => {
     const samples = generateSampleSongs();
     setSongs(samples);
@@ -230,7 +272,9 @@ export const App: React.FC = () => {
         onOpenUpload={() => setIsUploadOpen(true)}
         onRunScheduler={() => runScheduler(songs, settings)}
         onExportExcel={handleExportExcel}
-        onLoadSample={handleLoadSample}
+        onLoadSampleSingleTab={handleLoadSampleSingleTab}
+        onLoadSampleMultiTab={handleLoadSampleMultiTab}
+        onLoadSampleMixed={handleLoadSampleMixed}
         onResetSchedule={handleResetSchedule}
         onDownloadTemplate={handleDownloadTemplate}
         isSolving={isSolving}
@@ -264,6 +308,8 @@ export const App: React.FC = () => {
           onOpenSlotAdd={(day, slot) => setSlotAddCoord({ day, slot })}
           onOpenConflictResolver={() => setIsConflictResolverOpen(true)}
           onLoadSample={handleLoadSample}
+          onLoadSampleMultiTab={handleLoadSampleMultiTab}
+          onLoadSampleSingleTab={handleLoadSampleSingleTab}
           onOpenUpload={() => setIsUploadOpen(true)}
           onDownloadTemplate={handleDownloadTemplate}
           selectedWeekStart={selectedWeekStart}
@@ -271,6 +317,18 @@ export const App: React.FC = () => {
       </div>
 
       {/* Modals */}
+      {sheetSelectionInspections && (
+        <SheetSelectionModal
+          inspections={sheetSelectionInspections}
+          existingCount={songs.length}
+          onClose={() => setSheetSelectionInspections(null)}
+          onConfirm={selectedSongs => {
+            handleAddUploadedSongs(selectedSongs);
+            setSheetSelectionInspections(null);
+          }}
+        />
+      )}
+
       {isUploadOpen && (
         <UploadModal
           onClose={() => setIsUploadOpen(false)}

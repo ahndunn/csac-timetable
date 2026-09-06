@@ -1,8 +1,19 @@
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { generateSampleSongs } from './src/services/sampleData';
+import {
+  generateSampleSongs,
+  generateSingleTabSampleFiles,
+  generateMultiTabSampleFile,
+  generateMixedSampleFiles,
+} from './src/services/sampleData';
 import { solveTimetable, detectConflicts, getSlotAttendance } from './src/services/scheduler';
-import { normalizeDay, normalizeSlot, isCellChecked } from './src/services/excelParser';
+import {
+  normalizeDay,
+  normalizeSlot,
+  isCellChecked,
+  inspectExcelFiles,
+  parseSelectedSheets,
+} from './src/services/excelParser';
 import { SongVoteData, SolverSettings, DayOfWeek } from './src/types/timetable';
 import { DAYS_OF_WEEK, DEFAULT_TIME_SLOTS, DEFAULT_WEEK_TITLE } from './src/constants/timetableDefaults';
 
@@ -179,6 +190,60 @@ async function runAllTests() {
   const outBuf = await exportWb.xlsx.writeBuffer();
   assert(outBuf.byteLength > 0, `Generated Excel file size: ${outBuf.byteLength} bytes`);
   assert(exportWb.worksheets.length === 3, 'Workbook contains 3 specialized sheets');
+
+  // ----------------------------------------------------
+  // TEST 6: In-Memory Sample Excel File Generation
+  // ----------------------------------------------------
+  console.log('\nTEST 6: In-Memory Sample Excel Files Generation');
+  const singleTabFiles = generateSingleTabSampleFiles();
+  assert(singleTabFiles.length === 5, 'Generates 5 separate single-tab files');
+  assert(singleTabFiles.every(f => f.name.endsWith('.xlsx')), 'All single-tab files are valid .xlsx');
+
+  const multiTabFile = generateMultiTabSampleFile();
+  assert(multiTabFile.name === 'Du_Lieu_Mau_CSAC_MultiTab_5_Bai.xlsx', 'Generates multi-tab workbook file');
+  assert(multiTabFile.size > 0, `Multi-tab file size: ${multiTabFile.size} bytes`);
+
+  const mixedFiles = generateMixedSampleFiles();
+  assert(mixedFiles.length === 2, 'Generates 2 mixed files');
+
+  // ----------------------------------------------------
+  // TEST 7: Multi-Tab Inspection & Detection
+  // ----------------------------------------------------
+  console.log('\nTEST 7: Multi-Tab Inspection & Detection');
+  const singleInspections = await inspectExcelFiles(singleTabFiles);
+  assert(singleInspections.length === 5, 'Inspected 5 single files');
+  assert(singleInspections.every(f => !f.hasMultipleSheets), 'Single-tab files correctly detected as hasMultipleSheets = false');
+  assert(singleInspections.every(f => f.sheets.length === 1), 'Each single-tab file has exactly 1 sheet');
+
+  const multiInspections = await inspectExcelFiles([multiTabFile]);
+  assert(multiInspections.length === 1, 'Inspected 1 multi-tab file');
+  assert(multiInspections[0].hasMultipleSheets === true, 'Multi-tab file correctly detected as hasMultipleSheets = true');
+  assert(multiInspections[0].sheets.length === 5, 'Multi-tab file contains exactly 5 sheets');
+  assert(multiInspections[0].sheets.every(s => s.isValid), 'All 5 sheets have valid vote structure and members');
+
+  // ----------------------------------------------------
+  // TEST 8: Selective Tab Parsing & Scheduling
+  // ----------------------------------------------------
+  console.log('\nTEST 8: Selective Tab Parsing & Scheduling');
+  // Selectively choose only 2 sheets: PHONECERT and NÀNG THƠ
+  const chosenSheetNames = ['PHONECERT', 'NÀNG THƠ'];
+  const selectedKeys = new Set<string>();
+  for (const s of multiInspections[0].sheets) {
+    if (chosenSheetNames.includes(s.sheetName)) {
+      selectedKeys.add(`${multiInspections[0].fileId}::${s.sheetName}`);
+    }
+  }
+
+  const selectivelyParsed = parseSelectedSheets(multiInspections, selectedKeys, 0);
+  assert(selectivelyParsed.length === 2, `Selectively imported exactly 2 songs out of 5 (${selectivelyParsed.map(s => s.name).join(', ')})`);
+  assert(selectivelyParsed.some(s => s.name === 'PHONECERT'), 'Contains selected PHONECERT');
+  assert(selectivelyParsed.some(s => s.name === 'NÀNG THƠ'), 'Contains selected NÀNG THƠ');
+  assert(!selectivelyParsed.some(s => s.name === 'BẬT TÌNH YÊU LÊN'), 'Does not contain unselected BẬT TÌNH YÊU LÊN');
+
+  // Verify schedule works with selectively parsed songs
+  const selectiveScheduleResult = solveTimetable(selectivelyParsed, defaultSettings);
+  assert(selectiveScheduleResult.schedule.length > 0, 'Successfully scheduled sessions for selectively imported songs');
+  assert(selectiveScheduleResult.conflicts.length === 0, 'Zero conflicts for selectively scheduled songs');
 
   // Summary
   console.log('\n====================================================');

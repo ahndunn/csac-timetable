@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScheduledSession, SongVoteData, DayOfWeek, ConflictItem, UnresolvedSong } from '../types/timetable';
 import { DAYS_OF_WEEK, DAY_SHORT_LABELS, DEFAULT_TIME_SLOTS } from '../constants/timetableDefaults';
-import { AlertTriangle, CheckCircle, Plus, Info, Upload, Sparkles, FileSpreadsheet } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Info, Upload, Sparkles, FileSpreadsheet, Layers, Files } from 'lucide-react';
 import { getWeekDays, isSameDay } from '../utils/dateUtils';
 
 interface CalendarGridProps {
@@ -14,6 +14,8 @@ interface CalendarGridProps {
   onOpenSlotAdd: (day: DayOfWeek, slot: string) => void;
   onOpenConflictResolver: () => void;
   onLoadSample?: () => void;
+  onLoadSampleMultiTab?: () => void;
+  onLoadSampleSingleTab?: () => void;
   onOpenUpload?: () => void;
   onDownloadTemplate?: () => void;
   selectedWeekStart: Date;
@@ -31,6 +33,8 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   onOpenSlotAdd,
   onOpenConflictResolver,
   onLoadSample,
+  onLoadSampleMultiTab,
+  onLoadSampleSingleTab,
   onOpenUpload,
   onDownloadTemplate,
   selectedWeekStart,
@@ -125,7 +129,27 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
                 <span>Tải file Excel lên</span>
               </button>
             )}
-            {onLoadSample && (
+            {onLoadSampleMultiTab && (
+              <button
+                className="btn-gcal-sample"
+                onClick={onLoadSampleMultiTab}
+                title="Thử nghiệm nạp 1 file Excel 5 tab (kích hoạt hộp thoại chọn tab)"
+              >
+                <Layers size={15} />
+                <span>Test Excel nhiều tab</span>
+              </button>
+            )}
+            {onLoadSampleSingleTab && (
+              <button
+                className="btn-gcal-secondary"
+                onClick={onLoadSampleSingleTab}
+                title="Thử nghiệm nạp 5 file Excel mỗi file 1 tab"
+              >
+                <Files size={15} />
+                <span>Test 5 file (1 tab)</span>
+              </button>
+            )}
+            {onLoadSample && !onLoadSampleMultiTab && (
               <button className="btn-gcal-sample" onClick={onLoadSample}>
                 <Sparkles size={15} />
                 <span>Nạp dữ liệu mẫu (5 bài)</span>
@@ -134,7 +158,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             {onDownloadTemplate && (
               <button className="btn-gcal-secondary" onClick={onDownloadTemplate}>
                 <FileSpreadsheet size={15} />
-                <span>Tải về file Excel dữ liệu mẫu (.xlsx)</span>
+                <span>Tải về file Excel mẫu (.xlsx)</span>
               </button>
             )}
           </div>

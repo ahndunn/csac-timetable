@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 import { SongVoteData, PASTEL_PALETTE, DayOfWeek } from '../types/timetable';
 import { DAYS_OF_WEEK, DEFAULT_TIME_SLOTS, DEFAULT_WEEK_TITLE } from '../constants/timetableDefaults';
 
@@ -181,4 +182,73 @@ export function generateSampleSongs(): SongVoteData[] {
       sourceFileName: 'Vote_Ngay_Mai.xlsx',
     },
   ];
+}
+
+function songToExcelRows(song: SongVoteData) {
+  const days = DAYS_OF_WEEK;
+  const slots = DEFAULT_TIME_SLOTS;
+  const members = song.members;
+
+  const rows: (string | boolean | number)[][] = [];
+  rows.push([song.weekTitle || DEFAULT_WEEK_TITLE]);
+  rows.push([]);
+  rows.push(['BÀI HÁT', song.name]);
+  rows.push(['', 'KHUNG GIỜ', 'TÊN THÀNH VIÊN', ...Array(Math.max(0, members.length - 1)).fill(''), 'GHI CHÚ']);
+  rows.push(['', '', ...members, '']);
+
+  for (const day of days) {
+    slots.forEach((slot, sIdx) => {
+      const note = song.notes[`${day}__${slot}`] || '';
+      const row: (string | boolean | number)[] = [
+        sIdx === 0 ? day : '',
+        slot,
+        ...members.map(m => !!song.availability[`${day}__${slot}__${m}`]),
+        note,
+      ];
+      rows.push(row);
+    });
+  }
+  return rows;
+}
+
+export function createExcelFileFromSongs(
+  fileName: string,
+  songs: SongVoteData[]
+): File {
+  const wb = XLSX.utils.book_new();
+
+  for (const song of songs) {
+    const rows = songToExcelRows(song);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const sheetName = (song.name || 'Sheet1').replace(/[/\\?*[\]]/g, '_').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return new File([wbout], fileName, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+// Case 1: Multiple Excel files, each file has 1 tab
+export function generateSingleTabSampleFiles(): File[] {
+  const songs = generateSampleSongs();
+  return songs.map(song => {
+    const cleanName = song.name.replace(/\s+/g, '_');
+    return createExcelFileFromSongs(`Vote_${cleanName}.xlsx`, [song]);
+  });
+}
+
+// Case 2: One Excel file with multiple tabs (5 tabs)
+export function generateMultiTabSampleFile(): File {
+  const songs = generateSampleSongs();
+  return createExcelFileFromSongs('Du_Lieu_Mau_CSAC_MultiTab_5_Bai.xlsx', songs);
+}
+
+// Case 3: Mixed files (File 1 has 2 tabs, File 2 has 3 tabs)
+export function generateMixedSampleFiles(): File[] {
+  const songs = generateSampleSongs();
+  const file1 = createExcelFileFromSongs('Vote_Nhom_A_2_Tab.xlsx', [songs[0], songs[1]]);
+  const file2 = createExcelFileFromSongs('Vote_Nhom_B_3_Tab.xlsx', [songs[2], songs[3], songs[4]]);
+  return [file1, file2];
 }

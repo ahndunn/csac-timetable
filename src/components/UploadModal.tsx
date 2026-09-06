@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { SongVoteData } from '../types/timetable';
-import { parseExcelFile } from '../services/excelParser';
-import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle } from 'lucide-react';
+import { inspectExcelFiles, parseSelectedSheets, FileInspection } from '../services/excelParser';
+import { SheetSelectionModal } from './SheetSelectionModal';
+import { generateMultiTabSampleFile, generateSingleTabSampleFiles } from '../services/sampleData';
+import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle, Layers, Sparkles, Files } from 'lucide-react';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -20,30 +22,46 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [parsedSongs, setParsedSongs] = useState<SongVoteData[]>([]);
+  const [multiTabInspections, setMultiTabInspections] = useState<FileInspection[] | null>(null);
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     setIsLoading(true);
     setErrorMsg(null);
 
     try {
-      const allParsed: SongVoteData[] = [];
-      let count = existingCount + parsedSongs.length;
+      const fileList = Array.from(files).filter(
+        f => f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
+      );
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-          continue;
-        }
-        const songs = await parseExcelFile(file, count);
-        allParsed.push(...songs);
-        count += songs.length;
+      if (fileList.length === 0) {
+        setErrorMsg('Vui lòng chọn file Excel có đuôi .xlsx hoặc .xls');
+        setIsLoading(false);
+        return;
       }
 
-      if (allParsed.length === 0) {
-        setErrorMsg('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra định dạng file Excel.');
+      const inspections = await inspectExcelFiles(fileList);
+
+      // Check if any file has multiple sheets
+      const hasMultiTab = inspections.some(f => f.hasMultipleSheets);
+
+      if (hasMultiTab) {
+        // Trigger multi-tab sheet selection dialog
+        setMultiTabInspections(inspections);
       } else {
-        setParsedSongs(prev => [...prev, ...allParsed]);
+        // Single-tab files: parse all valid sheets directly
+        const allKeys = new Set<string>();
+        for (const f of inspections) {
+          for (const s of f.sheets) {
+            if (s.isValid) allKeys.add(`${f.fileId}::${s.sheetName}`);
+          }
+        }
+        const songs = parseSelectedSheets(inspections, allKeys, existingCount + parsedSongs.length);
+        if (songs.length === 0) {
+          setErrorMsg('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra định dạng file Excel.');
+        } else {
+          setParsedSongs(prev => [...prev, ...songs]);
+        }
       }
     } catch (err: unknown) {
       console.error(err);
@@ -68,6 +86,16 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       onAddSongs(parsedSongs);
       onClose();
     }
+  };
+
+  const handleTestMultiTab = () => {
+    const file = generateMultiTabSampleFile();
+    handleFiles([file]);
+  };
+
+  const handleTestSingleTab = () => {
+    const files = generateSingleTabSampleFiles();
+    handleFiles(files);
   };
 
   return (
@@ -123,6 +151,31 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               </button>
             </div>
           )}
+
+          {/* Quick test buttons */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>Thử nghiệm nhanh:</span>
+            <button
+              type="button"
+              className="btn-gcal-sample"
+              style={{ fontSize: 12, padding: '5px 10px', height: 'auto', borderRadius: 6 }}
+              onClick={handleTestMultiTab}
+              title="Thử nghiệm nạp 1 file Excel 5 tab để trải nghiệm hộp thoại chọn tab"
+            >
+              <Layers size={13} />
+              <span>Test file nhiều tab</span>
+            </button>
+            <button
+              type="button"
+              className="btn-gcal-secondary"
+              style={{ fontSize: 12, padding: '5px 10px', height: 'auto', borderRadius: 6 }}
+              onClick={handleTestSingleTab}
+              title="Thử nghiệm nạp 5 file Excel mỗi file 1 tab"
+            >
+              <Files size={13} />
+              <span>Test 5 file (mỗi file 1 tab)</span>
+            </button>
+          </div>
 
           {/* Drag & Drop Zone */}
           <label
@@ -228,6 +281,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           </button>
         </div>
       </div>
+
+      {multiTabInspections && (
+        <SheetSelectionModal
+          inspections={multiTabInspections}
+          existingCount={existingCount + parsedSongs.length}
+          onClose={() => setMultiTabInspections(null)}
+          onConfirm={newSongs => {
+            setParsedSongs(prev => [...prev, ...newSongs]);
+            setMultiTabInspections(null);
+          }}
+        />
+      )}
     </div>
   );
 };
