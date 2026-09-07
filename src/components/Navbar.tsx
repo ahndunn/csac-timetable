@@ -11,6 +11,9 @@ import {
   Layers,
   Files,
   FolderSync,
+  Menu,
+  MoreVertical,
+  X,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -25,6 +28,7 @@ interface NavbarProps {
   onResetSchedule: () => void;
   onDownloadTemplate: () => void;
   isSolving?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,9 +43,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetSchedule,
   onDownloadTemplate,
   isSolving,
+  onToggleSidebar,
 }) => {
   const [isSampleOpen, setIsSampleOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const sampleDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click or Esc
   useEffect(() => {
@@ -49,11 +56,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (sampleDropdownRef.current && !sampleDropdownRef.current.contains(e.target as Node)) {
         setIsSampleOpen(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsSampleOpen(false);
+        setIsMobileMenuOpen(false);
       }
     };
 
@@ -68,6 +79,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="navbar">
       <div className="navbar-left">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            className="navbar-hamburger-btn"
+            onClick={onToggleSidebar}
+            title="Mở menu danh sách bài hát & cài đặt"
+            aria-label="Menu"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+
         {/* Editable Document / Week Title */}
         <div className="title-edit-wrapper">
           <input
@@ -82,7 +105,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="navbar-actions">
+      {/* Desktop Actions */}
+      <div className="navbar-actions navbar-actions-desktop">
         {/* Dropdown: Test bằng dữ liệu mẫu */}
         <div className="sample-dropdown-container" ref={sampleDropdownRef}>
           <button
@@ -250,6 +274,127 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <RefreshCw size={15} />
         </button>
+      </div>
+
+      {/* Mobile Actions (Visible on screen < 768px) */}
+      <div className="navbar-actions navbar-actions-mobile">
+        <button
+          className="btn-gcal-primary btn-mobile-solve"
+          onClick={onRunScheduler}
+          disabled={isSolving}
+          title="Tự động xếp lịch"
+        >
+          <Wand2 size={15} />
+          <span>{isSolving ? 'Xếp...' : 'Xếp lịch'}</span>
+        </button>
+
+        <div className="mobile-menu-container" ref={mobileMenuRef}>
+          <button
+            type="button"
+            className={`btn-gcal-secondary btn-mobile-more ${isMobileMenuOpen ? 'active' : ''}`}
+            onClick={e => {
+              e.stopPropagation();
+              setIsMobileMenuOpen(prev => !prev);
+            }}
+            title="Menu tác vụ khác"
+            aria-label="Thao tác khác"
+          >
+            <MoreVertical size={18} />
+          </button>
+
+          {isMobileMenuOpen && (
+            <div className="mobile-menu-dropdown" onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenUpload();
+                }}
+              >
+                <Upload size={16} color="#1a73e8" />
+                <span>Tải file Excel lên</span>
+              </button>
+
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onExportExcel();
+                }}
+              >
+                <Download size={16} color="#059669" />
+                <span>Xuất file Excel</span>
+              </button>
+
+              <div className="mobile-menu-divider" />
+              <div className="mobile-menu-label">DỮ LIỆU MẪU</div>
+
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onLoadSampleMultiTab();
+                }}
+              >
+                <Layers size={16} color="#2563eb" />
+                <span>Test file Excel nhiều tab</span>
+              </button>
+
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onLoadSampleSingleTab();
+                }}
+              >
+                <Files size={16} color="#0284c7" />
+                <span>Test 5 file (mỗi file 1 tab)</span>
+              </button>
+
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onLoadSampleMixed();
+                }}
+              >
+                <FolderSync size={16} color="#7c3aed" />
+                <span>Test file hỗn hợp</span>
+              </button>
+
+              <button
+                type="button"
+                className="mobile-menu-item"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onDownloadTemplate();
+                }}
+              >
+                <FileSpreadsheet size={16} color="#10b981" />
+                <span>Tải file Excel mẫu (.xlsx)</span>
+              </button>
+
+              <div className="mobile-menu-divider" />
+
+              <button
+                type="button"
+                className="mobile-menu-item danger"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onResetSchedule();
+                }}
+              >
+                <RefreshCw size={16} />
+                <span>Xóa / Làm mới lịch</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

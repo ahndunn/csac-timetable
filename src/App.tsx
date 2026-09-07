@@ -57,8 +57,9 @@ export const App: React.FC = () => {
   // State: UI filters & selections
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
-  // State: Modals
+  // State: Modals & Drawers
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activeSessionDetail, setActiveSessionDetail] = useState<ScheduledSession | null>(null);
   const [activeVoteDetailSong, setActiveVoteDetailSong] = useState<SongVoteData | null>(null);
   const [isConflictResolverOpen, setIsConflictResolverOpen] = useState(false);
@@ -278,9 +279,19 @@ export const App: React.FC = () => {
         onResetSchedule={handleResetSchedule}
         onDownloadTemplate={handleDownloadTemplate}
         isSolving={isSolving}
+        onToggleSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
       />
 
       <div className="app-container">
+        {/* Mobile Backdrop for Drawer */}
+        {isMobileSidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            aria-label="Đóng menu"
+          />
+        )}
+
         <Sidebar
           songs={songs}
           schedule={schedule}
@@ -296,6 +307,8 @@ export const App: React.FC = () => {
           }}
           selectedWeekStart={selectedWeekStart}
           onSelectWeek={handleSelectWeek}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         <CalendarGrid

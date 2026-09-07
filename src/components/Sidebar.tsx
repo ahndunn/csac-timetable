@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SongVoteData, SolverSettings, ScheduledSession } from '../types/timetable';
-import { Music, Users, Sliders, Eye } from 'lucide-react';
+import { Music, Users, Sliders, Eye, X } from 'lucide-react';
 import { getMonthMatrix, isSameWeek, formatWeekRange, getMonday } from '../utils/dateUtils';
 
 interface SidebarProps {
@@ -15,6 +15,8 @@ interface SidebarProps {
   onUpdateSettings: (newSettings: SolverSettings) => void;
   selectedWeekStart: Date;
   onSelectWeek: (monday: Date) => void;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -29,6 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onUpdateSettings,
   selectedWeekStart,
   onSelectWeek,
+  isOpenMobile,
+  onCloseMobile,
 }) => {
   // Calendar viewing month/year state
   const [viewYear, setViewYear] = useState(() => selectedWeekStart.getFullYear());
@@ -69,7 +73,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [viewYear, viewMonth]);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpenMobile ? 'open' : ''}`}>
+      {/* Mobile Drawer Header */}
+      <div className="sidebar-mobile-header">
+        <div className="sidebar-mobile-title">
+          <Sliders size={18} color="#1a73e8" />
+          <span>Tùy chọn & Dữ liệu</span>
+        </div>
+        {onCloseMobile && (
+          <button
+            type="button"
+            className="sidebar-mobile-close-btn"
+            onClick={onCloseMobile}
+            aria-label="Đóng menu"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
       {/* Interactive Week Picker Mini Calendar */}
       <div className="mini-calendar">
         <div className="mini-cal-header">
