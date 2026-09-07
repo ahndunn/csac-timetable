@@ -99,8 +99,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+    <>
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-dialog" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileSpreadsheet size={20} color="#1a73e8" />
@@ -281,6 +282,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           </button>
         </div>
       </div>
+    </div>
 
       {multiTabInspections && (
         <SheetSelectionModal
@@ -293,6 +295,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           }}
         />
       )}
-    </div>
+    </>
   );
 };

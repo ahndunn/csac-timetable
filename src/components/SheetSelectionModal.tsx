@@ -129,7 +129,6 @@ export const SheetSelectionModal: React.FC<SheetSelectionModalProps> = ({
       <div
         className="modal-dialog sheet-selection-modal"
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 740, width: '92%' }}
       >
         {/* Header */}
         <div className="modal-header">
@@ -195,7 +194,7 @@ export const SheetSelectionModal: React.FC<SheetSelectionModalProps> = ({
         </div>
 
         {/* Modal Body: Grouped List by File */}
-        <div className="modal-body sheet-selection-body" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        <div className="modal-body sheet-selection-body">
           {filteredFiles.length === 0 ? (
             <div className="sheet-empty-search">
               <Info size={28} color="#94a3b8" />
