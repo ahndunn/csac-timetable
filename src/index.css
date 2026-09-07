@@ -1265,6 +1265,8 @@ body {
   border-radius: var(--radius-md);
   overflow: hidden;
   background-color: #ffffff;
+  flex-shrink: 0;
+  min-height: min-content;
 }
 
 .file-inspection-header {
