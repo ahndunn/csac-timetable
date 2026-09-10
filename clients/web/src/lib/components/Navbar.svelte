@@ -13,7 +13,17 @@
     FolderSync,
     Menu,
     MoreVertical,
+    Check,
+    Languages,
   } from '@lucide/svelte';
+  import { replaceState } from '$app/navigation';
+  import {
+    tStore,
+    currentLocale,
+    setLocale,
+    SUPPORTED_LANGUAGES,
+    type Iso639_1Locale,
+  } from '$lib/i18n';
 
   interface Props {
     weekTitle: string;
@@ -47,17 +57,33 @@
 
   let isSampleOpen = $state(false);
   let isMobileMenuOpen = $state(false);
+  let isLangOpen = $state(false);
 
   function closeAll() {
     isSampleOpen = false;
     isMobileMenuOpen = false;
+    isLangOpen = false;
+  }
+
+  function switchLanguage(code: Iso639_1Locale) {
+    setLocale(code);
+    isLangOpen = false;
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('lang', code);
+      replaceState(url.toString(), {});
+    }
   }
 </script>
 
 <svelte:window
   onclick={(e) => {
     const target = e.target as HTMLElement;
-    if (!target.closest('.sample-dropdown-container') && !target.closest('.mobile-menu-container')) {
+    if (
+      !target.closest('.sample-dropdown-container') &&
+      !target.closest('.mobile-menu-container') &&
+      !target.closest('.lang-dropdown-container')
+    ) {
       closeAll();
     }
   }}
@@ -73,8 +99,8 @@
         type="button"
         class="navbar-hamburger-btn"
         onclick={onToggleSidebar}
-        title="Mở menu danh sách bài hát & cài đặt"
-        aria-label="Menu"
+        title={$tStore('navbar.sidebar_toggle')}
+        aria-label={$tStore('navbar.sidebar_toggle')}
       >
         <Menu size={20} />
       </button>
@@ -87,8 +113,8 @@
         class="title-edit-input"
         value={weekTitle}
         oninput={(e) => onUpdateWeekTitle((e.target as HTMLInputElement).value)}
-        placeholder="Nhập tiêu đề lịch tập..."
-        title="Bấm để chỉnh sửa tên lịch tập"
+        placeholder={$tStore('navbar.title_placeholder')}
+        title={$tStore('navbar.title_tooltip')}
       />
       <span class="title-edit-icon"><Pencil size={14} /></span>
     </div>
@@ -104,11 +130,12 @@
         onclick={(e) => {
           e.stopPropagation();
           isSampleOpen = !isSampleOpen;
+          isLangOpen = false;
         }}
-        title="Thử nghiệm xếp lịch bằng các bộ dữ liệu mẫu"
+        title={$tStore('navbar.sample_data_tooltip')}
       >
         <Sparkles size={15} color="var(--accent)" />
-        <span>Dữ liệu mẫu</span>
+        <span>{$tStore('navbar.sample_data')}</span>
         <ChevronDown
           size={14}
           style="transform: {isSampleOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;"
@@ -122,7 +149,7 @@
           role="presentation"
         >
           <div class="dropdown-header-bento">
-            CHỌN KỊCH BẢN TEST DỮ LIỆU
+            {$tStore('navbar.sample_header')}
           </div>
 
           <!-- Case 1: Multi-tab -->
@@ -136,8 +163,8 @@
           >
             <Layers size={18} color="var(--accent)" />
             <div>
-              <div style="font-weight: 700;">Excel nhiều tab (Multi-tab)</div>
-              <div style="font-size: 11px; color: var(--text-muted);">1 file gồm 5 tab bài hát</div>
+              <div style="font-weight: 700;">{$tStore('navbar.sample_multitab_title')}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_multitab_desc')}</div>
             </div>
           </button>
 
@@ -152,8 +179,8 @@
           >
             <Files size={18} color="var(--accent)" />
             <div>
-              <div style="font-weight: 700;">5 file Excel rời (Single-tab)</div>
-              <div style="font-size: 11px; color: var(--text-muted);">Mỗi file chứa 1 bài hát</div>
+              <div style="font-weight: 700;">{$tStore('navbar.sample_singletab_title')}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_singletab_desc')}</div>
             </div>
           </button>
 
@@ -168,8 +195,8 @@
           >
             <FolderSync size={18} color="var(--accent)" />
             <div>
-              <div style="font-weight: 700;">Nhiều file hỗn hợp</div>
-              <div style="font-size: 11px; color: var(--text-muted);">Kiểm thử bộ chọn sheet</div>
+              <div style="font-weight: 700;">{$tStore('navbar.sample_mixed_title')}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_mixed_desc')}</div>
             </div>
           </button>
 
@@ -184,8 +211,8 @@
           >
             <FileSpreadsheet size={18} color="var(--success)" />
             <div>
-              <div style="font-weight: 700; color: var(--success-text);">Tải template Excel mẫu</div>
-              <div style="font-size: 11px; color: var(--text-muted);">File chuẩn .xlsx</div>
+              <div style="font-weight: 700; color: var(--success-text);">{$tStore('navbar.sample_download_title')}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_download_desc')}</div>
             </div>
           </button>
         </div>
@@ -196,20 +223,20 @@
       type="button"
       class="bento-btn"
       onclick={onDownloadTemplate}
-      title="Tải về file Excel dữ liệu mẫu (.xlsx)"
+      title={$tStore('navbar.download_template_tooltip')}
     >
       <FileSpreadsheet size={15} />
-      <span>Tải template</span>
+      <span>{$tStore('navbar.download_template')}</span>
     </button>
 
     <button
       type="button"
       class="bento-btn"
       onclick={onOpenUpload}
-      title="Tải lên các file Excel vote lịch tập"
+      title={$tStore('navbar.upload_files_tooltip')}
     >
       <Upload size={15} />
-      <span>Tải file lên</span>
+      <span>{$tStore('navbar.upload_files')}</span>
     </button>
 
     <button
@@ -217,31 +244,82 @@
       class="bento-btn bento-btn-primary"
       onclick={onRunScheduler}
       disabled={isSolving}
-      title="Giải thuật tự động phân bổ lịch tập không trùng thành viên"
+      title={$tStore('navbar.auto_schedule_tooltip')}
     >
       <Wand2 size={15} />
-      <span>{isSolving ? 'Đang xếp...' : 'Tự động xếp lịch'}</span>
+      <span>{isSolving ? $tStore('navbar.solving') : $tStore('navbar.auto_schedule')}</span>
     </button>
 
     <button
       type="button"
       class="bento-btn"
       onclick={onExportExcel}
-      title="Xuất lịch tập hoàn chỉnh ra file Excel (.xlsx)"
+      title={$tStore('navbar.export_excel_tooltip')}
     >
       <Download size={15} />
-      <span>Xuất Excel</span>
+      <span>{$tStore('navbar.export_excel')}</span>
     </button>
 
     <button
       type="button"
       class="bento-icon-btn"
       onclick={onResetSchedule}
-      title="Xóa / Làm mới lịch"
-      aria-label="Xóa hoặc làm mới lịch"
+      title={$tStore('navbar.reset_schedule_tooltip')}
+      aria-label={$tStore('navbar.reset_schedule_tooltip')}
     >
       <RefreshCw size={15} />
     </button>
+
+    <!-- Language Selector Dropdown (Top Right) -->
+    <div class="sample-dropdown-container lang-dropdown-container">
+      <button
+        type="button"
+        class="bento-btn {isLangOpen ? 'is-active' : ''}"
+        onclick={(e) => {
+          e.stopPropagation();
+          isLangOpen = !isLangOpen;
+          isSampleOpen = false;
+        }}
+        title={$tStore('navbar.language_switcher')}
+        aria-label={$tStore('navbar.language_switcher')}
+      >
+        <span style="font-size: 15px; line-height: 1;">{SUPPORTED_LANGUAGES[$currentLocale].flag}</span>
+        <span style="font-weight: 600;">{SUPPORTED_LANGUAGES[$currentLocale].nativeName}</span>
+        <ChevronDown
+          size={14}
+          style="transform: {isLangOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;"
+        />
+      </button>
+
+      {#if isLangOpen}
+        <div
+          class="dropdown-menu-bento"
+          style="min-width: 200px;"
+          onclick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <div class="dropdown-header-bento">
+            {$tStore('navbar.language_switcher')}
+          </div>
+          {#each Object.values(SUPPORTED_LANGUAGES) as lang}
+            <button
+              type="button"
+              class="dropdown-item-bento {lang.code === $currentLocale ? 'is-active' : ''}"
+              onclick={() => switchLanguage(lang.code)}
+            >
+              <span style="font-size: 18px; line-height: 1;">{lang.flag}</span>
+              <div style="flex: 1; text-align: left;">
+                <div style="font-weight: 700;">{lang.nativeName}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">{lang.englishName} ({lang.code})</div>
+              </div>
+              {#if lang.code === $currentLocale}
+                <Check size={16} color="var(--accent)" />
+              {/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 
   <!-- Mobile Actions -->
@@ -251,10 +329,10 @@
       class="bento-btn bento-btn-primary"
       onclick={onRunScheduler}
       disabled={isSolving}
-      title="Tự động xếp lịch"
+      title={$tStore('navbar.auto_schedule')}
     >
       <Wand2 size={15} />
-      <span>{isSolving ? '...' : 'Xếp'}</span>
+      <span>{isSolving ? '...' : $tStore('navbar.auto_schedule')}</span>
     </button>
 
     <div class="mobile-menu-container sample-dropdown-container">
@@ -264,9 +342,10 @@
         onclick={(e) => {
           e.stopPropagation();
           isMobileMenuOpen = !isMobileMenuOpen;
+          isLangOpen = false;
         }}
-        title="Menu tác vụ khác"
-        aria-label="Thao tác khác"
+        title={$tStore('navbar.mobile_more')}
+        aria-label={$tStore('navbar.mobile_more')}
       >
         <MoreVertical size={18} />
       </button>
@@ -277,6 +356,31 @@
           onclick={(e) => e.stopPropagation()}
           role="presentation"
         >
+          <!-- Mobile Language Switcher Options -->
+          <div class="dropdown-header-bento">
+            {$tStore('navbar.language_switcher')}
+          </div>
+          {#each Object.values(SUPPORTED_LANGUAGES) as lang}
+            <button
+              type="button"
+              class="dropdown-item-bento {lang.code === $currentLocale ? 'is-active' : ''}"
+              onclick={() => {
+                isMobileMenuOpen = false;
+                switchLanguage(lang.code);
+              }}
+            >
+              <span style="font-size: 18px;">{lang.flag}</span>
+              <span style="flex: 1; font-weight: {lang.code === $currentLocale ? '700' : '500'};">{lang.nativeName}</span>
+              {#if lang.code === $currentLocale}
+                <Check size={16} color="var(--accent)" />
+              {/if}
+            </button>
+          {/each}
+
+          <div class="dropdown-header-bento" style="margin-top: 4px;">
+            {$tStore('navbar.mobile_more')}
+          </div>
+
           <button
             type="button"
             class="dropdown-item-bento"
@@ -286,7 +390,7 @@
             }}
           >
             <Upload size={16} color="var(--accent)" />
-            <span>Tải file Excel lên</span>
+            <span>{$tStore('navbar.upload_files')}</span>
           </button>
 
           <button
@@ -298,10 +402,10 @@
             }}
           >
             <Download size={16} color="var(--success)" />
-            <span>Xuất file Excel</span>
+            <span>{$tStore('navbar.export_excel')}</span>
           </button>
 
-          <div class="dropdown-header-bento">DỮ LIỆU MẪU</div>
+          <div class="dropdown-header-bento">{$tStore('navbar.sample_data')}</div>
 
           <button
             type="button"
@@ -312,7 +416,7 @@
             }}
           >
             <Layers size={16} color="var(--accent)" />
-            <span>Test file nhiều tab</span>
+            <span>{$tStore('navbar.sample_multitab_title')}</span>
           </button>
 
           <button
@@ -324,7 +428,7 @@
             }}
           >
             <Files size={16} color="var(--accent)" />
-            <span>Test 5 file đơn</span>
+            <span>{$tStore('navbar.sample_singletab_title')}</span>
           </button>
 
           <button
@@ -336,7 +440,7 @@
             }}
           >
             <FolderSync size={16} color="var(--accent)" />
-            <span>Test file hỗn hợp</span>
+            <span>{$tStore('navbar.sample_mixed_title')}</span>
           </button>
 
           <button
@@ -348,7 +452,7 @@
             }}
           >
             <FileSpreadsheet size={16} color="var(--success)" />
-            <span>Tải template Excel</span>
+            <span>{$tStore('navbar.download_template')}</span>
           </button>
 
           <button
@@ -361,7 +465,7 @@
             }}
           >
             <RefreshCw size={16} />
-            <span>Xóa / Làm mới lịch</span>
+            <span>{$tStore('navbar.reset_schedule')}</span>
           </button>
         </div>
       {/if}
