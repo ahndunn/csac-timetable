@@ -3,12 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "clients/web"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev": "npm --workspace clients/web run dev",
+    "build": "npm --workspace clients/web run build",
+    "test": "npm --workspace clients/web run test",
+    "check": "npm --workspace clients/web run check",
+    "legacy:dev": "vite",
+    "legacy:build": "tsc -b && vite build",
+    "lint": "oxlint"
   },
+
   "dependencies": {
     "exceljs": "^4.4.0",
     "lucide-react": "^1.41.0",
