@@ -30,32 +30,34 @@ Hệ thống tự động xếp lịch tập ban nhạc và câu lạc bộ âm 
 ## 🚀 Cài Đặt & Chạy Dự Án
 
 ### Yêu Cầu
-- Node.js >= 18.0
-- npm hoặc yarn/pnpm
+- Node.js >= 20.0
+- pnpm >= 9.0
 
 ### Khởi Chạy Môi Trường Phát Triển
 ```bash
-# Cài đặt dependencies
-npm install
+# Cài đặt dependencies toàn monorepo
+pnpm install
 
-# Khởi chạy dev server
-npm run dev
+# Khởi chạy web client (SvelteKit SSR dev server)
+pnpm run dev
 ```
 
 ### Build Production & Kiểm Thử
 ```bash
-# Kiểm tra build TypeScript & Vite
-npm run build
+# Kiểm tra kiểu & Svelte diagnostics
+pnpm run check
 
-# Chạy bộ kiểm thử tự động
-npx tsx test_system.ts
+# Build production client
+pnpm run build
+
+# Chạy bộ 38 bài kiểm thử tự động
+pnpm run test
 ```
 
-## 🛠️ Công Nghệ Sử Dụng
+## 🛠️ Cấu Trúc Monorepo
 
-- **Frontend Core**: React 19 + TypeScript + Vite
-- **Styling**: Vanilla CSS (CSS Variables, Flexbox, CSS Grid, Responsive Design)
-- **Excel Engine**: `xlsx` (SheetJS) & `exceljs`
-- **Icons**: `lucide-react`
-- **Testing**: `tsx` automated test suite
+- **`clients/web`**: Web Frontend hiện đại sử dụng **SvelteKit** (Svelte 5 Runes, SSR, Bento Grid Design System, `@lucide/svelte`).
+- **`servers/`**: Microservices backend hiệu năng cao bằng **Rust** (Axum API Gateway, Tonic gRPC, Kafka, PostgreSQL, Redis).
+- **`deploy/`**: Cấu hình triển khai container hóa bằng **Docker / Podman Compose**.
+- **`docs/`**: Toàn bộ tài liệu kiến trúc & nghiệp vụ (Single Source of Truth - SSOT).
 

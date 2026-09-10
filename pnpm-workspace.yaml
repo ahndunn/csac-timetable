@@ -1,0 +1,8 @@
+packages:
+  - 'clients/*'
+
+allowBuilds:
+  esbuild: true
+
+minimumReleaseAgeExclude:
+  - '@lucide/svelte@1.44.0'
