@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData, DayOfWeek, ConflictItem, UnresolvedSong } from '../types/timetable';
-  import { DAYS_OF_WEEK, DAY_SHORT_LABELS, DEFAULT_TIME_SLOTS } from '../constants/timetableDefaults';
+  import { DAYS_OF_WEEK, DAY_DISPLAY_LABELS, DEFAULT_TIME_SLOTS } from '../constants/timetableDefaults';
   import { AlertTriangle, CheckCircle, Plus, Info, Upload, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
   import { getWeekDays, isSameDay } from '../utils/dateUtils';
+  import { tStore, currentLocale } from '$lib/i18n';
 
   interface Props {
     schedule: ScheduledSession[];
@@ -67,15 +68,22 @@
 
       <span>
         {#if songs.length === 0}
-          Chưa có dữ liệu. Vui lòng bấm "Dữ liệu mẫu" hoặc "Tải file Excel" để bắt đầu.
+          {$tStore('calendar.status_no_data')}
         {:else if totalSessionsScheduled === 0}
-          Đã tải {songs.length} bài hát ({totalSessionsRequested} buổi tập yêu cầu). Hãy bấm "Tự động xếp lịch".
+          {$tStore('calendar.status_need_schedule', { songs: songs.length, sessions: totalSessionsRequested })}
         {:else if hasUnresolved || hasMemberConflict}
-          Đã xếp <strong>{totalSessionsScheduled}/{totalSessionsRequested}</strong> buổi.
-          {#if hasUnresolved} Còn {unresolved.length} bài chưa xếp đủ số buổi do xung đột.{/if}
-          {#if hasMemberConflict} Có xung đột trùng giờ thành viên!{/if}
+          {$tStore('calendar.status_partial_conflict', {
+            scheduled: totalSessionsScheduled,
+            requested: totalSessionsRequested,
+            unresolved: unresolved.length,
+          })}
+          {#if hasMemberConflict} {$tStore('calendar.status_member_conflict')}{/if}
         {:else}
-          Hoàn hảo! Đã xếp đủ <strong>{totalSessionsScheduled}/{totalSessionsRequested}</strong> buổi tập cho {songs.length} bài hát không trùng giờ bất kỳ ai.
+          {$tStore('calendar.status_perfect', {
+            scheduled: totalSessionsScheduled,
+            requested: totalSessionsRequested,
+            songs: songs.length,
+          })}
         {/if}
       </span>
     </div>
@@ -85,10 +93,10 @@
         type="button"
         class="status-btn-fix"
         onclick={onOpenConflictResolver}
-        title="Xem chi tiết & Xử lý xung đột"
+        title={$tStore('conflict_modal.title')}
       >
         <AlertTriangle size={14} />
-        <span>Xử lý xung đột ({unresolved.length + conflicts.length})</span>
+        <span>{$tStore('calendar.btn_resolve_conflicts', { count: unresolved.length + conflicts.length })}</span>
       </button>
     {/if}
   </div>
@@ -97,16 +105,16 @@
   {#if songs.length === 0}
     <div class="empty-state-bento">
       <div class="empty-state-title">
-        Chưa có bài hát nào trong hệ thống
+        {$tStore('calendar.empty_title')}
       </div>
       <div class="empty-state-subtitle">
-        Bạn có thể tải lên các file Excel vote lịch của nhóm, tải về file Excel dữ liệu mẫu của 5 bài hát để xem thử, hoặc bấm "Dữ liệu mẫu" để trải nghiệm xếp lịch ngay.
+        {$tStore('calendar.empty_desc')}
       </div>
       <div class="empty-state-actions">
         {#if onOpenUpload}
           <button type="button" class="bento-btn bento-btn-primary" onclick={onOpenUpload}>
             <Upload size={15} />
-            <span>Tải file Excel lên</span>
+            <span>{$tStore('navbar.upload_files')}</span>
           </button>
         {/if}
         {#if onLoadSampleMultiTab}
@@ -114,10 +122,10 @@
             type="button"
             class="bento-btn"
             onclick={onLoadSampleMultiTab}
-            title="Thử nghiệm nạp 1 file Excel 5 tab (kích hoạt hộp thoại chọn tab)"
+            title={$tStore('navbar.sample_multitab_desc')}
           >
             <Layers size={15} color="var(--accent)" />
-            <span>Test Excel nhiều tab</span>
+            <span>{$tStore('navbar.sample_multitab_title')}</span>
           </button>
         {/if}
         {#if onLoadSampleSingleTab}
@@ -125,16 +133,16 @@
             type="button"
             class="bento-btn"
             onclick={onLoadSampleSingleTab}
-            title="Thử nghiệm nạp 5 file Excel mỗi file 1 tab"
+            title={$tStore('navbar.sample_singletab_desc')}
           >
             <Files size={15} color="var(--accent)" />
-            <span>Test 5 file (1 tab)</span>
+            <span>{$tStore('navbar.sample_singletab_title')}</span>
           </button>
         {/if}
         {#if onDownloadTemplate}
           <button type="button" class="bento-btn" onclick={onDownloadTemplate}>
             <FileSpreadsheet size={15} />
-            <span>Tải template Excel</span>
+            <span>{$tStore('navbar.download_template')}</span>
           </button>
         {/if}
       </div>
@@ -151,9 +159,10 @@
             {@const dayDate = weekDays[idx]}
             {@const dateNum = dayDate ? dayDate.getDate() : idx + 1}
             {@const isToday = dayDate ? isSameDay(dayDate, new Date()) : false}
+            {@const labels = DAY_DISPLAY_LABELS[$currentLocale] || DAY_DISPLAY_LABELS.vi}
             <th class="cal-th-day {isToday ? 'is-today' : ''}">
-              <div class="cal-day-title">{DAY_SHORT_LABELS[day]}</div>
-              <div class="cal-day-date">Ngày {dateNum}</div>
+              <div class="cal-day-title">{labels[day]?.short || day}</div>
+              <div class="cal-day-date">{$tStore('calendar.day_date', { date: dateNum })}</div>
             </th>
           {/each}
         </tr>
@@ -183,7 +192,7 @@
                       title={slotConflicts.map(c => c.message).join('\n')}
                     >
                       <AlertTriangle size={10} />
-                      <span>Trùng thành viên!</span>
+                      <span>{$tStore('calendar.conflict_member_cell')}</span>
                     </div>
                   {/if}
 
@@ -200,20 +209,22 @@
                       onkeydown={(e) => { if (e.key === 'Enter') onSelectSession(sess); }}
                       role="button"
                       tabindex="0"
-                      title="Bấm để xem chi tiết buổi tập"
+                      title={$tStore('calendar.card_tooltip')}
                     >
                       <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
                         <span class="event-song-name">
                           {sess.songName}
                         </span>
-                        <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">P.{sess.room}</span>
+                        <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">
+                          {$tStore('calendar.room_tag', { room: sess.room })}
+                        </span>
                       </div>
 
                       <div class="event-attendance-badge {isPerfect ? 'is-perfect' : 'is-warning'}">
                         {#if isPerfect}
-                          ✓ {sess.allMembers.length}/{sess.allMembers.length} đủ
+                          ✓ {$tStore('calendar.attendance_perfect', { count: sess.allMembers.length, total: sess.allMembers.length })}
                         {:else}
-                          ⚠ Vắng {sess.absentMembers.length}
+                          ⚠ {$tStore('calendar.attendance_partial', { count: sess.absentMembers.length })}
                         {/if}
                       </div>
 
@@ -228,8 +239,8 @@
                     type="button"
                     class="slot-quick-add-btn"
                     onclick={() => onOpenSlotAdd(day, slot)}
-                    title="Thêm bài tập vào khung giờ này"
-                    aria-label="Thêm bài"
+                    title={$tStore('calendar.add_slot_tooltip')}
+                    aria-label={$tStore('calendar.add_slot_tooltip')}
                   >
                     <Plus size={14} />
                   </button>
