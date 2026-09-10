@@ -1,0 +1,134 @@
+services:
+  # Database Layer
+  postgres:
+    image: postgres:16-alpine
+    container_name: csac-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: csac_timetable
+      POSTGRES_USER: csac_admin
+      POSTGRES_PASSWORD: csac_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csac_admin -d csac_timetable"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - csac-network
+
+  # Cache & Rate Limiter Store
+  redis:
+    image: redis:7-alpine
+    container_name: csac-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - csac-network
+
+  # Asynchronous Event Bus (Apache Kafka in KRaft mode)
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: csac-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    networks:
+      - csac-network
+
+  # Unified Reverse Proxy / API Gateway
+  gateway:
+    build:
+      context: ../servers
+      dockerfile: ../deploy/docker/Dockerfile.gateway
+    container_name: csac-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      RUST_LOG: info
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
+      SCHEDULER_GRPC_URL: http://scheduler-service:50051
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      scheduler-service:
+        condition: service_started
+    networks:
+      - csac-network
+
+  # CSP Timetable Solver Microservice (gRPC)
+  scheduler-service:
+    build:
+      context: ../servers
+      dockerfile: ../deploy/docker/Dockerfile.service
+      args:
+        SERVICE_NAME: scheduler-service
+    container_name: csac-scheduler-service
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+    environment:
+      RUST_LOG: info
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - csac-network
+
+  # Web Frontend Client (SvelteKit SSR)
+  web:
+    build:
+      context: ../clients/web
+      dockerfile: ../../deploy/docker/Dockerfile.web
+    container_name: csac-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PUBLIC_GATEWAY_URL: http://gateway:8080
+    depends_on:
+      - gateway
+    networks:
+      - csac-network
+
+volumes:
+  pgdata:
+  redisdata:
+  kafkadata:
+
+networks:
+  csac-network:
+    driver: bridge
