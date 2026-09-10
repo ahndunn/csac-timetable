@@ -7,49 +7,76 @@
 ---
 
 ## 1. System Architecture & Tech Stack
-
+ 
 ### 1.1 Architecture Overview
-CSAC Timetable Studio is a client-side Web Application written in **React 19** and **TypeScript**, packaged with **Vite 8**. It operates completely locally in the browser, ensuring user data privacy and zero server latency.
+CSAC Timetable Studio is architected as a modular multi-service monorepo:
+1. **Clients (`clients/`)**:
+   - `clients/web`: Web Frontend implemented with **SvelteKit** (Svelte 5 Runes, SSR, progressive enhancement Form Actions) replacing the legacy vanilla/React client.
+   - Placeholders for future platforms (`ios`, `android`, `mobile-cross`).
+2. **Servers (`servers/`)**:
+   - High-performance Rust microservices workspace.
+   - `gateway`: Unified reverse proxy / API Gateway built on **Axum** and **Tower** exposing standard RESTful HTTP endpoints with rate-limiting, CORS, authentication, and security headers.
+   - Downstream services communicated synchronously via **gRPC (Tonic)** with Protobuf definitions.
+   - Downstream asynchronous operations (ingestion, bulk tasks, notifications) processed via **Apache Kafka (rdkafka)**.
+   - Persistence layer backed by **PostgreSQL 16** (relational data) and **Redis 7** (caching, session store, rate-limiting tokens).
+3. **Infrastructure (`deploy/`)**:
+   - Containerized deployment powered by `deploy/compose.yml` orchestrating Kafka in KRaft mode, PostgreSQL, Redis, Gateway, and Web SSR containers.
 
 ```mermaid
-flowchart LR
-    subgraph Data Layers
-        A[File Upload / Excel Data] --> B[excelParser.ts]
-        S[Sample Data Generator] --> C[SongVoteData State]
-        B --> C
+flowchart TB
+    subgraph Clients ["Client Layer (clients/)"]
+        Web["Web Client (SvelteKit SSR)"]
+        iOS["iOS Client (Native - Future)"]
+        Android["Android Client (Native - Future)"]
+        Cross["Mobile Cross-Platform (Future)"]
     end
 
-    subgraph Core Engine Services
-        C --> D[scheduler.ts CSP Engine]
-        Settings[SolverSettings] --> D
-        D --> Result[SolverResult]
+    subgraph GatewayLayer ["Reverse Proxy & Edge Gateway"]
+        GW["API Gateway (Rust / Axum + Tower)<br/>Rate Limiting, Auth, CORS, REST API"]
     end
 
-    subgraph Presentation & State Management
-        Result --> App[App.tsx Orchestrator]
-        App --> Calendar[CalendarGrid.tsx View]
-        App --> Resolver[ConflictResolverModal.tsx]
-        App --> Sidebar[Sidebar.tsx Controls]
+    subgraph EventAndCache ["Event Bus & Cache"]
+        Redis[("Redis 7<br/>Token Bucket / Session Cache")]
+        Kafka{{"Apache Kafka (KRaft Mode)<br/>Async Message Stream"}}
     end
 
-    subgraph Export Engine
-        App --> Exporter[excelExporter.ts]
-        Exporter --> Download[.xlsx Download]
+    subgraph Microservices ["Backend Microservices (servers/)"]
+        SchedSvc["Scheduler Service (Rust / Tonic gRPC)<br/>CSP Timetable Engine"]
+        VoteSvc["Vote Ingestion Service (Rust / Tonic & Kafka)<br/>Excel Parsing & Sheet Ingestion"]
     end
+
+    subgraph DataStore ["Persistence Layer"]
+        PG[("PostgreSQL 16<br/>Schedules, Votes, Members")]
+    end
+
+    Web -->|HTTP / REST| GW
+    iOS -.->|HTTP / REST| GW
+    Android -.->|HTTP / REST| GW
+    Cross -.->|HTTP / REST| GW
+
+    GW <-->|Check / Consume Tokens| Redis
+    GW -->|Sync RPC: solve, query| SchedSvc
+    GW -->|Async Events: upload, notify| Kafka
+
+    Kafka -->|Consume Task| VoteSvc
+    VoteSvc -->|Read / Write| PG
+    SchedSvc -->|Read / Write| PG
+    SchedSvc <-->|Cache Solver Results| Redis
 ```
 
 ### 1.2 Technology Stack
 
-| Layer | Component | Version / Library | Purpose |
+| Subsystem | Layer | Technology / Library | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Core Framework** | React | `^19.2.8` | Declarative UI rendering & state management. |
-| **Language** | TypeScript | `~6.0.2` | Strict type safety and data contract enforcement. |
-| **Build & Tooling** | Vite | `^8.2.2` | Fast HMR dev server & production bundling. |
-| **Excel Parser** | SheetJS (`xlsx`) | `^0.18.5` | In-memory parsing & multi-sheet inspection. |
-| **Excel Exporter** | `exceljs` | `^4.4.0` | Rich styled Excel export (colors, borders, fonts). |
-| **Icons** | `lucide-react` | `^1.41.0` | Modern UI icon library. |
-| **Testing** | `tsx` | `^4.23.13` | Automated headless Node CLI test runner. |
-| **Styling** | Vanilla CSS | CSS Grid / Variables | Responsive Google Calendar-styled UI design. |
+| **Clients** | Web Frontend | SvelteKit + Svelte 5 | Modern reactive UI, SSR, Form Actions, runes (`$state`, `$derived`). |
+| **Clients** | Web Excel Engine | SheetJS (`xlsx`) + `exceljs` | Multi-sheet parsing and styled workbook generation. |
+| **Servers** | API Gateway | Rust (`axum`, `tower`, `tower-http`) | Unified reverse proxy, rate limiting, REST routing, CORS, JWT. |
+| **Servers** | Inter-Service Sync | Rust (`tonic`, `prost`) | Low-latency type-safe gRPC remote procedure calls. |
+| **Servers** | Inter-Service Async | Rust (`rdkafka`) + Kafka KRaft | Scalable asynchronous event-driven message bus. |
+| **Servers** | Data Persistence | PostgreSQL 16 + SQLx | Type-safe compile-time verified database persistence. |
+| **Servers** | Caching & Rates | Redis 7 + `redis-rs` | Distributed rate limiting, session storage, and solver result cache. |
+| **Infra** | Orchestration | Docker & Compose | Multi-container local orchestration and deployment. |
+| **Tooling** | Monorepo Governance | Antigravity Scoped Rules | Context-isolated agent rules per directory and domain. |
 
 ---
 

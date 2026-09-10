@@ -97,3 +97,17 @@ sequenceDiagram
     UI->>Exporter: Generate 3-Sheet .xlsx Workbook
     Exporter-->>User: Download File
 ```
+
+---
+
+## 5. Multi-Client & Microservices Evolution
+
+### 5.1 Platform Strategy
+* **Web Client (`clients/web`)**: Primary rich web application running on SvelteKit SSR with progressive enhancement.
+* **Mobile Clients (`clients/ios`, `clients/android`, `clients/mobile-cross`)**: Future native and cross-platform clients consuming the standardized RESTful API exposed by the Reverse Proxy Gateway.
+
+### 5.2 Server Architecture Business Value
+* **Unified Security & Governance**: A single Rust Reverse Proxy handles rate-limiting, authentication tokens, and request security, shielding internal services.
+* **Synchronous Low-Latency Operations**: Critical calculations (CSP schedule generation) execute via high-performance Rust gRPC (`scheduler-service`).
+* **Asynchronous Resilient Operations**: Heavy tasks (bulk Excel ingestion across 50+ songs, email/push notification dispatch) publish to Apache Kafka, ensuring non-blocking user experiences.
+
