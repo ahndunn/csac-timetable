@@ -20,26 +20,38 @@
 </script>
 
 {#if day && slot}
-  <div class="modal-overlay" onclick={onClose} role="presentation">
-    <div class="modal-dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+  <div
+    class="modal-overlay"
+    onclick={onClose}
+    onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
+    role="presentation"
+  >
+    <div
+      class="modal-dialog"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <Plus size={18} color="#1a73e8" />
+          <Plus size={18} color="var(--accent)" />
           <h3 class="modal-header-title">
             Thêm bài tập vào {day} ({slot})
           </h3>
         </div>
         <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
       <div class="modal-body">
-        <div style="font-size: 13px; color: #4b5563;">
+        <div style="font-size: 13px; color: var(--text-secondary);">
           Chọn bài hát bạn muốn phân bổ vào khung giờ này. Danh sách hiển thị tỷ lệ thành viên rảnh và cảnh báo trùng lịch:
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
           {#each songs as song (song.id)}
             {@const attendance = getSlotAttendance(song, day, slot)}
             {@const doubleBookedMembers = existingInSlot.flatMap(existing => 
@@ -48,32 +60,34 @@
             {@const isAlreadyInSlot = existingInSlot.some(s => s.songId === song.id)}
 
             <div
-              style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: {isAlreadyInSlot ? '#f3f4f6' : '#ffffff'};"
+              class="bento-card"
+              style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; gap: 10px; {isAlreadyInSlot ? 'background: var(--surface-card-subtle); opacity: 0.75;' : ''}"
             >
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div
-                    style="width: 12px; height: 12px; border-radius: 3px; background-color: {song.color.border};"
+                    style="width: 12px; height: 12px; border-radius: var(--radius-circle); background-color: {song.color.border};"
                   ></div>
-                  <strong style="font-size: 14px; color: #1f2937;">
+                  <strong style="font-size: 14px; color: var(--text-primary);">
                     {song.name}
                   </strong>
                   <span
-                    style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background-color: {attendance.is100Percent ? '#dcfce7' : '#fee2e2'}; color: {attendance.is100Percent ? '#15803d' : '#b91c1c'}; font-weight: 600;"
+                    class="bento-pill {attendance.is100Percent ? 'is-active' : ''}"
+                    style="font-size: 10px; {attendance.is100Percent ? '' : 'color: var(--danger-text); background: var(--danger-light);'}"
                   >
-                    {attendance.availableMembers.length}/{song.members.length} thành viên rảnh
+                    {attendance.availableMembers.length}/{song.members.length} rảnh
                   </span>
                 </div>
 
                 {#if doubleBookedMembers.length > 0}
-                  <div style="font-size: 11px; color: #dc2626; display: flex; align-items: center; gap: 4px;">
+                  <div style="font-size: 11px; color: var(--danger-text); display: flex; align-items: center; gap: 4px;">
                     <AlertCircle size={12} />
-                    <span>Trùng thành viên: {doubleBookedMembers.join(', ')}</span>
+                    <span>Trùng: {doubleBookedMembers.join(', ')}</span>
                   </div>
                 {/if}
 
                 {#if attendance.absentMembers.length > 0 && doubleBookedMembers.length === 0}
-                  <div style="font-size: 11px; color: #d97706;">
+                  <div style="font-size: 11px; color: var(--warning-text);">
                     Vắng theo vote: {attendance.absentMembers.join(', ')}
                   </div>
                 {/if}
@@ -81,15 +95,15 @@
 
               <button
                 type="button"
-                class="btn-gcal-secondary"
+                class="bento-btn {isAlreadyInSlot ? '' : 'bento-btn-primary'}"
                 disabled={isAlreadyInSlot}
                 onclick={() => {
                   onAssignSong(song, day, slot);
                   onClose();
                 }}
-                style="font-size: 12px; padding: 5px 12px; background-color: {isAlreadyInSlot ? '#e5e7eb' : '#ffffff'};"
+                style="font-size: 12px; padding: 6px 12px;"
               >
-                {isAlreadyInSlot ? 'Đã xếp ở ô này' : 'Xếp vào ô này'}
+                {isAlreadyInSlot ? 'Đã xếp ở ô này' : 'Xếp vào đây'}
               </button>
             </div>
           {/each}
@@ -97,7 +111,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-gcal-secondary" onclick={onClose}>
+        <button type="button" class="bento-btn" onclick={onClose}>
           Đóng
         </button>
       </div>

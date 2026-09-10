@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SongVoteData, SolverSettings, ScheduledSession } from '../types/timetable';
   import { Music, Users, Sliders, Eye, X, ChevronLeft, ChevronRight } from '@lucide/svelte';
-  import { getMonthMatrix, isSameWeek, getMonday } from '../utils/dateUtils';
+  import { getMonthMatrix, isSameWeek, formatWeekRange, getMonday } from '../utils/dateUtils';
 
   interface Props {
     songs: SongVoteData[];
@@ -35,8 +35,13 @@
     onCloseMobile,
   }: Props = $props();
 
-  let viewYear = $state(selectedWeekStart.getFullYear());
-  let viewMonth = $state(selectedWeekStart.getMonth());
+  let viewYear = $state(2026);
+  let viewMonth = $state(8);
+
+  $effect(() => {
+    viewYear = selectedWeekStart.getFullYear();
+    viewMonth = selectedWeekStart.getMonth();
+  });
 
   let allMembers = $derived.by(() => {
     const set = new Set<string>();
@@ -70,15 +75,16 @@
 </script>
 
 <aside class="sidebar {isOpenMobile ? 'open' : ''}">
+  <!-- Mobile Drawer Header -->
   <div class="sidebar-mobile-header">
     <div class="sidebar-mobile-title">
-      <Sliders size={18} color="#1a73e8" />
+      <Sliders size={18} color="var(--accent)" />
       <span>Tùy chọn & Dữ liệu</span>
     </div>
     {#if onCloseMobile}
       <button
         type="button"
-        class="sidebar-mobile-close-btn"
+        class="bento-icon-btn"
         onclick={onCloseMobile}
         aria-label="Đóng menu"
       >
@@ -87,184 +93,266 @@
     {/if}
   </div>
 
-  <!-- Interactive Week Picker Mini Calendar -->
-  <div class="mini-calendar">
-    <div class="mini-cal-header">
-      <span>Tháng {viewMonth + 1}, {viewYear}</span>
-      <div style="display: flex; gap: 2px;">
-        <button
-          type="button"
-          class="mini-cal-nav-btn"
-          onclick={handlePrevMonth}
-          title="Tháng trước"
-        >
-          <ChevronLeft size={16} />
-        </button>
-        <button
-          type="button"
-          class="mini-cal-nav-btn"
-          onclick={handleNextMonth}
-          title="Tháng sau"
-        >
-          <ChevronRight size={16} />
-        </button>
+  <div class="sidebar-scroll-area">
+    <!-- Interactive Week Picker Mini Calendar -->
+    <div class="mini-calendar">
+      <div class="mini-cal-header">
+        <span>Tháng {viewMonth + 1}, {viewYear}</span>
+        <div style="display: flex; gap: 4px;">
+          <button
+            type="button"
+            class="mini-cal-nav-btn"
+            onclick={handlePrevMonth}
+            title="Tháng trước"
+            aria-label="Tháng trước"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            type="button"
+            class="mini-cal-nav-btn"
+            onclick={handleNextMonth}
+            title="Tháng sau"
+            aria-label="Tháng sau"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div class="mini-cal-grid" style="margin-bottom: 4px;">
+        <div class="mini-cal-day-label">T2</div>
+        <div class="mini-cal-day-label">T3</div>
+        <div class="mini-cal-day-label">T4</div>
+        <div class="mini-cal-day-label">T5</div>
+        <div class="mini-cal-day-label">T6</div>
+        <div class="mini-cal-day-label">T7</div>
+        <div class="mini-cal-day-label">CN</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        {#each monthWeeks as week, wIdx (wIdx)}
+          {@const mondayDate = getMonday(week[0].date)}
+          {@const isSelectedWeek = isSameWeek(mondayDate, selectedWeekStart)}
+          {@const weekRangeLabel = formatWeekRange(mondayDate)}
+
+          <div
+            class="mini-cal-grid"
+            style="cursor: pointer; border-radius: var(--radius-xs); padding: 1px 0;"
+            onclick={() => onSelectWeek(mondayDate)}
+            onkeydown={(e) => { if (e.key === 'Enter') onSelectWeek(mondayDate); }}
+            role="button"
+            tabindex="0"
+            title="Chọn tuần: {weekRangeLabel}"
+          >
+            {#each week as cell, dIdx (dIdx)}
+              <div
+                class="mini-cal-day-cell {!cell.isCurrentMonth ? 'is-other-month' : ''} {cell.isToday ? 'is-today' : ''} {isSelectedWeek ? 'is-selected-week' : ''}"
+              >
+                {cell.dayNumber}
+              </div>
+            {/each}
+          </div>
+        {/each}
       </div>
     </div>
 
-    <div class="mini-cal-grid">
-      {#each ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] as d}
-        <span class="mini-cal-day-label">{d}</span>
-      {/each}
+    <!-- Song List & Target Sessions Section -->
+    <div>
+      <div class="sidebar-section-title">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <Music size={14} color="var(--accent)" />
+          <span>Bài hát ({songs.length})</span>
+        </span>
+        <span style="font-size: 11px; font-weight: 500; color: var(--text-muted);">
+          Số buổi
+        </span>
+      </div>
 
-      {#each monthWeeks as week}
-        {#each week as cell}
-          {@const isCellSelectedWeek = isSameWeek(cell.date, selectedWeekStart)}
+      {#if songs.length === 0}
+        <div style="font-size: 12px; color: var(--text-muted); padding: 8px 4px; text-align: center;">
+          Chưa có bài hát. Hãy nạp file Excel hoặc chọn Dữ liệu mẫu.
+        </div>
+      {:else}
+        <div>
+          {#each songs as song (song.id)}
+            {@const scheduledCount = getScheduledCount(song.id)}
+            {@const isFulfilled = scheduledCount >= song.targetSessions}
+
+            <div class="sidebar-song-card">
+              <div class="sidebar-song-top">
+                <div class="sidebar-song-title-wrap">
+                  <div
+                    class="sidebar-song-dot"
+                    style="background-color: {song.color.border};"
+                  ></div>
+                  <span class="sidebar-song-name" title={song.name}>
+                    {song.name}
+                  </span>
+                </div>
+
+                <div class="sidebar-song-actions">
+                  <button
+                    type="button"
+                    class="bento-icon-btn"
+                    style="width: 26px; height: 26px;"
+                    onclick={() => onViewSongVotes(song)}
+                    title="Xem bảng vote chi tiết của bài này"
+                    aria-label="Xem vote"
+                  >
+                    <Eye size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    class="bento-icon-btn"
+                    style="width: 26px; height: 26px; color: var(--danger);"
+                    onclick={() => onDeleteSong(song.id)}
+                    title="Xóa bài này"
+                    aria-label="Xóa bài"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+
+              <div class="sidebar-song-meta">
+                {song.members.length} thành viên ({song.members.slice(0, 3).join(', ')}{song.members.length > 3 ? '...' : ''})
+              </div>
+
+              <div class="sidebar-song-controls">
+                <span>Cần tập trong tuần:</span>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <button
+                    type="button"
+                    class="bento-btn"
+                    style="padding: 2px 8px; font-size: 11px; min-width: 22px; height: 24px;"
+                    onclick={() => onUpdateSongSessions(song.id, Math.max(1, song.targetSessions - 1))}
+                    title="Giảm số buổi"
+                  >
+                    -
+                  </button>
+                  <span class="sidebar-freq-input" style="display: flex; align-items: center; justify-content: center;">
+                    {song.targetSessions}
+                  </span>
+                  <button
+                    type="button"
+                    class="bento-btn"
+                    style="padding: 2px 8px; font-size: 11px; min-width: 22px; height: 24px;"
+                    onclick={() => onUpdateSongSessions(song.id, song.targetSessions + 1)}
+                    title="Tăng số buổi"
+                  >
+                    +
+                  </button>
+                  <span
+                    class="bento-pill {isFulfilled ? 'is-accent' : ''}"
+                    style="font-size: 10px; padding: 2px 6px; {isFulfilled ? '' : 'color: var(--warning-text); background: var(--warning-light);'}"
+                  >
+                    {scheduledCount}/{song.targetSessions}
+                  </span>
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Members Filter Directory -->
+    <div>
+      <div class="sidebar-section-title">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <Users size={14} color="var(--accent)" />
+          <span>Thành viên ({allMembers.length})</span>
+        </span>
+        {#if selectedMember}
           <button
             type="button"
-            class="mini-cal-day-cell {cell.isCurrentMonth ? '' : 'outside'} {cell.isToday ? 'today' : ''} {isCellSelectedWeek ? 'selected-week' : ''}"
-            onclick={() => onSelectWeek(getMonday(cell.date))}
-            title="Bấm để chọn tuần {cell.date.toLocaleDateString()}"
+            class="bento-pill is-active"
+            onclick={() => onSelectMember(null)}
+            style="font-size: 10px; padding: 2px 8px;"
           >
-            {cell.dayNumber}
+            Bỏ lọc
           </button>
-        {/each}
-      {/each}
-    </div>
-  </div>
+        {/if}
+      </div>
 
-  <!-- Solver Settings Controls -->
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">
-      <Sliders size={14} />
-      <span>Cấu hình xếp lịch</span>
-    </div>
-
-    <div class="setting-row">
-      <label for="setting-max-rooms">Số phòng tập đồng thời:</label>
-      <select
-        id="setting-max-rooms"
-        class="select-gcal"
-        value={settings.maxRooms}
-        onchange={(e) => onUpdateSettings({ ...settings, maxRooms: Number((e.target as HTMLSelectElement).value) })}
-      >
-        <option value={1}>1 Phòng (Tiêu chuẩn)</option>
-        <option value={2}>2 Phòng</option>
-        <option value={3}>3 Phòng</option>
-      </select>
-    </div>
-
-    <div class="setting-row-checkbox">
-      <input
-        type="checkbox"
-        id="setting-allow-partial"
-        checked={settings.allowPartialAttendance}
-        onchange={(e) => onUpdateSettings({ ...settings, allowPartialAttendance: (e.target as HTMLInputElement).checked })}
-      />
-      <label for="setting-allow-partial">
-        Cho phép vắng 1 người nếu không thể đủ 100%
-      </label>
-    </div>
-
-    <div class="setting-row-checkbox">
-      <input
-        type="checkbox"
-        id="setting-spread-days"
-        checked={settings.spreadDays}
-        onchange={(e) => onUpdateSettings({ ...settings, spreadDays: (e.target as HTMLInputElement).checked })}
-      />
-      <label for="setting-spread-days">
-        Ưu tiên giãn cách các ngày trong tuần
-      </label>
-    </div>
-  </div>
-
-  <!-- Filter by Member Attendance -->
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">
-      <Users size={14} />
-      <span>Lọc lịch theo thành viên</span>
-    </div>
-
-    <div class="member-filter-wrapper">
-      <select
-        class="select-gcal"
-        value={selectedMember ?? ''}
-        onchange={(e) => {
-          const val = (e.target as HTMLSelectElement).value;
-          onSelectMember(val === '' ? null : val);
-        }}
-      >
-        <option value="">-- Xem lịch toàn bộ thành viên --</option>
-        {#each allMembers as member}
-          <option value={member}>{member}</option>
-        {/each}
-      </select>
-    </div>
-  </div>
-
-  <!-- Songs & Rehearsal Frequencies -->
-  <div class="sidebar-section songs-list-section">
-    <div class="sidebar-section-title">
-      <Music size={14} />
-      <span>Danh sách bài hát ({songs.length})</span>
-    </div>
-
-    <div class="songs-scroll-list">
-      {#each songs as song (song.id)}
-        {@const scheduledCount = getScheduledCount(song.id)}
-        {@const isFulfilled = scheduledCount >= song.targetSessions}
-
-        <div class="song-item-card" style="border-left: 4px solid {song.color.border};">
-          <div class="song-item-header">
-            <span class="song-item-title" style="color: {song.color.text};">
-              {song.name}
-            </span>
-            <div class="song-item-actions">
-              <button
-                type="button"
-                class="song-item-btn"
-                onclick={() => onViewSongVotes(song)}
-                title="Xem bảng vote gốc"
-              >
-                <Eye size={13} />
-              </button>
-              <button
-                type="button"
-                class="song-item-btn delete"
-                onclick={() => onDeleteSong(song.id)}
-                title="Xóa bài hát"
-              >
-                <X size={13} />
-              </button>
-            </div>
-          </div>
-
-          <div class="song-item-meta">
-            <span>👥 {song.members.length} thành viên</span>
-            <span class="song-item-status {isFulfilled ? 'fulfilled' : 'pending'}">
-              {scheduledCount}/{song.targetSessions} buổi
-            </span>
-          </div>
-
-          <div class="song-freq-controls">
-            <label for="freq-{song.id}">Số buổi/tuần:</label>
-            <div class="song-freq-stepper">
-              <button
-                type="button"
-                class="freq-btn"
-                onclick={() => onUpdateSongSessions(song.id, Math.max(1, song.targetSessions - 1))}
-                disabled={song.targetSessions <= 1}
-              >-</button>
-              <span class="freq-value">{song.targetSessions}</span>
-              <button
-                type="button"
-                class="freq-btn"
-                onclick={() => onUpdateSongSessions(song.id, song.targetSessions + 1)}
-              >+</button>
-            </div>
-          </div>
+      {#if allMembers.length === 0}
+        <div style="font-size: 12px; color: var(--text-muted); padding: 4px; text-align: center;">
+          Chưa có danh sách thành viên.
         </div>
-      {/each}
+      {:else}
+        <div class="member-chips-container">
+          {#each allMembers as member (member)}
+            <button
+              type="button"
+              class="member-chip {selectedMember === member ? 'is-active' : ''}"
+              onclick={() => onSelectMember(selectedMember === member ? null : member)}
+              title="Lọc xem lịch riêng của {member}"
+            >
+              {member}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Solver Settings Panel -->
+    <div>
+      <div class="sidebar-section-title">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <Sliders size={14} color="var(--accent)" />
+          <span>Cấu hình giải thuật</span>
+        </span>
+      </div>
+
+      <div class="settings-box">
+        <div class="setting-row">
+          <div>
+            <div>Số phòng đồng thời</div>
+            <div class="setting-subtext">Giới hạn số bài tập song song</div>
+          </div>
+          <select
+            class="bento-input"
+            style="width: auto; padding: 4px 8px; font-weight: 700;"
+            value={settings.maxRooms}
+            onchange={(e) => onUpdateSettings({ ...settings, maxRooms: Number((e.target as HTMLSelectElement).value) })}
+          >
+            <option value={1}>1 Phòng</option>
+            <option value={2}>2 Phòng</option>
+            <option value={3}>3 Phòng</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div>Cho phép vắng 1 người</div>
+            <div class="setting-subtext">Cứu các bài kẹt lịch 100%</div>
+          </div>
+          <label class="bento-switch">
+            <input
+              type="checkbox"
+              checked={settings.allowPartialAttendance}
+              onchange={(e) => onUpdateSettings({ ...settings, allowPartialAttendance: (e.target as HTMLInputElement).checked })}
+            />
+            <span class="bento-switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div>Ưu tiên giãn ngày tập</div>
+            <div class="setting-subtext">Không dồn bài vào 1 ngày</div>
+          </div>
+          <label class="bento-switch">
+            <input
+              type="checkbox"
+              checked={settings.spreadDays}
+              onchange={(e) => onUpdateSettings({ ...settings, spreadDays: (e.target as HTMLInputElement).checked })}
+            />
+            <span class="bento-switch-slider"></span>
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 </aside>

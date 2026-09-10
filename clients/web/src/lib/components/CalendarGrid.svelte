@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData, DayOfWeek, ConflictItem, UnresolvedSong } from '../types/timetable';
   import { DAYS_OF_WEEK, DAY_SHORT_LABELS, DEFAULT_TIME_SLOTS } from '../constants/timetableDefaults';
-  import { AlertTriangle, CheckCircle, Plus, Info, Upload, Sparkles, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
+  import { AlertTriangle, CheckCircle, Plus, Info, Upload, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
   import { getWeekDays, isSameDay } from '../utils/dateUtils';
 
   interface Props {
@@ -16,6 +16,7 @@
     onLoadSampleMultiTab?: () => void;
     onLoadSampleSingleTab?: () => void;
     onOpenUpload?: () => void;
+    onDownloadTemplate?: () => void;
     selectedWeekStart: Date;
     days?: DayOfWeek[];
     slots?: string[];
@@ -33,6 +34,7 @@
     onLoadSampleMultiTab,
     onLoadSampleSingleTab,
     onOpenUpload,
+    onDownloadTemplate,
     selectedWeekStart,
     days = DAYS_OF_WEEK,
     slots = DEFAULT_TIME_SLOTS,
@@ -56,89 +58,102 @@
   >
     <div class="status-left">
       {#if hasUnresolved || hasMemberConflict}
-        <AlertTriangle size={18} color="#b45309" />
+        <AlertTriangle size={18} color="var(--warning)" />
       {:else if totalSessionsScheduled > 0}
-        <CheckCircle size={18} color="#16a34a" />
+        <CheckCircle size={18} color="var(--success)" />
       {:else}
-        <Info size={18} color="#4b5563" />
+        <Info size={18} color="var(--text-muted)" />
       {/if}
 
       <span>
         {#if songs.length === 0}
           Chưa có dữ liệu. Vui lòng bấm "Dữ liệu mẫu" hoặc "Tải file Excel" để bắt đầu.
-        {:else if hasUnresolved}
-          Có {unresolved.length} bài chưa thể xếp lịch tự động do quá tải phòng hoặc trùng lịch.
-        {:else if hasMemberConflict}
-          Có xung đột trùng lịch giữa các thành viên!
-        {:else if totalSessionsScheduled > 0}
-          Lịch tập tối ưu hoàn tất: Đã xếp {totalSessionsScheduled}/{totalSessionsRequested} buổi với 100% chuyên cần!
+        {:else if totalSessionsScheduled === 0}
+          Đã tải {songs.length} bài hát ({totalSessionsRequested} buổi tập yêu cầu). Hãy bấm "Tự động xếp lịch".
+        {:else if hasUnresolved || hasMemberConflict}
+          Đã xếp <strong>{totalSessionsScheduled}/{totalSessionsRequested}</strong> buổi.
+          {#if hasUnresolved} Còn {unresolved.length} bài chưa xếp đủ số buổi do xung đột.{/if}
+          {#if hasMemberConflict} Có xung đột trùng giờ thành viên!{/if}
         {:else}
-          Đã tải {songs.length} bài hát ({totalSessionsRequested} buổi). Bấm "Tự Động Xếp Lịch" để bắt đầu.
+          Hoàn hảo! Đã xếp đủ <strong>{totalSessionsScheduled}/{totalSessionsRequested}</strong> buổi tập cho {songs.length} bài hát không trùng giờ bất kỳ ai.
         {/if}
       </span>
     </div>
 
-    <div class="status-right">
-      {#if hasUnresolved}
-        <button
-          type="button"
-          class="btn-status-resolve"
-          onclick={onOpenConflictResolver}
-          title="Mở bảng hỗ trợ giải quyết xung đột"
-        >
-          <span>Xem & Giải Quyết Xung Đột ({unresolved.length})</span>
-        </button>
-      {/if}
-    </div>
+    {#if hasUnresolved || hasMemberConflict}
+      <button
+        type="button"
+        class="status-btn-fix"
+        onclick={onOpenConflictResolver}
+        title="Xem chi tiết & Xử lý xung đột"
+      >
+        <AlertTriangle size={14} />
+        <span>Xử lý xung đột ({unresolved.length + conflicts.length})</span>
+      </button>
+    {/if}
   </div>
 
-  <!-- Empty State Onboarding -->
+  <!-- Empty State Panel when no songs loaded -->
   {#if songs.length === 0}
-    <div class="empty-state-card">
-      <div class="empty-state-icon">
-        <FileSpreadsheet size={48} color="#1a73e8" />
+    <div class="empty-state-bento">
+      <div class="empty-state-title">
+        Chưa có bài hát nào trong hệ thống
       </div>
-      <h2>Chào mừng bạn đến với CSAC Timetable Studio!</h2>
-      <p>
-        Hệ thống tự động xếp lịch tập phòng nhạc không trùng giờ cho các bài hát của CLB.
-      </p>
-
+      <div class="empty-state-subtitle">
+        Bạn có thể tải lên các file Excel vote lịch của nhóm, tải về file Excel dữ liệu mẫu của 5 bài hát để xem thử, hoặc bấm "Dữ liệu mẫu" để trải nghiệm xếp lịch ngay.
+      </div>
       <div class="empty-state-actions">
         {#if onOpenUpload}
-          <button type="button" class="btn-gcal-primary" onclick={onOpenUpload}>
-            <Upload size={16} />
-            <span>Tải lên file Excel bầu chọn (.xlsx)</span>
+          <button type="button" class="bento-btn bento-btn-primary" onclick={onOpenUpload}>
+            <Upload size={15} />
+            <span>Tải file Excel lên</span>
           </button>
         {/if}
         {#if onLoadSampleMultiTab}
-          <button type="button" class="btn-gcal-sample" onclick={onLoadSampleMultiTab}>
-            <Layers size={16} />
-            <span>Thử file Multi-Tab (Chọn Sheet)</span>
+          <button
+            type="button"
+            class="bento-btn"
+            onclick={onLoadSampleMultiTab}
+            title="Thử nghiệm nạp 1 file Excel 5 tab (kích hoạt hộp thoại chọn tab)"
+          >
+            <Layers size={15} color="var(--accent)" />
+            <span>Test Excel nhiều tab</span>
           </button>
         {/if}
         {#if onLoadSampleSingleTab}
-          <button type="button" class="btn-gcal-secondary" onclick={onLoadSampleSingleTab}>
-            <Files size={16} />
-            <span>Nạp 5 File Đơn Lẻ</span>
+          <button
+            type="button"
+            class="bento-btn"
+            onclick={onLoadSampleSingleTab}
+            title="Thử nghiệm nạp 5 file Excel mỗi file 1 tab"
+          >
+            <Files size={15} color="var(--accent)" />
+            <span>Test 5 file (1 tab)</span>
+          </button>
+        {/if}
+        {#if onDownloadTemplate}
+          <button type="button" class="bento-btn" onclick={onDownloadTemplate}>
+            <FileSpreadsheet size={15} />
+            <span>Tải template Excel</span>
           </button>
         {/if}
       </div>
     </div>
   {/if}
 
-  <!-- Google Calendar Viewport -->
-  <div class="calendar-viewport">
-    <table class="gcal-table">
-      <thead class="gcal-thead">
+  <!-- Bento Calendar Viewport -->
+  <div class="calendar-grid-container">
+    <table class="calendar-table">
+      <thead>
         <tr>
-          <th class="gcal-time-col-header">GMT+7</th>
+          <th class="cal-th-time">GMT+7</th>
           {#each days as day, idx}
             {@const dayDate = weekDays[idx]}
             {@const dateNum = dayDate ? dayDate.getDate() : idx + 1}
             {@const isToday = dayDate ? isSameDay(dayDate, new Date()) : false}
-            <th class="gcal-day-header {isToday ? 'today' : ''}">
-              <div class="day-header-title">{DAY_SHORT_LABELS[day]}</div>
-              <div class="day-header-number">{dateNum}</div>
+            <th class="cal-th-day {isToday ? 'is-today' : ''}">
+              <div class="cal-day-title">{DAY_SHORT_LABELS[day]}</div>
+              <div class="cal-day-date">Ngày {dateNum}</div>
             </th>
           {/each}
         </tr>
@@ -147,67 +162,74 @@
       <tbody>
         {#each slots as slot}
           <tr>
-            <td class="gcal-time-cell">{slot}</td>
+            <!-- Time Gutter -->
+            <td class="cal-time-cell">{slot}</td>
 
+            <!-- Day Columns -->
             {#each days as day}
               {@const sessionsInSlot = schedule.filter(s => s.day === day && s.slot === slot)}
               {@const slotConflicts = getSlotConflicts(day, slot)}
-              {@const containsSelectedMember = selectedMember ? sessionsInSlot.some(s => s.allMembers.includes(selectedMember)) : false}
+              {@const containsSelectedMember = selectedMember
+                ? sessionsInSlot.some(s => s.allMembers.includes(selectedMember))
+                : false}
 
-              <td class="gcal-slot-cell {containsSelectedMember ? 'highlight-member' : ''}">
-                <div class="slot-events-container">
+              <td class="cal-slot-cell" style="{containsSelectedMember ? 'border-color: var(--accent); background: var(--accent-light);' : ''}">
+                <div class="cal-slot-inner">
+                  <!-- Conflict notification in cell if any -->
                   {#if slotConflicts.length > 0}
-                    <div class="event-conflict-tag" title={slotConflicts.map(c => c.message).join('\n')}>
-                      ⚠ Trùng lịch!
+                    <div
+                      class="bento-pill"
+                      style="color: var(--danger-text); background: var(--danger-light); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 2px;"
+                      title={slotConflicts.map(c => c.message).join('\n')}
+                    >
+                      <AlertTriangle size={10} />
+                      <span>Trùng thành viên!</span>
                     </div>
                   {/if}
 
+                  <!-- Scheduled Event Cards in Bento Modular Style -->
                   {#each sessionsInSlot as sess (sess.id)}
                     {@const isMemberInThisSong = selectedMember ? sess.allMembers.includes(selectedMember) : true}
                     {@const isDimmed = selectedMember && !isMemberInThisSong}
                     {@const isPerfect = sess.absentMembers.length === 0}
 
                     <div
-                      class="event-card"
-                      style="background-color: {sess.color.bg}; border-left-color: {sess.color.border}; opacity: {isDimmed ? 0.35 : 1};"
+                      class="cal-event-card {isDimmed ? 'is-dimmed' : ''}"
+                      style="border-left-color: {sess.color.border};"
                       onclick={() => onSelectSession(sess)}
                       onkeydown={(e) => { if (e.key === 'Enter') onSelectSession(sess); }}
                       role="button"
                       tabindex="0"
                       title="Bấm để xem chi tiết buổi tập"
                     >
-                      <div class="event-card-top">
-                        <span class="event-song-name" style="color: {sess.color.text};">
+                      <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                        <span class="event-song-name">
                           {sess.songName}
                         </span>
-                        {#if sess.room > 1}
-                          <span class="event-room-tag">P{sess.room}</span>
+                        <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">P.{sess.room}</span>
+                      </div>
+
+                      <div class="event-attendance-badge {isPerfect ? 'is-perfect' : 'is-warning'}">
+                        {#if isPerfect}
+                          ✓ {sess.allMembers.length}/{sess.allMembers.length} đủ
+                        {:else}
+                          ⚠ Vắng {sess.absentMembers.length}
                         {/if}
                       </div>
 
-                      <div class="event-card-members">
-                        👥 {sess.availableMembers.length}/{sess.allMembers.length}
-                        {#if !isPerfect}
-                          <span class="event-absent-flag" title="Thiếu: {sess.absentMembers.join(', ')}">
-                            (-{sess.absentMembers.length})
-                          </span>
-                        {/if}
+                      <div style="font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px;">
+                        {sess.allMembers.join(', ')}
                       </div>
-
-                      {#if sess.note}
-                        <div class="event-card-note" title={sess.note}>
-                          📝 {sess.note}
-                        </div>
-                      {/if}
                     </div>
                   {/each}
 
+                  <!-- Quick add button on hover -->
                   <button
                     type="button"
-                    class="btn-slot-add"
+                    class="slot-quick-add-btn"
                     onclick={() => onOpenSlotAdd(day, slot)}
-                    title="Thêm lịch tập thủ công vào {day} ({slot})"
-                    aria-label="Thêm buổi tập"
+                    title="Thêm bài tập vào khung giờ này"
+                    aria-label="Thêm bài"
                   >
                     <Plus size={14} />
                   </button>

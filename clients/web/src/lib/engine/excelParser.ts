@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { PASTEL_PALETTE } from '../types/timetable';
 import type { SongVoteData, DayOfWeek } from '../types/timetable';
-import { DAYS_OF_WEEK, DEFAULT_WEEK_TITLE } from '../constants/timetableDefaults';
+import { DEFAULT_WEEK_TITLE } from '../constants/timetableDefaults';
 
 // Normalize Vietnamese day names to standard DayOfWeek
 export function normalizeDay(dayRaw: string): DayOfWeek | null {

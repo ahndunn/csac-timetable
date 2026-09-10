@@ -5,13 +5,13 @@
   import {
     Layers,
     FileSpreadsheet,
-    CheckSquare,
-    Square,
-    Search,
     Check,
     X,
-    Users,
     AlertCircle,
+    Search,
+    CheckSquare,
+    Square,
+    Users,
     Info,
   } from '@lucide/svelte';
 
@@ -24,54 +24,48 @@
 
   let { inspections, existingCount, onClose, onConfirm }: Props = $props();
 
-  function getInitialKeys() {
-    const initial = new Set<string>();
-    for (const file of inspections) {
-      for (const sheet of file.sheets) {
-        if (sheet.isValid) {
-          initial.add(`${file.fileId}::${sheet.sheetName}`);
-        }
-      }
-    }
-    return initial;
-  }
-
-  let selectedKeys = $state<Set<string>>(getInitialKeys());
-
-  let searchQuery = $state('');
-
   let allValidSheetKeys = $derived.by(() => {
     const keys: string[] = [];
-    for (const file of inspections) {
-      for (const sheet of file.sheets) {
-        if (sheet.isValid) {
-          keys.push(`${file.fileId}::${sheet.sheetName}`);
+    for (const f of inspections) {
+      for (const s of f.sheets) {
+        if (s.isValid) {
+          keys.push(`${f.fileId}::${s.sheetName}`);
         }
       }
     }
     return keys;
   });
 
-  let filteredFiles = $derived.by(() => {
-    if (!searchQuery.trim()) return inspections;
-    const q = searchQuery.toLowerCase();
-    return inspections
-      .map(file => ({
-        ...file,
-        sheets: file.sheets.filter(s =>
-          s.songName.toLowerCase().includes(q) ||
-          s.sheetName.toLowerCase().includes(q) ||
-          s.members.some(m => m.toLowerCase().includes(q))
-        )
-      }))
-      .filter(file => file.sheets.length > 0);
+  let selectedKeys = $state<Set<string>>(new Set());
+
+  $effect(() => {
+    selectedKeys = new Set(allValidSheetKeys);
   });
 
-  let selectedCount = $derived(
-    Array.from(selectedKeys).filter(k => allValidSheetKeys.includes(k)).length
-  );
+  let searchQuery = $state('');
 
-  function toggleSheet(key: string) {
+  let filteredFiles = $derived.by(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return inspections;
+
+    return inspections
+      .map(file => {
+        const matchingSheets = file.sheets.filter(s => {
+          const matchTab = s.sheetName.toLowerCase().includes(q);
+          const matchSong = s.songName.toLowerCase().includes(q);
+          const matchMember = s.members.some(m => m.toLowerCase().includes(q));
+          return matchTab || matchSong || matchMember;
+        });
+
+        return {
+          ...file,
+          sheets: matchingSheets,
+        };
+      })
+      .filter(f => f.sheets.length > 0);
+  });
+
+  function handleToggleSheet(key: string) {
     const next = new Set(selectedKeys);
     if (next.has(key)) {
       next.delete(key);
@@ -81,126 +75,236 @@
     selectedKeys = next;
   }
 
-  function toggleAll() {
-    if (selectedCount === allValidSheetKeys.length) {
-      selectedKeys = new Set();
+  function handleToggleFile(file: FileInspection) {
+    const validFileKeys = file.sheets.filter(s => s.isValid).map(s => `${file.fileId}::${s.sheetName}`);
+    const allSelectedInFile = validFileKeys.every(k => selectedKeys.has(k));
+    const next = new Set(selectedKeys);
+
+    if (allSelectedInFile) {
+      validFileKeys.forEach(k => next.delete(k));
     } else {
-      selectedKeys = new Set(allValidSheetKeys);
+      validFileKeys.forEach(k => next.add(k));
     }
+    selectedKeys = next;
   }
 
-  function handleImport() {
+  function handleSelectAll() {
+    selectedKeys = new Set(allValidSheetKeys);
+  }
+
+  function handleDeselectAll() {
+    selectedKeys = new Set();
+  }
+
+  function handleConfirm() {
     const songs = parseSelectedSheets(inspections, selectedKeys, existingCount);
     onConfirm(songs);
+    onClose();
   }
+
+  let selectedCount = $derived(selectedKeys.size);
+  let multiTabFilesCount = $derived(inspections.filter(f => f.hasMultipleSheets).length);
 </script>
 
-<div class="modal-overlay" onclick={onClose} role="presentation">
+<div
+  class="modal-overlay"
+  onclick={onClose}
+  onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
+  role="presentation"
+>
   <div
-    class="modal-dialog"
-    style="max-width: 680px;"
+    class="modal-dialog sheet-selection-modal"
     onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
+    <!-- Header -->
     <div class="modal-header">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <Layers size={20} color="#1a73e8" />
-        <h3 class="modal-header-title">Chọn các Tab / Sheet để nhập lịch</h3>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="dropzone-icon-well" style="width: 38px; height: 38px;">
+          <Layers size={18} color="var(--accent)" />
+        </div>
+        <div>
+          <h3 class="modal-header-title">Phát hiện file Excel có nhiều tab</h3>
+          <p style="margin: 0; font-size: 12px; color: var(--text-muted);">
+            Tìm thấy {multiTabFilesCount > 0 ? `${multiTabFilesCount} file Excel nhiều tab` : 'các file Excel'}. Chọn các bài cần nhập:
+          </p>
+        </div>
       </div>
       <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
-        <X size={18} />
+        <X size={16} />
       </button>
     </div>
 
-    <div class="modal-body" style="gap: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-        <div style="position: relative; flex: 1;">
-          <Search size={16} color="#9ca3af" style="position: absolute; left: 10px; top: 10px;" />
-          <input
-            type="text"
-            placeholder="Tìm theo tên bài hát hoặc thành viên..."
-            value={searchQuery}
-            oninput={(e) => searchQuery = (e.target as HTMLInputElement).value}
-            class="input-gcal"
-            style="padding-left: 34px; width: 100%;"
-          />
-        </div>
-
-        <button
-          type="button"
-          class="btn-gcal-secondary"
-          onclick={toggleAll}
-          style="font-size: 13px; white-space: nowrap;"
-        >
-          {selectedCount === allValidSheetKeys.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-        </button>
+    <!-- Action Toolbar -->
+    <div class="sheet-selection-toolbar">
+      <div class="sheet-search-box">
+        <Search size={14} class="search-icon" />
+        <input
+          type="text"
+          placeholder="Tìm tên tab, bài hát, thành viên..."
+          value={searchQuery}
+          oninput={(e) => searchQuery = (e.target as HTMLInputElement).value}
+        />
+        {#if searchQuery}
+          <button
+            type="button"
+            class="search-clear-btn"
+            onclick={() => searchQuery = ''}
+            aria-label="Xóa tìm kiếm"
+          >
+            <X size={12} />
+          </button>
+        {/if}
       </div>
 
-      <div style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="bento-pill is-active" style="font-size: 11px;">
+          Đã chọn: <strong>{selectedCount}</strong> / {allValidSheetKeys.length} tab
+        </span>
+        <button
+          type="button"
+          class="bento-btn"
+          style="font-size: 11px; padding: 4px 10px;"
+          onclick={handleSelectAll}
+        >
+          Chọn tất cả
+        </button>
+        <button
+          type="button"
+          class="bento-btn"
+          style="font-size: 11px; padding: 4px 10px;"
+          onclick={handleDeselectAll}
+        >
+          Bỏ chọn tất cả
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Body: Grouped List by File -->
+    <div class="modal-body sheet-selection-body">
+      {#if filteredFiles.length === 0}
+        <div style="text-align: center; padding: 24px; color: var(--text-muted);">
+          <Info size={28} />
+          <p style="margin-top: 8px;">Không tìm thấy tab nào khớp với từ khóa "{searchQuery}"</p>
+        </div>
+      {:else}
         {#each filteredFiles as file (file.fileId)}
-          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background-color: #fafafa;">
-            <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-              <FileSpreadsheet size={14} />
-              <span>{file.fileName} ({file.sheets.length} sheets)</span>
+          {@const validFileKeys = file.sheets.filter(s => s.isValid).map(s => `${file.fileId}::${s.sheetName}`)}
+          {@const selectedInFileCount = validFileKeys.filter(k => selectedKeys.has(k)).length}
+          {@const allSelectedInFile = validFileKeys.length > 0 && selectedInFileCount === validFileKeys.length}
+
+          <div class="file-inspection-group">
+            <!-- File Header Card -->
+            <div class="file-inspection-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <FileSpreadsheet size={18} color="var(--success)" />
+                <strong style="font-size: 13px; color: var(--text-primary);" title={file.fileName}>
+                  {file.fileName}
+                </strong>
+                <span class="bento-pill is-active" style="font-size: 10px; padding: 1px 6px;">
+                  {file.sheets.length} tab {file.hasMultipleSheets ? '• Multi-tab' : ''}
+                </span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; color: var(--text-muted);">
+                  {selectedInFileCount}/{validFileKeys.length} tab
+                </span>
+                <button
+                  type="button"
+                  class="bento-btn"
+                  style="font-size: 11px; padding: 3px 8px;"
+                  onclick={() => handleToggleFile(file)}
+                >
+                  {allSelectedInFile ? 'Bỏ chọn file' : 'Chọn cả file'}
+                </button>
+              </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Tabs Grid in this File -->
+            <div class="file-sheets-grid">
               {#each file.sheets as sheet (sheet.sheetName)}
                 {@const key = `${file.fileId}::${sheet.sheetName}`}
-                {@const isChecked = selectedKeys.has(key)}
+                {@const isSelected = selectedKeys.has(key)}
 
                 <div
-                  style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; background-color: #ffffff; border: 1px solid #f3f4f6; cursor: {sheet.isValid ? 'pointer' : 'not-allowed'}; opacity: {sheet.isValid ? 1 : 0.6};"
-                  onclick={() => { if (sheet.isValid) toggleSheet(key); }}
-                  role="presentation"
+                  class="sheet-item-card {isSelected ? 'selected' : ''} {!sheet.isValid ? 'invalid' : ''}"
+                  onclick={() => {
+                    if (sheet.isValid) handleToggleSheet(key);
+                  }}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' && sheet.isValid) handleToggleSheet(key);
+                  }}
+                  role="button"
+                  tabindex={sheet.isValid ? 0 : -1}
                 >
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    {#if sheet.isValid}
-                      {#if isChecked}
-                        <CheckSquare size={16} color="#1a73e8" />
-                      {:else}
-                        <Square size={16} color="#9ca3af" />
-                      {/if}
+                  <div style="margin-top: 2px;">
+                    {#if isSelected}
+                      <CheckSquare size={16} color="var(--accent)" />
                     {:else}
-                      <AlertCircle size={16} color="#ef4444" />
+                      <Square size={16} color="var(--text-muted)" />
                     {/if}
-
-                    <div>
-                      <strong style="font-size: 13px; color: #1f2937;">{sheet.songName}</strong>
-                      <div style="font-size: 11px; color: #6b7280;">
-                        Sheet: {sheet.sheetName} | 👥 {sheet.members.length} người: {sheet.members.slice(0, 4).join(', ')}{sheet.members.length > 4 ? '...' : ''}
-                      </div>
-                    </div>
                   </div>
 
-                  {#if !sheet.isValid}
-                    <span style="font-size: 11px; color: #ef4444; font-weight: 500;">
-                      Không đúng mẫu vote
-                    </span>
-                  {/if}
+                  <div style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        Tab: {sheet.sheetName}
+                      </span>
+                      {#if sheet.isValid}
+                        <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">
+                          <Users size={10} />
+                          <span>{sheet.members.length}</span>
+                        </span>
+                      {:else}
+                        <span style="font-size: 10px; color: var(--danger-text); font-weight: 600;">
+                          Sai định dạng
+                        </span>
+                      {/if}
+                    </div>
 
+                    <div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      Bài: <strong>{sheet.songName}</strong>
+                    </div>
+
+                    {#if sheet.members.length > 0}
+                      <div style="font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ({sheet.members.slice(0, 3).join(', ')}{sheet.members.length > 3 ? ` +${sheet.members.length - 3}` : ''})
+                      </div>
+                    {/if}
+                  </div>
                 </div>
               {/each}
             </div>
           </div>
         {/each}
-      </div>
+      {/if}
     </div>
 
-    <div class="modal-footer">
-      <button type="button" class="btn-gcal-secondary" onclick={onClose}>
-        Hủy
-      </button>
-      <button
-        type="button"
-        class="btn-gcal-primary"
-        disabled={selectedCount === 0}
-        onclick={handleImport}
-      >
-        <Check size={16} />
-        <span>Nhập {selectedCount} bài hát đã chọn</span>
-      </button>
+    <!-- Footer -->
+    <div class="modal-footer" style="justify-content: space-between;">
+      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+        <Info size={14} />
+        <span>Các tab không chọn sẽ được bỏ qua.</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button type="button" class="bento-btn" onclick={onClose}>
+          Hủy
+        </button>
+        <button
+          type="button"
+          class="bento-btn bento-btn-primary"
+          onclick={handleConfirm}
+          disabled={selectedCount === 0}
+        >
+          <Check size={16} />
+          <span>Nhập {selectedCount} tab</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

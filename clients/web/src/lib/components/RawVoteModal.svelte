@@ -16,92 +16,114 @@
 </script>
 
 {#if song}
-  <div class="modal-overlay" onclick={onClose} role="presentation">
+  <div
+    class="modal-overlay"
+    onclick={onClose}
+    onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
+    role="presentation"
+  >
     <div
       class="modal-dialog"
-      style="max-width: 880px;"
+      style="max-width: 900px;"
       onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
     >
-      <div
-        class="modal-header"
-        style="background-color: {song.color.bg}; border-bottom: 2px solid {song.color.border};"
-      >
+      <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div
-            style="width: 14px; height: 14px; border-radius: 3px; background-color: {song.color.border};"
+            style="width: 14px; height: 14px; border-radius: var(--radius-circle); background-color: {song.color.border};"
           ></div>
-          <h3 class="modal-header-title" style="color: {song.color.text};">
+          <h3 class="modal-header-title">
             Bảng Vote Chi Tiết: {song.name}
           </h3>
         </div>
         <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
-      <div class="modal-body" style="overflow-x: auto; padding: 12px;">
-        <div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">
-          Bạn có thể bấm vào các ô checkbox để bật/tắt trạng thái rảnh của từng thành viên trực tiếp:
+      <div class="modal-body" style="overflow-x: auto; padding: 16px;">
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+          Bấm vào checkbox để bật/tắt trực tiếp trạng thái rảnh của từng thành viên:
         </div>
 
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <table class="raw-vote-table">
           <thead>
-            <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 6px; text-align: left;">Thành viên</th>
-              {#each days as day}
-                <th
-                  colspan={slots.length}
-                  style="border: 1px solid #d1d5db; padding: 6px; text-align: center; background-color: #e5e7eb;"
-                >
-                  {day}
-                </th>
-              {/each}
+            <!-- Sheet Title Row -->
+            <tr>
+              <th
+                colspan={3 + song.members.length}
+                style="font-size: 13px; color: var(--accent); padding: 10px; background: var(--accent-light);"
+              >
+                {song.weekTitle || 'VOTE LỊCH TẬP TUẦN'}
+              </th>
             </tr>
-            <tr style="background-color: #f9fafb;">
-              <th style="border: 1px solid #d1d5db; padding: 4px;"></th>
-              {#each days as day}
-                {#each slots as slot}
-                  <th
-                    style="border: 1px solid #d1d5db; padding: 4px; text-align: center; font-size: 10px; font-weight: normal; color: #4b5563;"
-                  >
-                    {slot.split(' - ')[0]}
-                  </th>
-                {/each}
+
+            <!-- Header row 1 -->
+            <tr>
+              <th rowspan={2} style="width: 80px;">THỨ</th>
+              <th rowspan={2} style="width: 90px;">GIỜ</th>
+              <th colspan={song.members.length}>THÀNH VIÊN</th>
+              <th rowspan={2} style="width: 120px;">GHI CHÚ</th>
+            </tr>
+
+            <!-- Header row 2: Member names -->
+            <tr>
+              {#each song.members as m (m)}
+                <th>{m}</th>
               {/each}
             </tr>
           </thead>
+
           <tbody>
-            {#each song.members as member}
-              <tr>
-                <td style="border: 1px solid #d1d5db; padding: 6px 8px; font-weight: 500;">
-                  {member}
-                </td>
-                {#each days as day}
-                  {#each slots as slot}
-                    {@const isAvail = !!song.availability[`${day}__${slot}__${member}`]}
+            {#each days as day}
+              {#each slots as slot, slotIdx}
+                {@const noteKey = `${day}__${slot}`}
+                {@const note = song.notes[noteKey] || ''}
+
+                <tr>
+                  {#if slotIdx === 0}
+                    <td rowspan={slots.length} style="font-weight: 700; color: var(--text-primary); vertical-align: middle;">
+                      {day}
+                    </td>
+                  {/if}
+
+                  <td style="font-size: 11px;">{slot}</td>
+
+                  {#each song.members as member (member)}
+                    {@const key = `${day}__${slot}__${member}`}
+                    {@const isChecked = !!song.availability[key]}
+
                     <td
-                      style="border: 1px solid #d1d5db; text-align: center; padding: 4px; cursor: pointer; background-color: {isAvail ? '#ecfdf5' : '#ffffff'};"
+                      class="{isChecked ? 'is-checked' : ''}"
+                      style="cursor: pointer;"
                       onclick={() => onToggleVote(song.id, day, slot, member)}
+                      title="Chuyển trạng thái của {member}"
                     >
-                      {#if isAvail}
-                        <CheckSquare size={14} color="#059669" />
+                      {#if isChecked}
+                        <CheckSquare size={16} color="var(--success-text)" />
                       {:else}
-                        <Square size={14} color="#d1d5db" />
+                        <Square size={16} color="var(--text-muted)" />
                       {/if}
                     </td>
                   {/each}
-                {/each}
-              </tr>
+
+                  <td style="font-size: 11px; text-align: left; padding: 4px 8px;">
+                    {note}
+                  </td>
+                </tr>
+              {/each}
             {/each}
           </tbody>
         </table>
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-gcal-primary" onclick={onClose}>
-          Xong
+        <button type="button" class="bento-btn bento-btn-primary" onclick={onClose}>
+          Đóng
         </button>
       </div>
     </div>

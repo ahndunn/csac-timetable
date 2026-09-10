@@ -3,15 +3,16 @@
   import { inspectExcelFiles, parseSelectedSheets, type FileInspection } from '../engine/excelParser';
   import SheetSelectionModal from './SheetSelectionModal.svelte';
   import { generateMultiTabSampleFile, generateSingleTabSampleFiles } from '../engine/sampleData';
-  import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle, Layers, Sparkles, Files } from '@lucide/svelte';
+  import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle, Layers, Files } from '@lucide/svelte';
 
   interface Props {
     onClose: () => void;
     onAddSongs: (newSongs: SongVoteData[]) => void;
+    onDownloadTemplate?: () => void;
     existingCount: number;
   }
 
-  let { onClose, onAddSongs, existingCount }: Props = $props();
+  let { onClose, onAddSongs, onDownloadTemplate, existingCount }: Props = $props();
 
   let isDragging = $state(false);
   let isLoading = $state(false);
@@ -70,11 +71,28 @@
     }
   }
 
-  function handleFileInput(e: Event) {
-    const input = e.target as HTMLInputElement;
-    if (input.files) {
-      handleFiles(input.files);
+  function handleFileInputChange(e: Event) {
+    const target = e.target as HTMLInputElement;
+    if (target.files) {
+      handleFiles(target.files);
     }
+  }
+
+  function handleConfirm() {
+    if (parsedSongs.length > 0) {
+      onAddSongs(parsedSongs);
+      onClose();
+    }
+  }
+
+  function handleTestMultiTab() {
+    const file = generateMultiTabSampleFile();
+    handleFiles([file]);
+  }
+
+  function handleTestSingleTab() {
+    const files = generateSingleTabSampleFiles();
+    handleFiles(files);
   }
 
   function handleConfirmMultiTab(selectedSongs: SongVoteData[]) {
@@ -83,6 +101,7 @@
   }
 </script>
 
+<!-- Sheet Selection Modal if multi-tab file detected -->
 {#if multiTabInspections}
   <SheetSelectionModal
     inspections={multiTabInspections}
@@ -90,94 +109,160 @@
     onClose={() => multiTabInspections = null}
     onConfirm={handleConfirmMultiTab}
   />
-{:else}
-  <div class="modal-overlay" onclick={onClose} role="presentation">
-    <div class="modal-dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <UploadCloud size={20} color="#1a73e8" />
-          <h3 class="modal-header-title">Tải lên file Vote Lịch Tập (.xlsx)</h3>
-        </div>
-        <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
-          <X size={18} />
-        </button>
-      </div>
+{/if}
 
-      <div class="modal-body">
-        <div
-          class="upload-dropzone {isDragging ? 'dragging' : ''}"
-          ondragover={(e) => { e.preventDefault(); isDragging = true; }}
-          ondragleave={() => isDragging = false}
-          ondrop={handleDrop}
-          role="presentation"
-        >
-          <UploadCloud size={40} color="#1a73e8" />
-          <p style="font-size: 14px; font-weight: 500; color: #1f2937;">
-            Kéo thả một hoặc nhiều file Excel (.xlsx) vào đây
-          </p>
-          <p style="font-size: 12px; color: #6b7280;">
-            Hỗ trợ cả file 1 bài lẫn file nhiều Sheet (Phonecert, Nàng Thơ...)
-          </p>
-          <label class="btn-gcal-primary" style="cursor: pointer; margin-top: 6px;">
-            <span>Chọn file từ máy tính</span>
-            <input
-              type="file"
-              accept=".xlsx, .xls"
-              multiple
-              style="display: none;"
-              onchange={handleFileInput}
-            />
-          </label>
+<div
+  class="modal-overlay"
+  onclick={onClose}
+  onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
+  role="presentation"
+>
+  <div
+    class="modal-dialog"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <UploadCloud size={20} color="var(--accent)" />
+        <h3 class="modal-header-title">Tải lên file Excel Vote Lịch</h3>
+      </div>
+      <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
+        <X size={16} />
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Drag and drop zone -->
+      <div
+        class="upload-dropzone {isDragging ? 'is-dragging' : ''}"
+        ondragover={(e) => { e.preventDefault(); isDragging = true; }}
+        ondragleave={() => isDragging = false}
+        ondrop={handleDrop}
+        onclick={() => document.getElementById('excel-file-input')?.click()}
+        onkeydown={(e) => { if (e.key === 'Enter') document.getElementById('excel-file-input')?.click(); }}
+        role="button"
+        tabindex="0"
+      >
+        <input
+          type="file"
+          id="excel-file-input"
+          multiple
+          accept=".xlsx, .xls"
+          style="display: none;"
+          onchange={handleFileInputChange}
+        />
+
+        <div class="dropzone-icon-well">
+          <UploadCloud size={26} />
+        </div>
+
+        <div>
+          <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">
+            Kéo thả file Excel vào đây hoặc <span style="color: var(--accent); text-decoration: underline;">chọn file</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Hỗ trợ file .xlsx, .xls (file 1 tab hoặc file nhiều tab)
+          </div>
         </div>
 
         {#if isLoading}
-          <div style="text-align: center; padding: 12px; font-size: 13px; color: #1a73e8;">
-            Đang phân tích và xử lý file Excel...
-          </div>
-        {/if}
-
-        {#if errorMsg}
-          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background-color: #fee2e2; border-radius: 6px; color: #b91c1c; font-size: 13px;">
-            <AlertCircle size={16} />
-            <span>{errorMsg}</span>
-          </div>
-        {/if}
-
-        {#if parsedSongs.length > 0}
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <div style="font-size: 13px; font-weight: 600; color: #374151;">
-              Đã đọc thành công {parsedSongs.length} bài hát:
-            </div>
-            <div style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
-              {#each parsedSongs as s}
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background-color: #f3f4f6; border-radius: 6px; font-size: 12px;">
-                  <span style="font-weight: 500; color: #1f2937;">{s.name}</span>
-                  <span style="color: #6b7280;">{s.members.length} thành viên</span>
-                </div>
-              {/each}
-            </div>
+          <div class="bento-pill is-active">
+            <span>Đang phân tích file...</span>
           </div>
         {/if}
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn-gcal-secondary" onclick={onClose}>
-          Hủy
-        </button>
-        {#if parsedSongs.length > 0}
+      <!-- Quick sample test buttons -->
+      <div style="padding: 14px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">
+          Hoặc thử nhanh dữ liệu mẫu:
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button
             type="button"
-            class="btn-gcal-primary"
-            onclick={() => {
-              onAddSongs(parsedSongs);
-              onClose();
-            }}
+            class="bento-btn"
+            style="font-size: 12px; padding: 6px 12px;"
+            onclick={handleTestMultiTab}
           >
-            <Check size={16} />
-            <span>Thêm {parsedSongs.length} bài vào studio</span>
+            <Layers size={14} color="var(--accent)" />
+            <span>Thử file nhiều tab</span>
           </button>
-        {/if}
+          <button
+            type="button"
+            class="bento-btn"
+            style="font-size: 12px; padding: 6px 12px;"
+            onclick={handleTestSingleTab}
+          >
+            <Files size={14} color="var(--accent)" />
+            <span>Thử 5 file đơn</span>
+          </button>
+          {#if onDownloadTemplate}
+            <button
+              type="button"
+              class="bento-btn"
+              style="font-size: 12px; padding: 6px 12px;"
+              onclick={onDownloadTemplate}
+            >
+              <FileSpreadsheet size={14} color="var(--success)" />
+              <span>Tải template mẫu</span>
+            </button>
+          {/if}
+        </div>
       </div>
+
+      <!-- Error alert -->
+      {#if errorMsg}
+        <div style="padding: 12px; background: var(--danger-light); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 8px; color: var(--danger-text);">
+          <AlertCircle size={16} />
+          <span style="font-size: 12px; font-weight: 600;">{errorMsg}</span>
+        </div>
+      {/if}
+
+      <!-- Successfully parsed songs list preview -->
+      {#if parsedSongs.length > 0}
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
+            Đã đọc được {parsedSongs.length} bài hát:
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
+            {#each parsedSongs as song (song.id)}
+              <div class="bento-card" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div
+                    style="width: 10px; height: 10px; border-radius: var(--radius-circle); background-color: {song.color.border};"
+                  ></div>
+                  <strong style="font-size: 13px; color: var(--text-primary);">{song.name}</strong>
+                  <span style="font-size: 11px; color: var(--text-muted);">
+                    ({song.members.length} thành viên)
+                  </span>
+                </div>
+                <span class="bento-pill is-active" style="font-size: 10px; padding: 2px 6px;">
+                  {song.targetSessions} buổi
+                </span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="bento-btn" onclick={onClose}>
+        Hủy
+      </button>
+      <button
+        type="button"
+        class="bento-btn bento-btn-primary"
+        disabled={parsedSongs.length === 0}
+        onclick={handleConfirm}
+      >
+        <Check size={16} />
+        <span>Nhập {parsedSongs.length} bài hát</span>
+      </button>
     </div>
   </div>
-{/if}
+</div>

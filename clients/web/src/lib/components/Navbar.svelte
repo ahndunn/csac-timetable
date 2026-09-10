@@ -13,7 +13,6 @@
     FolderSync,
     Menu,
     MoreVertical,
-    X,
   } from '@lucide/svelte';
 
   interface Props {
@@ -49,24 +48,23 @@
   let isSampleOpen = $state(false);
   let isMobileMenuOpen = $state(false);
 
-  function toggleSample() {
-    isSampleOpen = !isSampleOpen;
-  }
-
   function closeAll() {
     isSampleOpen = false;
     isMobileMenuOpen = false;
   }
 </script>
 
-<svelte:window onclick={(e) => {
-  const target = e.target as HTMLElement;
-  if (!target.closest('.sample-dropdown-container') && !target.closest('.mobile-menu-container')) {
-    closeAll();
-  }
-}} onkeydown={(e) => {
-  if (e.key === 'Escape') closeAll();
-}} />
+<svelte:window
+  onclick={(e) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.sample-dropdown-container') && !target.closest('.mobile-menu-container')) {
+      closeAll();
+    }
+  }}
+  onkeydown={(e) => {
+    if (e.key === 'Escape') closeAll();
+  }}
+/>
 
 <header class="navbar">
   <div class="navbar-left">
@@ -82,78 +80,112 @@
       </button>
     {/if}
 
+    <!-- Editable Document / Week Title -->
     <div class="title-edit-wrapper">
       <input
         type="text"
         class="title-edit-input"
         value={weekTitle}
         oninput={(e) => onUpdateWeekTitle((e.target as HTMLInputElement).value)}
-        placeholder="Nhập tiêu đề tuần..."
-        title="Bấm để chỉnh sửa tên tuần"
+        placeholder="Nhập tiêu đề lịch tập..."
+        title="Bấm để chỉnh sửa tên lịch tập"
       />
-      <span class="title-edit-icon"><Pencil size={13} /></span>
+      <span class="title-edit-icon"><Pencil size={14} /></span>
     </div>
   </div>
 
-  <div class="navbar-right">
-    <button
-      type="button"
-      class="btn btn-secondary desktop-only"
-      onclick={onOpenUpload}
-      title="Tải lên tệp Excel (.xlsx) chứa vote lịch tập"
-    >
-      <Upload size={16} />
-      <span>Tải File Vote Excel</span>
-    </button>
-
-    <div class="sample-dropdown-container desktop-only">
+  <!-- Desktop Actions -->
+  <div class="navbar-actions navbar-actions-desktop">
+    <!-- Dropdown: Test bằng dữ liệu mẫu -->
+    <div class="sample-dropdown-container">
       <button
         type="button"
-        class="btn btn-secondary dropdown-trigger"
-        onclick={toggleSample}
-        title="Nạp dữ liệu mẫu để thử nghiệm nhanh thuật toán"
-        aria-expanded={isSampleOpen}
+        class="bento-btn {isSampleOpen ? 'is-active' : ''}"
+        onclick={(e) => {
+          e.stopPropagation();
+          isSampleOpen = !isSampleOpen;
+        }}
+        title="Thử nghiệm xếp lịch bằng các bộ dữ liệu mẫu"
       >
-        <Sparkles size={16} />
-        <span>Dữ Liệu Mẫu</span>
-        <ChevronDown size={14} class={isSampleOpen ? 'rotate-180' : ''} />
+        <Sparkles size={15} color="var(--accent)" />
+        <span>Dữ liệu mẫu</span>
+        <ChevronDown
+          size={14}
+          style="transform: {isSampleOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;"
+        />
       </button>
 
       {#if isSampleOpen}
-        <div class="dropdown-menu">
+        <div
+          class="dropdown-menu-bento"
+          onclick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <div class="dropdown-header-bento">
+            CHỌN KỊCH BẢN TEST DỮ LIỆU
+          </div>
+
+          <!-- Case 1: Multi-tab -->
           <button
             type="button"
-            class="dropdown-item"
-            onclick={() => { onLoadSampleMultiTab(); isSampleOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isSampleOpen = false;
+              onLoadSampleMultiTab();
+            }}
           >
-            <Layers size={16} />
-            <div class="dropdown-item-text">
-              <strong>File 1 Workbook Nhiều Sheet (5 bài)</strong>
-              <span>Mở modal chọn tab: Phonecert, Nàng Thơ...</span>
+            <Layers size={18} color="var(--accent)" />
+            <div>
+              <div style="font-weight: 700;">Excel nhiều tab (Multi-tab)</div>
+              <div style="font-size: 11px; color: var(--text-muted);">1 file gồm 5 tab bài hát</div>
             </div>
           </button>
 
+          <!-- Case 2: Single-tab files -->
           <button
             type="button"
-            class="dropdown-item"
-            onclick={() => { onLoadSampleSingleTab(); isSampleOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isSampleOpen = false;
+              onLoadSampleSingleTab();
+            }}
           >
-            <Files size={16} />
-            <div class="dropdown-item-text">
-              <strong>5 File Riêng Lẻ (Mỗi file 1 sheet)</strong>
-              <span>Tự động nạp trực tiếp toàn bộ 5 bài hát</span>
+            <Files size={18} color="var(--accent)" />
+            <div>
+              <div style="font-weight: 700;">5 file Excel rời (Single-tab)</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Mỗi file chứa 1 bài hát</div>
             </div>
           </button>
 
+          <!-- Case 3: Mixed files -->
           <button
             type="button"
-            class="dropdown-item"
-            onclick={() => { onLoadSampleMixed(); isSampleOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isSampleOpen = false;
+              onLoadSampleMixed();
+            }}
           >
-            <FolderSync size={16} />
-            <div class="dropdown-item-text">
-              <strong>Tập Hợp Hỗn Hợp (1 multi + 1 single)</strong>
-              <span>Mô phỏng ban tổ chức nhận từ nhiều nguồn</span>
+            <FolderSync size={18} color="var(--accent)" />
+            <div>
+              <div style="font-weight: 700;">Nhiều file hỗn hợp</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Kiểm thử bộ chọn sheet</div>
+            </div>
+          </button>
+
+          <!-- Download template -->
+          <button
+            type="button"
+            class="dropdown-item-bento"
+            onclick={() => {
+              isSampleOpen = false;
+              onDownloadTemplate();
+            }}
+          >
+            <FileSpreadsheet size={18} color="var(--success)" />
+            <div>
+              <div style="font-weight: 700; color: var(--success-text);">Tải template Excel mẫu</div>
+              <div style="font-size: 11px; color: var(--text-muted);">File chuẩn .xlsx</div>
             </div>
           </button>
         </div>
@@ -162,61 +194,174 @@
 
     <button
       type="button"
-      class="btn btn-primary"
-      onclick={onRunScheduler}
-      disabled={isSolving}
-      title="Kích hoạt thuật toán CSP giải và tối ưu xếp lịch"
+      class="bento-btn"
+      onclick={onDownloadTemplate}
+      title="Tải về file Excel dữ liệu mẫu (.xlsx)"
     >
-      <Wand2 size={16} class={isSolving ? 'animate-spin' : ''} />
-      <span>{isSolving ? 'Đang Xếp Lịch...' : 'Tự Động Xếp Lịch'}</span>
+      <FileSpreadsheet size={15} />
+      <span>Tải template</span>
     </button>
 
     <button
       type="button"
-      class="btn btn-success desktop-only"
-      onclick={onExportExcel}
-      title="Xuất file Excel gồm 3 sheet: Lịch Tuần, Chi Tiết Bài Hát, Lịch Cá Nhân"
+      class="bento-btn"
+      onclick={onOpenUpload}
+      title="Tải lên các file Excel vote lịch tập"
     >
-      <Download size={16} />
-      <span>Xuất File Excel</span>
+      <Upload size={15} />
+      <span>Tải file lên</span>
     </button>
 
-    <div class="mobile-menu-container mobile-only">
+    <button
+      type="button"
+      class="bento-btn bento-btn-primary"
+      onclick={onRunScheduler}
+      disabled={isSolving}
+      title="Giải thuật tự động phân bổ lịch tập không trùng thành viên"
+    >
+      <Wand2 size={15} />
+      <span>{isSolving ? 'Đang xếp...' : 'Tự động xếp lịch'}</span>
+    </button>
+
+    <button
+      type="button"
+      class="bento-btn"
+      onclick={onExportExcel}
+      title="Xuất lịch tập hoàn chỉnh ra file Excel (.xlsx)"
+    >
+      <Download size={15} />
+      <span>Xuất Excel</span>
+    </button>
+
+    <button
+      type="button"
+      class="bento-icon-btn"
+      onclick={onResetSchedule}
+      title="Xóa / Làm mới lịch"
+      aria-label="Xóa hoặc làm mới lịch"
+    >
+      <RefreshCw size={15} />
+    </button>
+  </div>
+
+  <!-- Mobile Actions -->
+  <div class="navbar-actions navbar-mobile-toggle">
+    <button
+      type="button"
+      class="bento-btn bento-btn-primary"
+      onclick={onRunScheduler}
+      disabled={isSolving}
+      title="Tự động xếp lịch"
+    >
+      <Wand2 size={15} />
+      <span>{isSolving ? '...' : 'Xếp'}</span>
+    </button>
+
+    <div class="mobile-menu-container sample-dropdown-container">
       <button
         type="button"
-        class="navbar-icon-btn"
-        onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
-        title="Thao tác khác"
+        class="bento-icon-btn {isMobileMenuOpen ? 'is-active' : ''}"
+        onclick={(e) => {
+          e.stopPropagation();
+          isMobileMenuOpen = !isMobileMenuOpen;
+        }}
+        title="Menu tác vụ khác"
         aria-label="Thao tác khác"
       >
-        {#if isMobileMenuOpen}<X size={20} />{:else}<MoreVertical size={20} />{/if}
+        <MoreVertical size={18} />
       </button>
 
       {#if isMobileMenuOpen}
-        <div class="mobile-dropdown-menu">
+        <div
+          class="dropdown-menu-bento"
+          onclick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
           <button
             type="button"
-            class="mobile-menu-item"
-            onclick={() => { onOpenUpload(); isMobileMenuOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onOpenUpload();
+            }}
           >
-            <Upload size={18} />
-            <span>Tải File Vote Excel</span>
+            <Upload size={16} color="var(--accent)" />
+            <span>Tải file Excel lên</span>
           </button>
+
           <button
             type="button"
-            class="mobile-menu-item"
-            onclick={() => { onLoadSampleMultiTab(); isMobileMenuOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onExportExcel();
+            }}
           >
-            <Sparkles size={18} />
-            <span>Dữ Liệu Mẫu (Multi-Sheet)</span>
+            <Download size={16} color="var(--success)" />
+            <span>Xuất file Excel</span>
           </button>
+
+          <div class="dropdown-header-bento">DỮ LIỆU MẪU</div>
+
           <button
             type="button"
-            class="mobile-menu-item"
-            onclick={() => { onExportExcel(); isMobileMenuOpen = false; }}
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onLoadSampleMultiTab();
+            }}
           >
-            <Download size={18} />
-            <span>Xuất File Excel</span>
+            <Layers size={16} color="var(--accent)" />
+            <span>Test file nhiều tab</span>
+          </button>
+
+          <button
+            type="button"
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onLoadSampleSingleTab();
+            }}
+          >
+            <Files size={16} color="var(--accent)" />
+            <span>Test 5 file đơn</span>
+          </button>
+
+          <button
+            type="button"
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onLoadSampleMixed();
+            }}
+          >
+            <FolderSync size={16} color="var(--accent)" />
+            <span>Test file hỗn hợp</span>
+          </button>
+
+          <button
+            type="button"
+            class="dropdown-item-bento"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onDownloadTemplate();
+            }}
+          >
+            <FileSpreadsheet size={16} color="var(--success)" />
+            <span>Tải template Excel</span>
+          </button>
+
+          <button
+            type="button"
+            class="dropdown-item-bento"
+            style="color: var(--danger);"
+            onclick={() => {
+              isMobileMenuOpen = false;
+              onResetSchedule();
+            }}
+          >
+            <RefreshCw size={16} />
+            <span>Xóa / Làm mới lịch</span>
           </button>
         </div>
       {/if}

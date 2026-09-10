@@ -197,57 +197,68 @@
   <meta name="description" content="Hệ thống xếp lịch tập tự động cho CLB âm nhạc CSAC" />
 </svelte:head>
 
+<Navbar
+  {weekTitle}
+  onUpdateWeekTitle={(t) => weekTitle = t}
+  onOpenUpload={() => isUploadOpen = true}
+  onRunScheduler={() => runScheduler(songs, settings)}
+  onExportExcel={handleExportExcel}
+  onLoadSampleSingleTab={handleLoadSampleSingleTab}
+  onLoadSampleMultiTab={handleLoadSampleMultiTab}
+  onLoadSampleMixed={handleLoadSampleMixed}
+  onResetSchedule={handleResetSchedule}
+  onDownloadTemplate={downloadExcelTemplate}
+  {isSolving}
+  onToggleSidebar={() => isMobileSidebarOpen = !isMobileSidebarOpen}
+/>
+
 <div class="app-container">
-  <Navbar
-    {weekTitle}
-    onUpdateWeekTitle={(t) => weekTitle = t}
-    onOpenUpload={() => isUploadOpen = true}
-    onRunScheduler={() => runScheduler(songs, settings)}
-    onExportExcel={handleExportExcel}
-    onLoadSampleSingleTab={handleLoadSampleSingleTab}
-    onLoadSampleMultiTab={handleLoadSampleMultiTab}
-    onLoadSampleMixed={handleLoadSampleMixed}
-    onResetSchedule={handleResetSchedule}
-    onDownloadTemplate={downloadExcelTemplate}
-    {isSolving}
-    onToggleSidebar={() => isMobileSidebarOpen = !isMobileSidebarOpen}
+  {#if isMobileSidebarOpen}
+    <div
+      class="sidebar-backdrop"
+      onclick={() => isMobileSidebarOpen = false}
+      onkeydown={(e) => { if (e.key === 'Escape') isMobileSidebarOpen = false; }}
+      role="button"
+      tabindex="0"
+      aria-label="Đóng menu"
+    ></div>
+  {/if}
+
+  <Sidebar
+    {songs}
+    {schedule}
+    {selectedMember}
+    onSelectMember={(m) => selectedMember = m}
+    onUpdateSongSessions={handleUpdateSongSessions}
+    onViewSongVotes={(song) => activeVoteDetailSong = song}
+    onDeleteSong={handleDeleteSong}
+    {settings}
+    onUpdateSettings={(newSettings) => {
+      settings = newSettings;
+      runScheduler(songs, newSettings);
+    }}
+    {selectedWeekStart}
+    onSelectWeek={(d) => selectedWeekStart = d}
+    isOpenMobile={isMobileSidebarOpen}
+    onCloseMobile={() => isMobileSidebarOpen = false}
   />
 
-  <div class="app-layout">
-    <Sidebar
-      {songs}
-      {schedule}
-      {selectedMember}
-      onSelectMember={(m) => selectedMember = m}
-      onUpdateSongSessions={handleUpdateSongSessions}
-      onViewSongVotes={(song) => activeVoteDetailSong = song}
-      onDeleteSong={handleDeleteSong}
-      {settings}
-      onUpdateSettings={(newSettings) => {
-        settings = newSettings;
-        runScheduler(songs, newSettings);
-      }}
-      {selectedWeekStart}
-      onSelectWeek={(d) => selectedWeekStart = d}
-      isOpenMobile={isMobileSidebarOpen}
-      onCloseMobile={() => isMobileSidebarOpen = false}
-    />
-
-    <CalendarGrid
-      {schedule}
-      {songs}
-      {conflicts}
-      {unresolved}
-      {selectedMember}
-      onSelectSession={(sess) => activeSessionDetail = sess}
-      onOpenSlotAdd={(day, slot) => slotAddCoord = { day, slot }}
-      onOpenConflictResolver={() => isConflictResolverOpen = true}
-      onLoadSampleMultiTab={handleLoadSampleMultiTab}
-      onLoadSampleSingleTab={handleLoadSampleSingleTab}
-      onOpenUpload={() => isUploadOpen = true}
-      {selectedWeekStart}
-    />
-  </div>
+  <CalendarGrid
+    {schedule}
+    {songs}
+    {conflicts}
+    {unresolved}
+    {selectedMember}
+    onSelectSession={(sess) => activeSessionDetail = sess}
+    onOpenSlotAdd={(day, slot) => slotAddCoord = { day, slot }}
+    onOpenConflictResolver={() => isConflictResolverOpen = true}
+    onLoadSampleMultiTab={handleLoadSampleMultiTab}
+    onLoadSampleSingleTab={handleLoadSampleSingleTab}
+    onOpenUpload={() => isUploadOpen = true}
+    onDownloadTemplate={downloadExcelTemplate}
+    {selectedWeekStart}
+  />
+</div>
 
   <!-- Progressive Enhancement Hidden Form for SvelteKit SSR Actions -->
   <form method="POST" action="?/solve" use:enhance style="display: none;">
@@ -316,19 +327,4 @@
       }}
     />
   {/if}
-</div>
 
-<style>
-  .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-  }
-  .app-layout {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-</style>
