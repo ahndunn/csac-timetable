@@ -22,12 +22,14 @@ When asked to implement any feature, bug fix, algorithm tweak, or schema edit:
 ### 3. Verification Commands
 Always run verification after making changes:
 ```bash
-# Verify TypeScript & Vite build
+# Verify SvelteKit production build & all 38 automated test assertions
+npm run test
 npm run build
 
-# Run automated test suite (38+ assertions)
-npx tsx test_system.ts
+# Podman Compose Infrastructure validation
+podman compose -f deploy/compose.yml config
 ```
 
 ### 4. Single Source of Truth Enforcement
 If code behavior diverges from documentation, **the documentation is authoritative**. Fix the code to conform to the documentation, or update the documentation first if requirements have intentionally changed.
+
