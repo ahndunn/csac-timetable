@@ -16,6 +16,7 @@ import {
 } from './src/lib/engine/excelParser';
 import type { SongVoteData, SolverSettings, DayOfWeek } from './src/lib/types/timetable';
 import { DAYS_OF_WEEK, DEFAULT_TIME_SLOTS, DEFAULT_WEEK_TITLE } from './src/lib/constants/timetableDefaults';
+import { translate, t, setLocale, getLocale, SUPPORTED_LANGUAGES, DICTIONARIES } from './src/lib/i18n';
 
 async function runAllTests() {
   console.log('====================================================');
@@ -245,7 +246,68 @@ async function runAllTests() {
   assert(selectiveScheduleResult.schedule.length > 0, 'Successfully scheduled sessions for selectively imported songs');
   assert(selectiveScheduleResult.conflicts.length === 0, 'Zero conflicts for selectively scheduled songs');
 
+  // ----------------------------------------------------
+  // TEST 9: Internationalization (i18n) & ISO 639-1 Compliance
+  // ----------------------------------------------------
+  console.log('\nTEST 9: Internationalization (i18n) & ISO 639-1 Compliance');
+
+  // ISO 639-1 validation
+  assert(SUPPORTED_LANGUAGES.vi.code === 'vi', 'Vietnamese locale code strictly matches ISO 639-1 ("vi")');
+  assert(SUPPORTED_LANGUAGES.en.code === 'en', 'English locale code strictly matches ISO 639-1 ("en")');
+  assert(SUPPORTED_LANGUAGES.vi.nativeName === 'Tiếng Việt', 'Vietnamese native label is "Tiếng Việt"');
+  assert(SUPPORTED_LANGUAGES.en.nativeName === 'English', 'English native label is "English"');
+  assert(SUPPORTED_LANGUAGES.vi.flag === '🇻🇳', 'Vietnamese flag icon is 🇻🇳');
+  assert(SUPPORTED_LANGUAGES.en.flag === '🇺🇸', 'English flag icon is 🇺🇸');
+
+  // Key Parity check between vi and en dictionaries
+  function getFlatKeys(obj: Record<string, any>, prefix = ''): string[] {
+    let keys: string[] = [];
+    for (const [k, v] of Object.entries(obj)) {
+      const fullKey = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === 'object' && v !== null) {
+        keys = keys.concat(getFlatKeys(v, fullKey));
+      } else {
+        keys.push(fullKey);
+      }
+    }
+    return keys;
+  }
+
+  const viKeys = getFlatKeys(DICTIONARIES.vi).sort();
+  const enKeys = getFlatKeys(DICTIONARIES.en).sort();
+  const missingInEn = viKeys.filter(k => !enKeys.includes(k));
+  const missingInVi = enKeys.filter(k => !viKeys.includes(k));
+
+  assert(missingInEn.length === 0, `All Vietnamese keys exist in English dictionary (missing: ${missingInEn.join(', ') || 'none'})`);
+  assert(missingInVi.length === 0, `All English keys exist in Vietnamese dictionary (missing: ${missingInVi.join(', ') || 'none'})`);
+  assert(viKeys.length >= 60, `Comprehensive key coverage across application (${viKeys.length} keys)`);
+
+  // Translation and Parameter Interpolation check
+  const viSchedule = translate('vi', 'navbar.auto_schedule');
+  const enSchedule = translate('en', 'navbar.auto_schedule');
+  assert(viSchedule === 'Tự động xếp lịch', 'Translates navbar.auto_schedule correctly in Vietnamese');
+  assert(enSchedule === 'Auto-Schedule', 'Translates navbar.auto_schedule correctly in English');
+
+  const interpolatedVi = translate('vi', 'sidebar.target_sessions', { count: 3 });
+  const interpolatedEn = translate('en', 'sidebar.target_sessions', { count: 3 });
+  assert(interpolatedVi === '3 buổi/tuần', 'Correctly interpolates parameters in Vietnamese ("3 buổi/tuần")');
+  assert(interpolatedEn === '3 sessions/wk', 'Correctly interpolates parameters in English ("3 sessions/wk")');
+
+  // Fallback check
+  const fallbackVal = translate('en', 'non.existent.key.xyz');
+  assert(fallbackVal === 'non.existent.key.xyz', 'Gracefully falls back to key path for non-existent keys');
+
+  // Dynamic setLocale and t() synchronization
+  setLocale('en');
+  assert(getLocale() === 'en', 'setLocale updates current active locale to English');
+  assert(t('navbar.auto_schedule') === 'Auto-Schedule', 't() reflects active English locale');
+
+  setLocale('vi');
+  assert(getLocale() === 'vi', 'setLocale switches back to Vietnamese');
+  assert(t('navbar.auto_schedule') === 'Tự động xếp lịch', 't() reflects active Vietnamese locale');
+
   // Summary
+
   console.log('\n====================================================');
   console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
   console.log('====================================================');
