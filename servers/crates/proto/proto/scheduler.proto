@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package csac.timetable.v1;
+
+message PastelColor {
+  string id = 1;
+  string name = 2;
+  string bg = 3;
+  string border = 4;
+  string text = 5;
+  string chip_bg = 6;
+}
+
+message SongVoteData {
+  string id = 1;
+  string name = 2;
+  string week_title = 3;
+  repeated string members = 4;
+  map<string, bool> availability = 5;
+  map<string, string> notes = 6;
+  PastelColor color = 7;
+  int32 target_sessions = 8;
+  string source_file_name = 9;
+}
+
+message ScheduledSession {
+  string id = 1;
+  string song_id = 2;
+  string song_name = 3;
+  string day = 4;
+  string slot = 5;
+  int32 room = 6;
+  repeated string all_members = 7;
+  repeated string available_members = 8;
+  repeated string absent_members = 9;
+  PastelColor color = 10;
+  string note = 11;
+  bool is_manual = 12;
+}
+
+message SolverSettings {
+  int32 max_rooms = 1;
+  bool allow_partial_attendance = 2;
+  bool spread_days = 3;
+}
+
+message CandidateSlot {
+  string day = 1;
+  string slot = 2;
+  int32 score = 3;
+  repeated string available_members = 4;
+  repeated string absent_members = 5;
+  repeated string conflict_reasons = 6;
+}
+
+message UnresolvedSong {
+  SongVoteData song = 1;
+  int32 needed_sessions = 2;
+  int32 scheduled_sessions = 3;
+  repeated CandidateSlot best_candidate_slots = 4;
+  repeated string reasons = 5;
+}
+
+message ConflictItem {
+  string type = 1;
+  string description = 2;
+  repeated string affected_songs = 3;
+  repeated string affected_members = 4;
+  string day = 5;
+  string slot = 6;
+}
+
+message SolverStats {
+  int32 total_requested = 1;
+  int32 total_scheduled = 2;
+  int32 perfect_attendance_count = 3;
+  int32 partial_attendance_count = 4;
+}
+
+message SolveTimetableRequest {
+  repeated SongVoteData songs = 1;
+  SolverSettings settings = 2;
+  repeated string days = 3;
+  repeated string time_slots = 4;
+  repeated ScheduledSession manual_sessions = 5;
+}
+
+message SolveTimetableResponse {
+  repeated ScheduledSession schedule = 1;
+  repeated UnresolvedSong unresolved = 2;
+  repeated ConflictItem conflicts = 3;
+  SolverStats stats = 4;
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  string status = 1;
+}
+
+service SchedulerService {
+  rpc SolveTimetable(SolveTimetableRequest) returns (SolveTimetableResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}

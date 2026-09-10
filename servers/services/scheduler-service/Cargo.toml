@@ -1,0 +1,13 @@
+[package]
+name = "scheduler-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+csac-proto = { path = "../../crates/proto" }
+csac-common = { path = "../../crates/common" }
+tokio = { version = "1", features = ["full"] }
+tonic = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+redis = { version = "0.27", features = ["tokio-comp"] }

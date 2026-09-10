@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "crates/proto",
+    "crates/common",
+    "crates/kafka-events",
+    "services/gateway",
+    "services/scheduler-service",
+    "services/vote-ingestion-service",
+]
+resolver = "2"

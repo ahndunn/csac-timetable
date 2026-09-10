@@ -1,0 +1,15 @@
+[package]
+name = "vote-ingestion-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+csac-proto = { path = "../../crates/proto" }
+csac-common = { path = "../../crates/common" }
+csac-kafka-events = { path = "../../crates/kafka-events" }
+tokio = { version = "1", features = ["full"] }
+tonic = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rdkafka = { version = "0.37", features = ["tokio"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
