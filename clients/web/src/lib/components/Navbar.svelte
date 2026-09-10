@@ -16,7 +16,8 @@
     Check,
     Languages,
   } from '@lucide/svelte';
-  import { replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import {
     tStore,
     currentLocale,
@@ -68,11 +69,14 @@
   function switchLanguage(code: Iso639_1Locale) {
     setLocale(code);
     isLangOpen = false;
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('lang', code);
-      replaceState(url.toString(), {});
-    }
+    const url = new URL($page.url);
+    url.searchParams.set('lang', code);
+    goto(`?${url.searchParams.toString()}`, {
+      replaceState: true,
+      keepFocus: true,
+      noScroll: true,
+      invalidateAll: false,
+    });
   }
 </script>
 
@@ -283,8 +287,8 @@
         title={$tStore('navbar.language_switcher')}
         aria-label={$tStore('navbar.language_switcher')}
       >
-        <span style="font-size: 15px; line-height: 1;">{SUPPORTED_LANGUAGES[$currentLocale].flag}</span>
-        <span style="font-weight: 600;">{SUPPORTED_LANGUAGES[$currentLocale].nativeName}</span>
+        <span style="font-size: 15px; line-height: 1;">{SUPPORTED_LANGUAGES[$currentLocale]?.flag ?? '🇻🇳'}</span>
+        <span style="font-weight: 600;">{SUPPORTED_LANGUAGES[$currentLocale]?.nativeName ?? 'Tiếng Việt'}</span>
         <ChevronDown
           size={14}
           style="transform: {isLangOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;"
