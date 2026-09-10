@@ -7,7 +7,7 @@
 **DOCUMENTATION IS THE ULTIMATE SINGLE SOURCE OF TRUTH (SSOT). CODE IS A DERIVED IMPLEMENTATION BYPRODUCT.**
 
 ### 1. Mandatory Pre-Flight Checklist
-Before inspecting, modifying, or generating any code in `src/` or `test_system.ts`:
+Before inspecting, modifying, or generating any code in `clients/web/src/` or `clients/web/test_suite.ts`:
 1. Read the relevant documentation in `docs/`:
    - [`docs/BUSINESS.md`](file:///home/ahndunn/dev/csac-timetable/docs/BUSINESS.md) for business logic, constraints, user flows, and export formats.
    - [`docs/TECHNICAL.md`](file:///home/ahndunn/dev/csac-timetable/docs/TECHNICAL.md) for architecture, TypeScript contracts, CSP solver heuristics, and test suite specs.
@@ -16,15 +16,15 @@ Before inspecting, modifying, or generating any code in `src/` or `test_system.t
 ### 2. Documentation-First Change Workflow
 When asked to implement any feature, bug fix, algorithm tweak, or schema edit:
 1. **Update Documentation FIRST**: Edit the specification in `docs/` (`docs/BUSINESS.md`, `docs/TECHNICAL.md`, or a new spec file in `docs/`).
-2. **Implement Code SECOND**: Write implementation code in `src/` strictly conforming to the updated documentation.
-3. **Verify THIRD**: Run `npx tsx test_system.ts` and `npm run build` to ensure 100% test pass rate and clean build.
+2. **Implement Code SECOND**: Write implementation code in `clients/web/src/` strictly conforming to the updated documentation.
+3. **Verify THIRD**: Run `pnpm run test` and `pnpm run build` to ensure 100% test pass rate and clean build.
 
 ### 3. Verification Commands
 Always run verification after making changes:
 ```bash
 # Verify SvelteKit production build & all 38 automated test assertions
-npm run test
-npm run build
+pnpm run test
+pnpm run build
 
 # Podman Compose Infrastructure validation
 podman compose -f deploy/compose.yml config

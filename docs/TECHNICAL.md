@@ -69,6 +69,7 @@ flowchart TB
 | Subsystem | Layer | Technology / Library | Purpose |
 | :--- | :--- | :--- | :--- |
 | **Clients** | Web Frontend | SvelteKit + Svelte 5 | Modern reactive UI, SSR, Form Actions, runes (`$state`, `$derived`). |
+| **Clients** | Web Styling & UI | Neumorphism / Soft UI System | Physical extruded/pressed materiality (`#e0e5ec`), dual-shadow elevation, crisp typography. |
 | **Clients** | Web Excel Engine | SheetJS (`xlsx`) + `exceljs` | Multi-sheet parsing and styled workbook generation. |
 | **Servers** | API Gateway | Rust (`axum`, `tower`, `tower-http`) | Unified reverse proxy, rate limiting, REST routing, CORS, JWT. |
 | **Servers** | Inter-Service Sync | Rust (`tonic`, `prost`) | Low-latency type-safe gRPC remote procedure calls. |
@@ -197,6 +198,11 @@ Uses `exceljs` to generate 3 formatted worksheets:
 1. `LỊCH TẬP TUẦN`: Weekly grid layout with background colors matching `PASTEL_PALETTE`.
 2. `CHI TIẾT BÀI HÁT`: Tabular summary of scheduled sessions.
 3. `LỊCH CÁ NHÂN`: Individual member timetables.
+
+### 4.3 Web Frontend Bento Grid UI (`clients/web/`)
+* **Design System**: Bento Grid UI layout using modular card surfaces, clean 1px borders, subtle elevation, and True Orange accent (`#ff6b00` / `#f97316`).
+* **Design Skill & Rules**: Governed by `bento-design` skill (`.agents/skills/bento-design/SKILL.md`) and scoped rule `.agents/rules/web-frontend.md`.
+* **70/20/10 Palette**: 70% deep neutral base (`#f8fafc`), 20% elevated white bento cards (`#ffffff`), 10% vivid True Orange accent. Zero neumorphic muddy dual-shadows.
 
 ---
 

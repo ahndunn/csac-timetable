@@ -103,7 +103,7 @@ sequenceDiagram
 ## 5. Multi-Client & Microservices Evolution
 
 ### 5.1 Platform Strategy
-* **Web Client (`clients/web`)**: Primary rich web application running on SvelteKit SSR with progressive enhancement.
+* **Web Client (`clients/web`)**: Primary rich web application running on SvelteKit SSR with progressive enhancement, designed in tactile Neumorphic (Soft UI) physical materiality (`#e0e5ec`).
 * **Mobile Clients (`clients/ios`, `clients/android`, `clients/mobile-cross`)**: Future native and cross-platform clients consuming the standardized RESTful API exposed by the Reverse Proxy Gateway.
 
 ### 5.2 Server Architecture Business Value

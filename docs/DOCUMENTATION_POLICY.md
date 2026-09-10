@@ -22,15 +22,15 @@ In this repository:
 These rules apply universally to any AI agent harness (Google Antigravity, Claude Code, Cursor, Windsurf, GitHub Copilot, custom scripts) and human contributors:
 
 ### Rule 1: Read Documentation Before Modifying Code
-Before making any changes to `src/` or `test_system.ts`:
+Before making any changes to `clients/web/src/` or `clients/web/test_suite.ts`:
 * Consult [`docs/TECHNICAL.md`](file:///home/ahndunn/dev/csac-timetable/docs/TECHNICAL.md) and [`docs/BUSINESS.md`](file:///home/ahndunn/dev/csac-timetable/docs/BUSINESS.md).
 * Verify existing specifications, data model contracts, and algorithm invariants.
 
 ### Rule 2: Update Documentation First (Doc-First Workflow)
 Whenever introducing a change (new component, modified algorithm, changed data structure, new export option):
 1. **Step 1 — Document**: Update the relevant markdown specification in `docs/` (`docs/BUSINESS.md`, `docs/TECHNICAL.md`, or a new spec file).
-2. **Step 2 — Implement**: Write or modify the code in `src/` to strictly match the updated documentation.
-3. **Step 3 — Verify**: Update or add automated assertions in `test_system.ts` and verify that `npm run build` and `npx tsx test_system.ts` pass cleanly.
+2. **Step 2 — Implement**: Write or modify the code in `clients/web/src/` to strictly match the updated documentation.
+3. **Step 3 — Verify**: Update or add automated assertions in `clients/web/test_suite.ts` and verify that `pnpm run build` and `pnpm run test` pass cleanly.
 
 ### Rule 3: Single Source of Truth Synchronization
 * If an architectural decision or business rule changes during implementation, the corresponding `docs/` file **must** be updated in the same commit/pull request.
@@ -53,10 +53,10 @@ Whenever introducing a change (new component, modified algorithm, changed data s
 1. **Pre-Commit Verification**:
    ```bash
    # 1. Verify build
-   npm run build
+   pnpm run build
 
    # 2. Run automated test suite
-   npx tsx test_system.ts
+   pnpm run test
    ```
 2. **Documentation Completeness Checklist**:
    - [ ] Did you update `docs/BUSINESS.md` or `docs/TECHNICAL.md` if data models, features, or algorithms changed?
