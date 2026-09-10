@@ -7,13 +7,13 @@
     FileSpreadsheet,
     Check,
     X,
-    AlertCircle,
     Search,
     CheckSquare,
     Square,
     Users,
     Info,
   } from '@lucide/svelte';
+  import { tStore } from '$lib/i18n';
 
   interface Props {
     inspections: FileInspection[];
@@ -127,13 +127,17 @@
           <Layers size={18} color="var(--accent)" />
         </div>
         <div>
-          <h3 class="modal-header-title">Phát hiện file Excel có nhiều tab</h3>
+          <h3 class="modal-header-title">{$tStore('sheet_modal.title')}</h3>
           <p style="margin: 0; font-size: 12px; color: var(--text-muted);">
-            Tìm thấy {multiTabFilesCount > 0 ? `${multiTabFilesCount} file Excel nhiều tab` : 'các file Excel'}. Chọn các bài cần nhập:
+            {$tStore('sheet_modal.subtitle', {
+              files: multiTabFilesCount > 0 
+                ? $tStore('sheet_modal.files_multitab', { count: multiTabFilesCount })
+                : $tStore('sheet_modal.files_generic')
+            })}
           </p>
         </div>
       </div>
-      <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
+      <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('sheet_modal.cancel')}>
         <X size={16} />
       </button>
     </div>
@@ -144,7 +148,7 @@
         <Search size={14} class="search-icon" />
         <input
           type="text"
-          placeholder="Tìm tên tab, bài hát, thành viên..."
+          placeholder={$tStore('sheet_modal.search_placeholder')}
           value={searchQuery}
           oninput={(e) => searchQuery = (e.target as HTMLInputElement).value}
         />
@@ -153,7 +157,7 @@
             type="button"
             class="search-clear-btn"
             onclick={() => searchQuery = ''}
-            aria-label="Xóa tìm kiếm"
+            aria-label={$tStore('sidebar.clear_filter')}
           >
             <X size={12} />
           </button>
@@ -162,7 +166,7 @@
 
       <div style="display: flex; align-items: center; gap: 10px;">
         <span class="bento-pill is-active" style="font-size: 11px;">
-          Đã chọn: <strong>{selectedCount}</strong> / {allValidSheetKeys.length} tab
+          {$tStore('sheet_modal.selected_count', { selected: selectedCount, total: allValidSheetKeys.length })}
         </span>
         <button
           type="button"
@@ -170,7 +174,7 @@
           style="font-size: 11px; padding: 4px 10px;"
           onclick={handleSelectAll}
         >
-          Chọn tất cả
+          {$tStore('sheet_modal.select_all')}
         </button>
         <button
           type="button"
@@ -178,7 +182,7 @@
           style="font-size: 11px; padding: 4px 10px;"
           onclick={handleDeselectAll}
         >
-          Bỏ chọn tất cả
+          {$tStore('sheet_modal.deselect_all')}
         </button>
       </div>
     </div>
@@ -188,7 +192,7 @@
       {#if filteredFiles.length === 0}
         <div style="text-align: center; padding: 24px; color: var(--text-muted);">
           <Info size={28} />
-          <p style="margin-top: 8px;">Không tìm thấy tab nào khớp với từ khóa "{searchQuery}"</p>
+          <p style="margin-top: 8px;">{$tStore('sheet_modal.no_match', { query: searchQuery })}</p>
         </div>
       {:else}
         {#each filteredFiles as file (file.fileId)}
@@ -205,13 +209,13 @@
                   {file.fileName}
                 </strong>
                 <span class="bento-pill is-active" style="font-size: 10px; padding: 1px 6px;">
-                  {file.sheets.length} tab {file.hasMultipleSheets ? '• Multi-tab' : ''}
+                  {$tStore('sheet_modal.file_tabs', { count: file.sheets.length })} {file.hasMultipleSheets ? $tStore('sheet_modal.multitab_badge') : ''}
                 </span>
               </div>
 
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 11px; color: var(--text-muted);">
-                  {selectedInFileCount}/{validFileKeys.length} tab
+                  {$tStore('sheet_modal.selected_file_ratio', { selected: selectedInFileCount, total: validFileKeys.length })}
                 </span>
                 <button
                   type="button"
@@ -219,7 +223,7 @@
                   style="font-size: 11px; padding: 3px 8px;"
                   onclick={() => handleToggleFile(file)}
                 >
-                  {allSelectedInFile ? 'Bỏ chọn file' : 'Chọn cả file'}
+                  {allSelectedInFile ? $tStore('sheet_modal.deselect_file') : $tStore('sheet_modal.select_file')}
                 </button>
               </div>
             </div>
@@ -252,7 +256,7 @@
                   <div style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
                       <span style="font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        Tab: {sheet.sheetName}
+                        {$tStore('sheet_modal.tab_label', { name: sheet.sheetName })}
                       </span>
                       {#if sheet.isValid}
                         <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">
@@ -261,13 +265,13 @@
                         </span>
                       {:else}
                         <span style="font-size: 10px; color: var(--danger-text); font-weight: 600;">
-                          Sai định dạng
+                          {$tStore('sheet_modal.invalid_format')}
                         </span>
                       {/if}
                     </div>
 
                     <div style="font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                      Bài: <strong>{sheet.songName}</strong>
+                      {$tStore('sheet_modal.song_label', { name: sheet.songName })}
                     </div>
 
                     {#if sheet.members.length > 0}
@@ -288,12 +292,12 @@
     <div class="modal-footer" style="justify-content: space-between;">
       <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
         <Info size={14} />
-        <span>Các tab không chọn sẽ được bỏ qua.</span>
+        <span>{$tStore('sheet_modal.unselected_hint')}</span>
       </div>
 
       <div style="display: flex; align-items: center; gap: 10px;">
         <button type="button" class="bento-btn" onclick={onClose}>
-          Hủy
+          {$tStore('sheet_modal.cancel')}
         </button>
         <button
           type="button"
@@ -302,7 +306,7 @@
           disabled={selectedCount === 0}
         >
           <Check size={16} />
-          <span>Nhập {selectedCount} tab</span>
+          <span>{$tStore('sheet_modal.confirm', { count: selectedCount })}</span>
         </button>
       </div>
     </div>

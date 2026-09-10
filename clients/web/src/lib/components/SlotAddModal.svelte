@@ -2,6 +2,8 @@
   import type { SongVoteData, ScheduledSession, DayOfWeek } from '../types/timetable';
   import { getSlotAttendance } from '../engine/scheduler';
   import { Plus, X, AlertCircle } from '@lucide/svelte';
+  import { tStore, currentLocale } from '$lib/i18n';
+  import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
 
   interface Props {
     day: DayOfWeek | null;
@@ -17,6 +19,9 @@
   let existingInSlot = $derived(
     day && slot ? schedule.filter(s => s.day === day && s.slot === slot) : []
   );
+
+  let dayLabels = $derived(DAY_DISPLAY_LABELS[$currentLocale] || DAY_DISPLAY_LABELS.vi);
+  let localizedDay = $derived(day ? (dayLabels[day]?.full || day) : '');
 </script>
 
 {#if day && slot}
@@ -38,24 +43,26 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <Plus size={18} color="var(--accent)" />
           <h3 class="modal-header-title">
-            Thêm bài tập vào {day} ({slot})
+            {$tStore('slot_add_modal.title', { day: localizedDay, slot })}
           </h3>
         </div>
-        <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
+        <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('slot_add_modal.close')}>
           <X size={16} />
         </button>
       </div>
 
       <div class="modal-body">
         <div style="font-size: 13px; color: var(--text-secondary);">
-          Chọn bài hát bạn muốn phân bổ vào khung giờ này. Danh sách hiển thị tỷ lệ thành viên rảnh và cảnh báo trùng lịch:
+          {$tStore('slot_add_modal.intro')}
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
           {#each songs as song (song.id)}
             {@const attendance = getSlotAttendance(song, day, slot)}
             {@const doubleBookedMembers = existingInSlot.flatMap(existing => 
-              song.members.filter(m => existing.allMembers.includes(m)).map(m => `${m} (đã ở bài ${existing.songName})`)
+              song.members.filter(m => existing.allMembers.includes(m)).map(m => 
+                $tStore('slot_add_modal.busy_in_song', { member: m, song: existing.songName })
+              )
             )}
             {@const isAlreadyInSlot = existingInSlot.some(s => s.songId === song.id)}
 
@@ -75,20 +82,20 @@
                     class="bento-pill {attendance.is100Percent ? 'is-active' : ''}"
                     style="font-size: 10px; {attendance.is100Percent ? '' : 'color: var(--danger-text); background: var(--danger-light);'}"
                   >
-                    {attendance.availableMembers.length}/{song.members.length} rảnh
+                    {$tStore('slot_add_modal.members_free', { available: attendance.availableMembers.length, total: song.members.length })}
                   </span>
                 </div>
 
                 {#if doubleBookedMembers.length > 0}
                   <div style="font-size: 11px; color: var(--danger-text); display: flex; align-items: center; gap: 4px;">
                     <AlertCircle size={12} />
-                    <span>Trùng: {doubleBookedMembers.join(', ')}</span>
+                    <span>{$tStore('slot_add_modal.overlap_warning', { members: doubleBookedMembers.join(', ') })}</span>
                   </div>
                 {/if}
 
                 {#if attendance.absentMembers.length > 0 && doubleBookedMembers.length === 0}
                   <div style="font-size: 11px; color: var(--warning-text);">
-                    Vắng theo vote: {attendance.absentMembers.join(', ')}
+                    {$tStore('slot_add_modal.absent_by_vote', { members: attendance.absentMembers.join(', ') })}
                   </div>
                 {/if}
               </div>
@@ -103,7 +110,7 @@
                 }}
                 style="font-size: 12px; padding: 6px 12px;"
               >
-                {isAlreadyInSlot ? 'Đã xếp ở ô này' : 'Xếp vào đây'}
+                {isAlreadyInSlot ? $tStore('slot_add_modal.already_assigned') : $tStore('slot_add_modal.assign_btn')}
               </button>
             </div>
           {/each}
@@ -112,7 +119,7 @@
 
       <div class="modal-footer">
         <button type="button" class="bento-btn" onclick={onClose}>
-          Đóng
+          {$tStore('slot_add_modal.close')}
         </button>
       </div>
     </div>

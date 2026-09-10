@@ -4,6 +4,7 @@
   import SheetSelectionModal from './SheetSelectionModal.svelte';
   import { generateMultiTabSampleFile, generateSingleTabSampleFiles } from '../engine/sampleData';
   import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle, Layers, Files } from '@lucide/svelte';
+  import { tStore } from '$lib/i18n';
 
   interface Props {
     onClose: () => void;
@@ -31,7 +32,7 @@
       );
 
       if (fileList.length === 0) {
-        errorMsg = 'Vui lòng chọn file Excel có đuôi .xlsx hoặc .xls';
+        errorMsg = $tStore('upload_modal.error_extension');
         isLoading = false;
         return;
       }
@@ -50,14 +51,14 @@
         }
         const songs = parseSelectedSheets(inspections, allKeys, existingCount + parsedSongs.length);
         if (songs.length === 0) {
-          errorMsg = 'Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra định dạng file Excel.';
+          errorMsg = $tStore('upload_modal.error_no_valid');
         } else {
           parsedSongs = [...parsedSongs, ...songs];
         }
       }
     } catch (err) {
       console.error(err);
-      errorMsg = 'Đã có lỗi khi đọc file Excel. Vui lòng kiểm tra lại cấu trúc file.';
+      errorMsg = $tStore('upload_modal.error_read');
     } finally {
       isLoading = false;
     }
@@ -128,9 +129,9 @@
     <div class="modal-header">
       <div style="display: flex; align-items: center; gap: 8px;">
         <UploadCloud size={20} color="var(--accent)" />
-        <h3 class="modal-header-title">Tải lên file Excel Vote Lịch</h3>
+        <h3 class="modal-header-title">{$tStore('upload_modal.title')}</h3>
       </div>
-      <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
+      <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('upload_modal.cancel')}>
         <X size={16} />
       </button>
     </div>
@@ -162,16 +163,16 @@
 
         <div>
           <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">
-            Kéo thả file Excel vào đây hoặc <span style="color: var(--accent); text-decoration: underline;">chọn file</span>
+            {$tStore('upload_modal.drop_title')} <span style="color: var(--accent); text-decoration: underline;">{$tStore('upload_modal.browse')}</span>
           </div>
           <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-            Hỗ trợ file .xlsx, .xls (file 1 tab hoặc file nhiều tab)
+            {$tStore('upload_modal.drop_subtitle')}
           </div>
         </div>
 
         {#if isLoading}
           <div class="bento-pill is-active">
-            <span>Đang phân tích file...</span>
+            <span>{$tStore('upload_modal.analyzing')}</span>
           </div>
         {/if}
       </div>
@@ -179,7 +180,7 @@
       <!-- Quick sample test buttons -->
       <div style="padding: 14px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px;">
         <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">
-          Hoặc thử nhanh dữ liệu mẫu:
+          {$tStore('upload_modal.quick_test')}
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button
@@ -189,7 +190,7 @@
             onclick={handleTestMultiTab}
           >
             <Layers size={14} color="var(--accent)" />
-            <span>Thử file nhiều tab</span>
+            <span>{$tStore('upload_modal.test_multitab')}</span>
           </button>
           <button
             type="button"
@@ -198,7 +199,7 @@
             onclick={handleTestSingleTab}
           >
             <Files size={14} color="var(--accent)" />
-            <span>Thử 5 file đơn</span>
+            <span>{$tStore('upload_modal.test_singletab')}</span>
           </button>
           {#if onDownloadTemplate}
             <button
@@ -208,7 +209,7 @@
               onclick={onDownloadTemplate}
             >
               <FileSpreadsheet size={14} color="var(--success)" />
-              <span>Tải template mẫu</span>
+              <span>{$tStore('upload_modal.download_template')}</span>
             </button>
           {/if}
         </div>
@@ -226,7 +227,7 @@
       {#if parsedSongs.length > 0}
         <div>
           <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
-            Đã đọc được {parsedSongs.length} bài hát:
+            {$tStore('upload_modal.found_songs', { count: parsedSongs.length })}
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
             {#each parsedSongs as song (song.id)}
@@ -237,11 +238,11 @@
                   ></div>
                   <strong style="font-size: 13px; color: var(--text-primary);">{song.name}</strong>
                   <span style="font-size: 11px; color: var(--text-muted);">
-                    ({song.members.length} thành viên)
+                    {$tStore('upload_modal.members_count', { count: song.members.length })}
                   </span>
                 </div>
                 <span class="bento-pill is-active" style="font-size: 10px; padding: 2px 6px;">
-                  {song.targetSessions} buổi
+                  {$tStore('upload_modal.sessions_tag', { count: song.targetSessions })}
                 </span>
               </div>
             {/each}
@@ -252,7 +253,7 @@
 
     <div class="modal-footer">
       <button type="button" class="bento-btn" onclick={onClose}>
-        Hủy
+        {$tStore('upload_modal.cancel')}
       </button>
       <button
         type="button"
@@ -261,7 +262,7 @@
         onclick={handleConfirm}
       >
         <Check size={16} />
-        <span>Nhập {parsedSongs.length} bài hát</span>
+        <span>{$tStore('upload_modal.confirm_import', { count: parsedSongs.length })}</span>
       </button>
     </div>
   </div>

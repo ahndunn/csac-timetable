@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData } from '../types/timetable';
   import { Clock, MapPin, Users, FileText, Trash2, X, Check, AlertCircle } from '@lucide/svelte';
+  import { tStore, currentLocale } from '$lib/i18n';
+  import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
 
   interface Props {
     session: ScheduledSession | null;
@@ -12,6 +14,8 @@
   let { session, songData, onClose, onDeleteSession }: Props = $props();
 
   let isPerfect = $derived(session ? session.absentMembers.length === 0 : true);
+  let dayLabels = $derived(DAY_DISPLAY_LABELS[$currentLocale] || DAY_DISPLAY_LABELS.vi);
+  let localizedDay = $derived(session ? (dayLabels[session.day]?.full || session.day) : '');
 </script>
 
 {#if session}
@@ -38,7 +42,7 @@
             {session.songName}
           </h3>
         </div>
-        <button type="button" class="modal-close-btn" onclick={onClose} aria-label="Đóng">
+        <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('event_detail_modal.close')}>
           <X size={16} />
         </button>
       </div>
@@ -48,13 +52,13 @@
           <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary);">
             <Clock size={16} color="var(--accent)" />
             <span>
-              <strong>{session.day}</strong>, {session.slot}
+              <strong>{localizedDay}</strong>, {session.slot}
             </span>
           </div>
 
           <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary);">
             <MapPin size={16} color="var(--accent)" />
-            <span>Phòng tập {session.room}</span>
+            <span>{$tStore('event_detail_modal.room_label', { room: session.room })}</span>
           </div>
         </div>
 
@@ -66,14 +70,14 @@
               style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;"
             >
               <Users size={15} color="var(--accent)" />
-              <span>Thành viên ({session.availableMembers.length}/{session.allMembers.length})</span>
+              <span>{$tStore('event_detail_modal.members_header', { present: session.availableMembers.length, total: session.allMembers.length })}</span>
             </span>
 
             <span
               class="bento-pill {isPerfect ? 'is-accent' : ''}"
               style="{isPerfect ? '' : 'color: var(--danger-text); background: var(--danger-light);'}"
             >
-              {isPerfect ? 'Đầy đủ 100%' : `Vắng ${session.absentMembers.length} người`}
+              {isPerfect ? $tStore('event_detail_modal.full_attendance') : $tStore('event_detail_modal.absent_count', { count: session.absentMembers.length })}
             </span>
           </div>
 
@@ -95,7 +99,7 @@
                 </span>
                 {#if !isAvail}
                   <span style="font-size: 10px; color: var(--danger); font-weight: 600;">
-                    (Bận)
+                    {$tStore('event_detail_modal.busy_label')}
                   </span>
                 {/if}
               </div>
@@ -109,7 +113,7 @@
               style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-bottom: 4px;"
             >
               <FileText size={14} color="var(--accent)" />
-              <span>Ghi chú từ bảng vote:</span>
+              <span>{$tStore('event_detail_modal.notes_title')}</span>
             </div>
             <div style="font-size: 12px; color: var(--text-primary);">
               {session.note}
@@ -125,10 +129,10 @@
           onclick={() => onDeleteSession(session.id)}
         >
           <Trash2 size={15} />
-          <span>Xóa buổi này</span>
+          <span>{$tStore('event_detail_modal.delete_btn')}</span>
         </button>
         <button type="button" class="bento-btn bento-btn-primary" onclick={onClose}>
-          Đóng
+          {$tStore('event_detail_modal.close')}
         </button>
       </div>
     </div>

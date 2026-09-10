@@ -31,6 +31,7 @@
   import SheetSelectionModal from '$lib/components/SheetSelectionModal.svelte';
   import RawVoteModal from '$lib/components/RawVoteModal.svelte';
   import SlotAddModal from '$lib/components/SlotAddModal.svelte';
+  import { tStore } from '$lib/i18n';
 
   // Svelte 5 Runes State Management
   let selectedWeekStart = $state(new Date(2026, 8, 7));
@@ -139,7 +140,7 @@
 
   function handleExportExcel() {
     if (schedule.length === 0) {
-      alert('Chưa có lịch tập được xếp để xuất file Excel.');
+      alert($tStore('messages.no_schedule_to_export'));
       return;
     }
     exportTimetableToExcel(schedule, songs, weekTitle);
@@ -193,8 +194,8 @@
 </script>
 
 <svelte:head>
-  <title>CSAC Timetable Studio 🎵📅</title>
-  <meta name="description" content="Hệ thống xếp lịch tập tự động cho CLB âm nhạc CSAC" />
+  <title>{$tStore('app.page_title')}</title>
+  <meta name="description" content={$tStore('app.subtitle')} />
 </svelte:head>
 
 <Navbar
@@ -220,7 +221,7 @@
       onkeydown={(e) => { if (e.key === 'Escape') isMobileSidebarOpen = false; }}
       role="button"
       tabindex="0"
-      aria-label="Đóng menu"
+      aria-label={$tStore('sidebar.close_menu')}
     ></div>
   {/if}
 
