@@ -204,6 +204,22 @@ Uses `exceljs` to generate 3 formatted worksheets:
 * **Design Skill & Rules**: Governed by `bento-design` skill (`.agents/skills/bento-design/SKILL.md`) and scoped rule `.agents/rules/web-frontend.md`.
 * **70/20/10 Palette**: 70% deep neutral base (`#f8fafc`), 20% elevated white bento cards (`#ffffff`), 10% vivid True Orange accent. Zero neumorphic muddy dual-shadows.
 
+### 4.4 Internationalization Subsystem (`clients/web/src/lib/i18n/`)
+* **Standard Compliance**: ISO 639-1 standard identifiers (`vi`, `en`).
+* **Core Types**:
+  ```typescript
+  export type Iso639_1Locale = 'vi' | 'en';
+  export interface LanguageOption {
+    code: Iso639_1Locale;
+    nativeName: string;
+    englishName: string;
+    flag: string;
+  }
+  ```
+* **Rune State**: Zero-dependency Svelte 5 rune reactive store (`$state` current locale, `$derived` active dictionary, dot-notation resolver `t(key, params)`).
+* **URL Sync Flow**: Synchronized globally in `+layout.svelte` via `page.url.searchParams.get('lang')` and client browser locale fallback (`navigator.language`). Changes push URL state via `replaceState` without page reloads.
+
+
 ---
 
 ## 5. Verification & Testing

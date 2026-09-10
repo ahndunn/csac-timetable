@@ -64,6 +64,13 @@ The application transforms raw member availability votes submitted via Excel wor
   2. `CHI TIẾT BÀI HÁT`: Tabular summary sorted by song name, day, time, room, and member lists.
   3. `LỊCH CÁ NHÂN`: Comprehensive personal timetable matrix for every performer.
 
+### 3.4 Internationalization & Localization (i18n)
+* **BR-09 (ISO 639-1 Multilingual Support)**: The web client **must** support both Vietnamese (`vi`) and English (`en`) with first-class fidelity.
+  * **Machine Locale Auto-Detection**: If no language is explicitly requested, the application defaults to the client's browser locale (`navigator.language`).
+  * **Persistent URL Search Parameter**: Active language is synchronized globally via the URL parameter (`?lang=vi` / `?lang=en`) handled in `+layout.svelte`.
+  * **Language Switcher UI**: A dedicated dropdown in the top-right navigation bar presents supported languages with national flag icons and native tongue labels (`🇻🇳 Tiếng Việt` / `🇺🇸 English`).
+
+
 ---
 
 ## 4. User Journey & Workflow Specifications
