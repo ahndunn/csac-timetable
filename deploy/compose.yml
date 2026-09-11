@@ -154,6 +154,10 @@ services:
 
   # Web Frontend Client (SvelteKit SSR)
   web:
+    profiles:
+      - full
+      - all
+      - web
     build:
       context: ../clients/web
       dockerfile: ../../deploy/docker/Dockerfile.web

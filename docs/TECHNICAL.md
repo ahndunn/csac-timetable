@@ -426,3 +426,12 @@ CREATE TABLE member_sprint_availabilities (
   * **Builder Stage (`node:22-alpine`)**: Uses Corepack-managed `pnpm` with persistent cache mount (`--mount=type=cache,id=pnpm,target=/pnpm/store`) for frozen-lockfile dependency resolution. Executes `pnpm run build` followed by `pnpm prune --prod` to discard development-only tooling (`vite`, `svelte-check`, `typescript`, `@sveltejs/kit`).
   * **Runner Stage (`node:22-alpine`)**: Copies only the compiled `@sveltejs/adapter-node` standalone server (`build/`), pruned production dependencies (`node_modules/`), and `package.json`.
   * Security Context: Non-root user `USER node`.
+
+### 8.3 Docker & Podman Compose Profiles Strategy (`deploy/compose.yml`)
+* **Default Stack Profile (`full` / default)**:
+  * Running `podman compose -f deploy/compose.yml up -d` default-targets the `full` profile via `deploy/.env` (`COMPOSE_PROFILES=full`).
+  * Launches all 8 services: `postgres`, `redis`, `kafka`, `openobserve`, `mailpit`, `gateway`, `scheduler-service`, and `web`.
+* **Fast-Iteration Dev Profile (`dev` / `backend`)**:
+  * Running `podman compose -f deploy/compose.yml --profile dev up -d` (or `--profile backend`) launches all backend microservices and infrastructure components (`postgres`, `redis`, `kafka`, `openobserve`, `mailpit`, `gateway`, `scheduler-service`), omitting the containerized SvelteKit `web` frontend.
+  * Allows developers to run `web` locally (`pnpm --prefix clients/web run dev`) for instant Hot Module Replacement (HMR) and rapid UI development.
+
