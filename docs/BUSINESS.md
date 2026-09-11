@@ -12,10 +12,11 @@
 **CSAC Timetable Studio** is an enterprise-grade automated scheduling and member management system created for university music clubs, bands, and cultural performance groups (specifically CSAC — Club of Songs And Culture). 
 
 The platform provides:
-1. **Club Administration & User Directory (`/admin/*`)**: Role-based user onboarding (with initial credential email dispatch) and dynamic promotion/demotion governance.
-2. **Voting Event Lifecycle Management (`/admin/events`, `/events/[id]/vote`)**: Creating structured time-window events for member availability voting and automatic voting closures.
-3. **Multi-Admin Quorum Demotion Protocol (`/admin/approve`)**: Cryptographically verified peer-review governance requiring OTP approval from peer administrators before an Admin can be downgraded.
-4. **Standalone Utility Suite (`/utils/*`)**: Instant, conflict-free rehearsal timetable generation via CSP heuristics, multi-tab Excel ingestion, and 3-sheet Excel reporting.
+1. **Music Production Studio & Instrument Fleet (`/studio`)**: Agile SDLC practice sprints (Study, Create, Review QC), song lineup tracking, dual-ownership instrument registry (club property & member-owned gear), and 1-click sprint free-time registration.
+2. **Club Administration & User Directory (`/admin/*`)**: Role-based user onboarding (with initial credential email dispatch) and dynamic promotion/demotion governance.
+3. **Voting Event Lifecycle Management (`/admin/events`, `/events/[id]/vote`)**: Creating structured time-window events for member availability voting and automatic voting closures.
+4. **Multi-Admin Quorum Demotion Protocol (`/admin/approve`)**: Cryptographically verified peer-review governance requiring OTP approval from peer administrators before an Admin can be downgraded.
+5. **Standalone Utility Suite (`/utils/*`)**: Legacy automated rehearsal timetable generation via CSP heuristics, multi-tab Excel ingestion, and 3-sheet Excel reporting.
 
 ---
 
@@ -111,9 +112,47 @@ sequenceDiagram
 
 ---
 
-## 4. Internationalization (i18n) & Dual-Language Policy
+## 6. CSAC Music Production, Agile Practice SDLC & Instrument Fleet Governance
+
+### 6.1 Music Numbers & Leadership Model
+* **Delivery Manager (DM)**: Oversees the overall music event lineup, cross-number rehearsals, instrument allocation heatmap, and final stage-readiness audits across all numbers.
+* **Performance Manager (PM)**: Directly responsible for a single **Music Number** (song/performance). Assigns performers, sets song target frequencies, coordinates rehearsal objectives, and assigns Quality Check (QC) reviewers.
+* **Performers / Band Members**: Club musicians assigned to specific musical roles (e.g., Lead Vocal, Backing Vocal, Electric Guitar, Acoustic Guitar, Bass, Keyboard/Piano, Drum Kit, Percussion).
+
+### 6.2 Agile Practice SDLC (Software Development Life Cycle for Music)
+Each music event is divided into **Practice Sprints** (typically 1 to 2 weeks per sprint) mirroring the Agile SDLC:
+1. **Sprint Planning & Free-Time Registration**:
+   - Members register their available time slots for the active sprint via an ergonomic 1-click grid.
+   - PMs define weekly sprint objectives and requested rehearsal sessions.
+2. **Study & Create Tasks**:
+   - **Study Task**: Individual member homework (e.g., memorizing vocal melodies, studying guitar chords/tabs, mastering drum fills).
+   - **Create Task**: Collaborative arrangement tasks (e.g., recording demo scratch tracks, creating backing tracks, harmonizing vocal parts, band jamming).
+3. **Review Task (Quality Check / QC)**:
+   - **BR-PRC-01 (Mandatory QC Reviewer Assignment)**: Every review task must have at least one designated QC Reviewer assigned by the PM (or DM).
+   - **BR-PRC-02 (Verifiable Quality Verdict)**: A song cannot be approved for stage performance without passing its milestone QC audit. The assigned QC Reviewer submits an explicit decision (`passed`, `in_progress`, or `blocked`) accompanied by constructive critique and feedback notes.
+   - **Music Number Lifecycle**: `draft` $\rightarrow$ `in_practice` $\rightarrow$ `ready_for_qc` $\rightarrow$ `qc_approved` $\rightarrow$ `stage_ready`.
+
+### 6.3 Dual-Ownership Instrument Fleet Management & Conflict Invariant
+To prevent showstopper rehearsal clashes and equipment loss, the organization maintains a centralized equipment registry:
+* **BR-INS-01 (Ownership Classification)**:
+  - **CSAC Property (`club_property`)**: Instruments and audio equipment owned by the club (e.g., club drums, stage mics, master keyboards, PA gear).
+  - **Member-Owned Gear (`member_owned`)**: Personal instruments brought by members (e.g., member's custom bass guitar, boutique amplifier, synthesizers). The owner is explicitly identified by `owner_user_id`.
+* **BR-INS-02 (Borrowing Policy & Status Flags)**:
+  - `free_to_borrow`: Available for any music number in the club to reserve during practice or stage sessions.
+  - `in_use`: Currently allocated to an ongoing rehearsal or live performance.
+  - `unavailable`: Strictly reserved for the owner's personal numbers or private use; not open for general club loan.
+  - `in_maintenance`: Damaged, undergoing string replacement, tuning, or repair.
+* **BR-INS-03 (Custody & Physical Location Tracking)**:
+  - Every piece of gear tracks `custody_user_id` ("kept by whom") or location note (e.g., "Club Studio Locker A", "Kept by Minh Pháp") to ensure total physical accountability and eliminate missing gear after late-night rehearsals.
+* **BR-INS-04 (Zero Double-Booking Conflict Invariant)**:
+  - A physical instrument **shall never** be concurrently reserved for two different music numbers in the same day and time slot, whether during practice rehearsals or live stage performances. Any conflicting reservation attempt is rejected with a conflict error.
+
+---
+
+## 7. Internationalization (i18n) & Dual-Language Policy
 
 * **Target Audience Inclusion**: CSAC includes performers, mentors, and international exchange members. Consequently, 100% of the platform interface must be natively available in both Vietnamese (`vi`) and English (`en`).
 * **Zero Missing Copy Mandate**: All pages—including Studio Hub, User Governance, Quorum Approvals, Event Lifecycle, Member Voting Portal, Workbook Inspector, and Timetable Solver—must provide 100% complete, contextual translations. No raw English strings may leak into the Vietnamese experience, and no Vietnamese strings may leak into the English experience.
 * **Persistent User Choice**: The selected language is remembered and synchronized via top-level URL state (`?lang=vi` or `?lang=en`) and machine environment detection, allowing easy sharing and consistent presentation.
+
 

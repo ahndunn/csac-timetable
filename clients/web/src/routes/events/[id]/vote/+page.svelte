@@ -86,20 +86,7 @@
   <title>{$tStore('events_vote.page_title')}</title>
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('events_vote.navbar_title')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => {}}
-  onLoadSampleMultiTab={() => {}}
-  onLoadSampleMixed={() => {}}
-  onResetSchedule={() => {}}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="vote-container">
   <div class="top-nav">

@@ -158,6 +158,109 @@ CREATE TABLE audit_logs (
     metadata JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 8. Music Organization Enums
+CREATE TYPE instrument_ownership AS ENUM ('club_property', 'member_owned');
+CREATE TYPE instrument_availability AS ENUM ('free_to_borrow', 'in_use', 'unavailable', 'in_maintenance');
+CREATE TYPE music_number_status AS ENUM ('draft', 'in_practice', 'ready_for_qc', 'qc_approved', 'stage_ready');
+CREATE TYPE task_type AS ENUM ('study', 'create', 'review_qc');
+CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'under_review', 'passed', 'blocked');
+
+-- 9. Instruments Table (CSAC Property & Member-Owned)
+CREATE TABLE instruments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    category VARCHAR(100) NOT NULL,
+    ownership_type instrument_ownership NOT NULL DEFAULT 'club_property',
+    owner_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    custody_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    custody_location VARCHAR(255) DEFAULT 'Club Studio Locker',
+    availability_status instrument_availability NOT NULL DEFAULT 'free_to_borrow',
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 10. Music Numbers Table
+CREATE TABLE music_numbers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    genre VARCHAR(100),
+    pm_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    target_sessions_per_week INT NOT NULL DEFAULT 2,
+    status music_number_status NOT NULL DEFAULT 'in_practice',
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 11. Music Number Members (Performer Lineup)
+CREATE TABLE music_number_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    music_number_id UUID NOT NULL REFERENCES music_numbers(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    instrument_role VARCHAR(100) NOT NULL, -- e.g. Lead Vocal, Rhythm Guitar, Bass, Keys, Drums
+    is_lead BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_number_member UNIQUE (music_number_id, user_id)
+);
+
+-- 12. Practice Sprints (Agile SDLC Sprints)
+CREATE TABLE practice_sprints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    sprint_goal TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 13. Practice Tasks & QC Reviews
+CREATE TABLE practice_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    music_number_id UUID NOT NULL REFERENCES music_numbers(id) ON DELETE CASCADE,
+    task_type task_type NOT NULL DEFAULT 'study',
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+    qc_reviewer_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    status task_status NOT NULL DEFAULT 'todo',
+    qc_feedback TEXT,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 14. Instrument Reservations (Zero Double-Booking Guarantee)
+CREATE TABLE instrument_reservations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    instrument_id UUID NOT NULL REFERENCES instruments(id) ON DELETE CASCADE,
+    music_number_id UUID NOT NULL REFERENCES music_numbers(id) ON DELETE CASCADE,
+    reserved_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(50) NOT NULL,
+    slot_label VARCHAR(100) NOT NULL,
+    session_date DATE,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_instrument_slot UNIQUE (instrument_id, day_of_week, slot_label)
+);
+
+-- 15. Member Sprint Availabilities (Fast Free-Time Registration)
+CREATE TABLE member_sprint_availabilities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(50) NOT NULL,
+    slot_label VARCHAR(100) NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_sprint_user_slot UNIQUE (sprint_id, user_id, day_of_week, slot_label)
+);
 ```
 
 ---
@@ -219,6 +322,22 @@ CREATE TABLE audit_logs (
 * `GET /api/v1/events/:id/votes`: Retrieve voting matrix for event.
 * `POST /api/v1/events/:id/vote`: Submit member vote `{ slot_id, is_available, note }` *(Any authenticated user if event is open)*.
 
+### 4.5 Music Numbers & Instrument Fleet Management (`/api/v1/music`)
+* `GET /api/v1/music/numbers`: List music numbers with PM and performers lineup.
+* `POST /api/v1/music/numbers`: Create a music number `{ title, genre, pm_user_id, target_sessions_per_week }`.
+* `GET /api/v1/music/instruments`: List instruments with ownership type, current custody ("kept by whom"), and availability.
+* `POST /api/v1/music/instruments`: Register a new instrument (CSAC club property or member personal gear) `{ name, code, category, ownership_type, owner_user_id, custody_location }`.
+* `PUT /api/v1/music/instruments/:id/status`: Update availability (`free_to_borrow`, `unavailable`, `in_maintenance`) or transfer custody `{ custody_user_id, custody_location, availability_status }`.
+* `POST /api/v1/music/instruments/reserve`: Reserve an instrument for a rehearsal session `{ instrument_id, music_number_id, day_of_week, slot_label }`. Returns `409 Conflict` if the instrument is already booked for that slot.
+
+### 4.6 Agile Practice Sprints & Scheduling (`/api/v1/sprints`)
+* `GET /api/v1/sprints`: List practice sprints.
+* `GET /api/v1/sprints/:id/tasks`: List all tasks (study, create, review_qc) for a sprint with QC status and feedback.
+* `POST /api/v1/sprints/:id/tasks`: Create practice task `{ music_number_id, task_type, title, description, assigned_to, qc_reviewer_id }`.
+* `PUT /api/v1/sprints/:id/tasks/:task_id/review`: Submit QC review verdict `{ status: 'passed' | 'blocked' | 'in_progress', qc_feedback: string }`.
+* `POST /api/v1/sprints/:id/availability`: Fast 1-click member free-time slot registration `{ slots: [{ day_of_week, slot_label, is_available }] }`.
+* `POST /api/v1/sprints/:id/schedule`: Backend CSP scheduling engine stub $\rightarrow$ returns `{ "status": "not_implemented", "message": "Backend CSP scheduling engine will be implemented in upcoming release" }` with HTTP status `501 Not Implemented`.
+
 ---
 
 ## 5. Observability & Telemetry (OpenObserve)
@@ -243,16 +362,29 @@ CREATE TABLE audit_logs (
 
 ---
 
-## 6. SvelteKit Web Route Restructuring
+## 6. SvelteKit Web Route Restructuring & Design System Architecture
 
-* `/`: Landing portal with Quick Access Bento cards.
+### 6.1 Route Directory & Primary Application Pillars
+* `/`: Main Entrypoint Hub with Bento grid navigation modules, highlighting the CSAC Music Production Studio as the primary flagship workflow.
+* `/studio`: CSAC Music Production Studio — Agile Practice SDLC (Study, Create, Review QC), song lineup tracking, dual-ownership instrument fleet management, and 1-click sprint free-time registration.
 * `/auth/login`: Bento-styled modern login card with True Orange accents.
-* `/utils/timetable`: Existing full timetable solver, pastel cards, sheet selector modal, conflict resolver, and Excel exporter.
-* `/utils/inspector`: Excel workbook multi-tab inspector.
 * `/admin/users`: User management table, role modal, user onboarding form.
 * `/admin/events`: Event creation wizard, voting status toggle (Open/Close), slot configuration.
 * `/admin/approve`: Quorum approval cards, interactive OTP modal, ballot progress bar ($k / M$ votes).
 * `/events/[id]/vote`: Performer availability voting matrix.
+* `/utils/timetable`: Dedicated legacy timetable solver, pastel cards, sheet selector modal, conflict resolver, contextual solver toolbar, and Excel exporter.
+* `/utils/inspector`: Excel workbook multi-tab inspector.
+
+### 6.2 Global Navbar & Dedicated Viewport Architecture
+* **Decoupled Global Navbar (`Navbar.svelte`)**:
+  * Provides clean, distraction-free top-level application navigation across all routes (`Studio`, `Sự kiện / Events`, `Quản trị / Admin`, `Hub`).
+  * Features the Brand Logo, Navigation Hub Dropdown, User Profile Badge / Sign In CTA, and ISO 639-1 Language Switcher.
+  * All legacy timetable-specific solver actions (title editor, file upload, auto-scheduler solve button, Excel export, sample data loaders) are strictly optional and rendered only when explicitly enabled or passed by the dedicated `/utils/timetable` tool.
+  * Eliminates dummy no-op handler props from all non-timetable routes.
+* **Viewport Scrolling & Bento Card Surfaces (`app.css`)**:
+  * Body and `#root` maintain flexible full-height layouts (`min-height: 100vh; overflow-y: auto; overflow-x: hidden;`) allowing natural vertical scrolling without double scrollbars or overflow clipping on content-rich pages (`/studio`, `/admin/*`, `/`).
+  * Dedicated fixed-viewport tools such as `/utils/timetable` constrain their internal grid containers (`.app-container { height: calc(100vh - 68px); overflow: hidden; }`) without constraining the outer HTML document.
+  * Standardized `.bento-tabs` and `.bento-tab-btn` styling across the application for tabbed interfaces (e.g. role switcher and instrument fleet filters).
 
 ---
 

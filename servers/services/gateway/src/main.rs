@@ -812,6 +812,411 @@ async fn solve_proxy(Json(payload): Json<Value>) -> Json<Value> {
     }))
 }
 
+// ------------------------------------------
+// Music Numbers & Fleet Management Handlers
+// ------------------------------------------
+
+#[derive(Deserialize)]
+struct CreateMusicNumberRequest {
+    event_id: Option<Uuid>,
+    title: String,
+    genre: Option<String>,
+    pm_user_id: Option<Uuid>,
+    target_sessions_per_week: Option<i32>,
+    description: Option<String>,
+}
+
+async fn list_music_numbers_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let numbers = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "SELECT * FROM music_numbers ORDER BY created_at DESC"
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    // Attach member lineups
+    let mut result = Vec::new();
+    for num in numbers {
+        let members = sqlx::query_as::<_, csac_common::MusicNumberMember>(
+            "SELECT * FROM music_number_members WHERE music_number_id = $1 ORDER BY is_lead DESC, created_at ASC"
+        )
+        .bind(num.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        result.push(json!({
+            "number": num,
+            "members": members,
+        }));
+    }
+
+    Ok(Json(json!(result)))
+}
+
+async fn create_music_number_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<CreateMusicNumberRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    let pm_id = payload.pm_user_id.unwrap_or(claims.sub);
+
+    let number = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "INSERT INTO music_numbers (event_id, title, genre, pm_user_id, target_sessions_per_week, description)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *"
+    )
+    .bind(payload.event_id)
+    .bind(&payload.title)
+    .bind(payload.genre)
+    .bind(pm_id)
+    .bind(payload.target_sessions_per_week.unwrap_or(2))
+    .bind(payload.description)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok((StatusCode::CREATED, Json(json!(number))))
+}
+
+// ------------------------------------------
+// Instrument Fleet Handlers
+// ------------------------------------------
+
+#[derive(Deserialize)]
+struct RegisterInstrumentRequest {
+    name: String,
+    code: String,
+    category: String,
+    ownership_type: csac_common::InstrumentOwnership,
+    owner_user_id: Option<Uuid>,
+    custody_user_id: Option<Uuid>,
+    custody_location: Option<String>,
+    availability_status: Option<csac_common::InstrumentAvailability>,
+    notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateInstrumentStatusRequest {
+    availability_status: Option<csac_common::InstrumentAvailability>,
+    custody_user_id: Option<Uuid>,
+    custody_location: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ReserveInstrumentRequest {
+    instrument_id: Uuid,
+    music_number_id: Uuid,
+    day_of_week: String,
+    slot_label: String,
+    notes: Option<String>,
+}
+
+async fn list_instruments_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let instruments = sqlx::query_as::<_, csac_common::Instrument>(
+        "SELECT * FROM instruments ORDER BY category ASC, name ASC"
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    let reservations = sqlx::query_as::<_, csac_common::InstrumentReservation>(
+        "SELECT * FROM instrument_reservations ORDER BY created_at DESC"
+    )
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    Ok(Json(json!({
+        "instruments": instruments,
+        "reservations": reservations,
+    })))
+}
+
+async fn register_instrument_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<RegisterInstrumentRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    let owner_id = match payload.ownership_type {
+        csac_common::InstrumentOwnership::MemberOwned => Some(payload.owner_user_id.unwrap_or(claims.sub)),
+        csac_common::InstrumentOwnership::ClubProperty => None,
+    };
+
+    let custody_id = payload.custody_user_id.or(owner_id);
+    let availability = payload.availability_status.unwrap_or(csac_common::InstrumentAvailability::FreeToBorrow);
+
+    let inst = sqlx::query_as::<_, csac_common::Instrument>(
+        "INSERT INTO instruments (name, code, category, ownership_type, owner_user_id, custody_user_id, custody_location, availability_status, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *"
+    )
+    .bind(&payload.name)
+    .bind(&payload.code)
+    .bind(&payload.category)
+    .bind(payload.ownership_type)
+    .bind(owner_id)
+    .bind(custody_id)
+    .bind(payload.custody_location.as_deref().unwrap_or("Club Studio Locker"))
+    .bind(availability)
+    .bind(payload.notes)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok((StatusCode::CREATED, Json(json!(inst))))
+}
+
+async fn update_instrument_status_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(payload): Json<UpdateInstrumentStatusRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let _claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    let inst = sqlx::query_as::<_, csac_common::Instrument>(
+        "UPDATE instruments
+         SET availability_status = COALESCE($1, availability_status),
+             custody_user_id = COALESCE($2, custody_user_id),
+             custody_location = COALESCE($3, custody_location),
+             notes = COALESCE($4, notes),
+             updated_at = NOW()
+         WHERE id = $5
+         RETURNING *"
+    )
+    .bind(payload.availability_status)
+    .bind(payload.custody_user_id)
+    .bind(payload.custody_location)
+    .bind(payload.notes)
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": "Instrument not found"}))))?;
+
+    Ok(Json(json!(inst)))
+}
+
+async fn reserve_instrument_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<ReserveInstrumentRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    // Check if already reserved in this slot
+    let conflict = sqlx::query(
+        "SELECT id FROM instrument_reservations WHERE instrument_id = $1 AND day_of_week = $2 AND slot_label = $3"
+    )
+    .bind(payload.instrument_id)
+    .bind(&payload.day_of_week)
+    .bind(&payload.slot_label)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    if conflict.is_some() {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({
+                "error": "Instrument is already reserved for this day and time slot by another music number",
+                "instrument_id": payload.instrument_id,
+                "day_of_week": payload.day_of_week,
+                "slot_label": payload.slot_label,
+            })),
+        ));
+    }
+
+    let res = sqlx::query_as::<_, csac_common::InstrumentReservation>(
+        "INSERT INTO instrument_reservations (instrument_id, music_number_id, reserved_by, day_of_week, slot_label, notes)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *"
+    )
+    .bind(payload.instrument_id)
+    .bind(payload.music_number_id)
+    .bind(claims.sub)
+    .bind(payload.day_of_week)
+    .bind(payload.slot_label)
+    .bind(payload.notes)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok((StatusCode::CREATED, Json(json!(res))))
+}
+
+// ------------------------------------------
+// Agile Practice Sprint & QC Handlers
+// ------------------------------------------
+
+#[derive(Deserialize)]
+struct CreatePracticeTaskRequest {
+    music_number_id: Uuid,
+    task_type: csac_common::TaskType,
+    title: String,
+    description: Option<String>,
+    assigned_to: Option<Uuid>,
+    qc_reviewer_id: Option<Uuid>,
+}
+
+#[derive(Deserialize)]
+struct ReviewTaskRequest {
+    status: csac_common::TaskStatus,
+    qc_feedback: Option<String>,
+}
+
+async fn list_sprints_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let sprints = sqlx::query_as::<_, csac_common::PracticeSprint>(
+        "SELECT * FROM practice_sprints ORDER BY start_date ASC"
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok(Json(json!(sprints)))
+}
+
+async fn list_sprint_tasks_handler(
+    State(state): State<Arc<AppState>>,
+    Path(sprint_id): Path<Uuid>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let tasks = sqlx::query_as::<_, csac_common::PracticeTask>(
+        "SELECT * FROM practice_tasks WHERE sprint_id = $1 ORDER BY created_at ASC"
+    )
+    .bind(sprint_id)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok(Json(json!(tasks)))
+}
+
+async fn create_sprint_task_handler(
+    State(state): State<Arc<AppState>>,
+    Path(sprint_id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(payload): Json<CreatePracticeTaskRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let _claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    let task = sqlx::query_as::<_, csac_common::PracticeTask>(
+        "INSERT INTO practice_tasks (sprint_id, music_number_id, task_type, title, description, assigned_to, qc_reviewer_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *"
+    )
+    .bind(sprint_id)
+    .bind(payload.music_number_id)
+    .bind(payload.task_type)
+    .bind(&payload.title)
+    .bind(payload.description)
+    .bind(payload.assigned_to)
+    .bind(payload.qc_reviewer_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+    Ok((StatusCode::CREATED, Json(json!(task))))
+}
+
+async fn review_task_handler(
+    State(state): State<Arc<AppState>>,
+    Path((_sprint_id, task_id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Json(payload): Json<ReviewTaskRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let _claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    let task = sqlx::query_as::<_, csac_common::PracticeTask>(
+        "UPDATE practice_tasks
+         SET status = $1,
+             qc_feedback = $2,
+             reviewed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING *"
+    )
+    .bind(payload.status)
+    .bind(payload.qc_feedback)
+    .bind(task_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": "Task not found"}))))?;
+
+    Ok(Json(json!(task)))
+}
+
+#[derive(Deserialize)]
+struct SprintAvailabilitySlot {
+    day_of_week: String,
+    slot_label: String,
+    is_available: bool,
+}
+
+#[derive(Deserialize)]
+struct SprintAvailabilityRequest {
+    slots: Vec<SprintAvailabilitySlot>,
+}
+
+async fn submit_sprint_availability_handler(
+    State(state): State<Arc<AppState>>,
+    Path(sprint_id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(payload): Json<SprintAvailabilityRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let claims = extract_claims(&headers, &state.jwt_secret).await
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+
+    for slot in payload.slots {
+        let _ = sqlx::query(
+            "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
+             DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
+        )
+        .bind(sprint_id)
+        .bind(claims.sub)
+        .bind(&slot.day_of_week)
+        .bind(&slot.slot_label)
+        .bind(slot.is_available)
+        .execute(&state.db)
+        .await;
+    }
+
+    Ok(Json(json!({"status": "saved", "message": "Sprint availability recorded"})))
+}
+
+async fn sprint_schedule_stub_handler(
+    Path(sprint_id): Path<Uuid>,
+) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(json!({
+            "status": "not_implemented",
+            "message": "Backend CSP scheduling engine will be implemented in upcoming release",
+            "sprint_id": sprint_id,
+        })),
+    )
+}
+
 // ==========================================
 // Main Server Entrypoint
 // ==========================================
@@ -876,6 +1281,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/v1/events/:id", get(get_event_details_handler))
         .route("/api/v1/events/:id/close", put(close_event_handler))
         .route("/api/v1/events/:id/vote", post(submit_vote_handler))
+        // Music Numbers & Fleet
+        .route("/api/v1/music/numbers", get(list_music_numbers_handler).post(create_music_number_handler))
+        .route("/api/v1/music/instruments", get(list_instruments_handler).post(register_instrument_handler))
+        .route("/api/v1/music/instruments/:id/status", put(update_instrument_status_handler))
+        .route("/api/v1/music/instruments/reserve", post(reserve_instrument_handler))
+        // Agile Practice Sprints
+        .route("/api/v1/sprints", get(list_sprints_handler))
+        .route("/api/v1/sprints/:id/tasks", get(list_sprint_tasks_handler).post(create_sprint_task_handler))
+        .route("/api/v1/sprints/:id/tasks/:task_id/review", put(review_task_handler))
+        .route("/api/v1/sprints/:id/availability", post(submit_sprint_availability_handler))
+        .route("/api/v1/sprints/:id/schedule", post(sprint_schedule_stub_handler))
+        // Solver proxy
         .route("/api/v1/schedule/solve", post(solve_proxy))
         .layer(middleware::from_fn_with_state(
             app_state.clone(),
@@ -893,3 +1310,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+

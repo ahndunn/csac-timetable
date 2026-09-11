@@ -8,19 +8,16 @@
     FileSpreadsheet,
     Pencil,
     ChevronDown,
-    Layers,
-    Files,
-    FolderSync,
     Menu,
     MoreVertical,
     Check,
-    Languages,
     LayoutGrid,
     Calendar,
     Users,
     ShieldAlert,
     UserCircle,
     LogOut,
+    Music,
   } from '@lucide/svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -34,16 +31,17 @@
   } from '$lib/i18n';
 
   interface Props {
-    weekTitle: string;
-    onUpdateWeekTitle: (newTitle: string) => void;
-    onOpenUpload: () => void;
-    onRunScheduler: () => void;
-    onExportExcel: () => void;
-    onLoadSampleSingleTab: () => void;
-    onLoadSampleMultiTab: () => void;
-    onLoadSampleMixed: () => void;
-    onResetSchedule: () => void;
-    onDownloadTemplate: () => void;
+    // Optional timetable solver props: only provided by /utils/timetable
+    weekTitle?: string;
+    onUpdateWeekTitle?: (newTitle: string) => void;
+    onOpenUpload?: () => void;
+    onRunScheduler?: () => void;
+    onExportExcel?: () => void;
+    onLoadSampleSingleTab?: () => void;
+    onLoadSampleMultiTab?: () => void;
+    onLoadSampleMixed?: () => void;
+    onResetSchedule?: () => void;
+    onDownloadTemplate?: () => void;
     isSolving?: boolean;
     onToggleSidebar?: () => void;
   }
@@ -63,13 +61,11 @@
     onToggleSidebar,
   }: Props = $props();
 
-  let isSampleOpen = $state(false);
   let isMobileMenuOpen = $state(false);
   let isLangOpen = $state(false);
   let isNavDropdownOpen = $state(false);
 
   function closeAll() {
-    isSampleOpen = false;
     isMobileMenuOpen = false;
     isLangOpen = false;
     isNavDropdownOpen = false;
@@ -87,6 +83,8 @@
       invalidateAll: false,
     });
   }
+
+  const isTimetableRoute = $derived($page.url.pathname === '/utils/timetable');
 </script>
 
 <svelte:window
@@ -120,7 +118,7 @@
       </button>
     {/if}
 
-    <!-- Navigation Hub Dropdown -->
+    <!-- Brand Dropdown / Home Link -->
     <div class="nav-menu-container sample-dropdown-container">
       <button
         type="button"
@@ -128,7 +126,6 @@
         onclick={(e) => {
           e.stopPropagation();
           isNavDropdownOpen = !isNavDropdownOpen;
-          isSampleOpen = false;
           isLangOpen = false;
         }}
       >
@@ -140,6 +137,13 @@
       {#if isNavDropdownOpen}
         <div class="dropdown-menu-bento nav-dropdown" onclick={(e) => e.stopPropagation()} role="presentation">
           <div class="dropdown-header-bento">{$tStore('nav.apps_header')}</div>
+          <a href="/studio" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
+            <Music size={16} class="text-orange" />
+            <div>
+              <div style="font-weight: 700;">{$tStore('studio.nav_title')}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('studio.subheading')}</div>
+            </div>
+          </a>
           <a href="/" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
             <LayoutGrid size={16} class="text-orange" />
             <div>
@@ -188,170 +192,101 @@
       {/if}
     </div>
 
-    <!-- Editable Document / Week Title -->
-    <div class="title-edit-wrapper">
-      <input
-        type="text"
-        class="title-edit-input"
-        value={weekTitle}
-        oninput={(e) => onUpdateWeekTitle((e.target as HTMLInputElement).value)}
-        placeholder={$tStore('navbar.title_placeholder')}
-        title={$tStore('navbar.title_tooltip')}
-      />
-      <span class="title-edit-icon"><Pencil size={14} /></span>
-    </div>
+    <!-- Quick Navigation Links (Desktop) -->
+    <nav class="nav-links-desktop">
+      <a href="/studio" class="nav-link {$page.url.pathname.startsWith('/studio') ? 'is-active' : ''}">
+        <Music size={14} />
+        <span>{$tStore('studio.nav_title')}</span>
+      </a>
+      <a href="/admin/events" class="nav-link {$page.url.pathname.startsWith('/admin/events') ? 'is-active' : ''}">
+        <Calendar size={14} />
+        <span>{$tStore('nav.events')}</span>
+      </a>
+      <a href="/admin/users" class="nav-link {$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'is-active' : ''}">
+        <Users size={14} />
+        <span>{$tStore('nav.users')}</span>
+      </a>
+    </nav>
+
+    <!-- Contextual Document / Week Title (Rendered ONLY in /utils/timetable) -->
+    {#if isTimetableRoute && onUpdateWeekTitle}
+      <div class="title-edit-wrapper">
+        <input
+          type="text"
+          class="title-edit-input"
+          value={weekTitle}
+          oninput={(e) => onUpdateWeekTitle?.((e.target as HTMLInputElement).value)}
+          placeholder={$tStore('navbar.title_placeholder')}
+          title={$tStore('navbar.title_tooltip')}
+        />
+        <span class="title-edit-icon"><Pencil size={14} /></span>
+      </div>
+    {/if}
   </div>
 
   <!-- Desktop Actions -->
   <div class="navbar-actions navbar-actions-desktop">
-    <!-- Dropdown: Test bằng dữ liệu mẫu -->
-    <div class="sample-dropdown-container">
+    <!-- Contextual Timetable Solver Actions (Rendered ONLY on /utils/timetable) -->
+    {#if isTimetableRoute && onRunScheduler}
+      {#if onDownloadTemplate}
+        <button
+          type="button"
+          class="bento-btn"
+          onclick={onDownloadTemplate}
+          title={$tStore('navbar.download_template_tooltip')}
+        >
+          <FileSpreadsheet size={15} />
+          <span>{$tStore('navbar.download_template')}</span>
+        </button>
+      {/if}
+
+      {#if onOpenUpload}
+        <button
+          type="button"
+          class="bento-btn"
+          onclick={onOpenUpload}
+          title={$tStore('navbar.upload_files_tooltip')}
+        >
+          <Upload size={15} />
+          <span>{$tStore('navbar.upload_files')}</span>
+        </button>
+      {/if}
+
       <button
         type="button"
-        class="bento-btn {isSampleOpen ? 'is-active' : ''}"
-        onclick={(e) => {
-          e.stopPropagation();
-          isSampleOpen = !isSampleOpen;
-          isLangOpen = false;
-          isNavDropdownOpen = false;
-        }}
-        title={$tStore('navbar.sample_data_tooltip')}
+        class="bento-btn bento-btn-primary"
+        onclick={onRunScheduler}
+        disabled={isSolving}
+        title={$tStore('navbar.auto_schedule_tooltip')}
       >
-        <Sparkles size={15} color="var(--accent)" />
-        <span>{$tStore('navbar.sample_data')}</span>
-        <ChevronDown
-          size={14}
-          style="transform: {isSampleOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;"
-        />
+        <Wand2 size={15} />
+        <span>{isSolving ? $tStore('navbar.solving') : $tStore('navbar.auto_schedule')}</span>
       </button>
 
-      {#if isSampleOpen}
-        <div
-          class="dropdown-menu-bento"
-          onclick={(e) => e.stopPropagation()}
-          role="presentation"
+      {#if onExportExcel}
+        <button
+          type="button"
+          class="bento-btn"
+          onclick={onExportExcel}
+          title={$tStore('navbar.export_excel_tooltip')}
         >
-          <div class="dropdown-header-bento">
-            {$tStore('navbar.sample_header')}
-          </div>
-
-          <!-- Case 1: Multi-tab -->
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isSampleOpen = false;
-              onLoadSampleMultiTab();
-            }}
-          >
-            <Layers size={18} color="var(--accent)" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('navbar.sample_multitab_title')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_multitab_desc')}</div>
-            </div>
-          </button>
-
-          <!-- Case 2: Single-tab files -->
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isSampleOpen = false;
-              onLoadSampleSingleTab();
-            }}
-          >
-            <Files size={18} color="var(--accent)" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('navbar.sample_singletab_title')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_singletab_desc')}</div>
-            </div>
-          </button>
-
-          <!-- Case 3: Mixed files -->
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isSampleOpen = false;
-              onLoadSampleMixed();
-            }}
-          >
-            <FolderSync size={18} color="var(--accent)" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('navbar.sample_mixed_title')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_mixed_desc')}</div>
-            </div>
-          </button>
-
-          <!-- Download template -->
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isSampleOpen = false;
-              onDownloadTemplate();
-            }}
-          >
-            <FileSpreadsheet size={18} color="var(--success)" />
-            <div>
-              <div style="font-weight: 700; color: var(--success-text);">{$tStore('navbar.sample_download_title')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('navbar.sample_download_desc')}</div>
-            </div>
-          </button>
-        </div>
+          <Download size={15} />
+          <span>{$tStore('navbar.export_excel')}</span>
+        </button>
       {/if}
-    </div>
 
-    <button
-      type="button"
-      class="bento-btn"
-      onclick={onDownloadTemplate}
-      title={$tStore('navbar.download_template_tooltip')}
-    >
-      <FileSpreadsheet size={15} />
-      <span>{$tStore('navbar.download_template')}</span>
-    </button>
-
-    <button
-      type="button"
-      class="bento-btn"
-      onclick={onOpenUpload}
-      title={$tStore('navbar.upload_files_tooltip')}
-    >
-      <Upload size={15} />
-      <span>{$tStore('navbar.upload_files')}</span>
-    </button>
-
-    <button
-      type="button"
-      class="bento-btn bento-btn-primary"
-      onclick={onRunScheduler}
-      disabled={isSolving}
-      title={$tStore('navbar.auto_schedule_tooltip')}
-    >
-      <Wand2 size={15} />
-      <span>{isSolving ? $tStore('navbar.solving') : $tStore('navbar.auto_schedule')}</span>
-    </button>
-
-    <button
-      type="button"
-      class="bento-btn"
-      onclick={onExportExcel}
-      title={$tStore('navbar.export_excel_tooltip')}
-    >
-      <Download size={15} />
-      <span>{$tStore('navbar.export_excel')}</span>
-    </button>
-
-    <button
-      type="button"
-      class="bento-icon-btn"
-      onclick={onResetSchedule}
-      title={$tStore('navbar.reset_schedule_tooltip')}
-      aria-label={$tStore('navbar.reset_schedule_tooltip')}
-    >
-      <RefreshCw size={15} />
-    </button>
+      {#if onResetSchedule}
+        <button
+          type="button"
+          class="bento-icon-btn"
+          onclick={onResetSchedule}
+          title={$tStore('navbar.reset_schedule_tooltip')}
+          aria-label={$tStore('navbar.reset_schedule_tooltip')}
+        >
+          <RefreshCw size={15} />
+        </button>
+      {/if}
+    {/if}
 
     <!-- User Profile / Auth Button -->
     {#if auth.isAuthenticated}
@@ -376,7 +311,6 @@
         onclick={(e) => {
           e.stopPropagation();
           isLangOpen = !isLangOpen;
-          isSampleOpen = false;
           isNavDropdownOpen = false;
         }}
         title={$tStore('navbar.language_switcher')}
@@ -423,16 +357,18 @@
 
   <!-- Mobile Actions -->
   <div class="navbar-actions navbar-mobile-toggle">
-    <button
-      type="button"
-      class="bento-btn bento-btn-primary"
-      onclick={onRunScheduler}
-      disabled={isSolving}
-      title={$tStore('navbar.auto_schedule')}
-    >
-      <Wand2 size={15} />
-      <span>{isSolving ? '...' : $tStore('navbar.auto_schedule')}</span>
-    </button>
+    {#if isTimetableRoute && onRunScheduler}
+      <button
+        type="button"
+        class="bento-btn bento-btn-primary"
+        onclick={onRunScheduler}
+        disabled={isSolving}
+        title={$tStore('navbar.auto_schedule')}
+      >
+        <Wand2 size={15} />
+        <span>{isSolving ? '...' : $tStore('navbar.auto_schedule')}</span>
+      </button>
+    {/if}
 
     <div class="mobile-menu-container sample-dropdown-container">
       <button
@@ -456,6 +392,10 @@
           role="presentation"
         >
           <div class="dropdown-header-bento">{$tStore('nav.nav_header')}</div>
+          <a href="/studio" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
+            <Music size={16} class="text-orange" />
+            <span>{$tStore('studio.nav_title')}</span>
+          </a>
           <a href="/" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
             <LayoutGrid size={16} class="text-orange" />
             <span>{$tStore('nav.hub')}</span>
@@ -498,33 +438,39 @@
             </button>
           {/each}
 
-          <div class="dropdown-header-bento" style="margin-top: 4px;">
-            {$tStore('navbar.mobile_more')}
-          </div>
+          {#if isTimetableRoute && (onOpenUpload || onExportExcel)}
+            <div class="dropdown-header-bento" style="margin-top: 4px;">
+              {$tStore('navbar.mobile_more')}
+            </div>
 
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isMobileMenuOpen = false;
-              onOpenUpload();
-            }}
-          >
-            <Upload size={16} color="var(--accent)" />
-            <span>{$tStore('navbar.upload_files')}</span>
-          </button>
+            {#if onOpenUpload}
+              <button
+                type="button"
+                class="dropdown-item-bento"
+                onclick={() => {
+                  isMobileMenuOpen = false;
+                  onOpenUpload?.();
+                }}
+              >
+                <Upload size={16} color="var(--accent)" />
+                <span>{$tStore('navbar.upload_files')}</span>
+              </button>
+            {/if}
 
-          <button
-            type="button"
-            class="dropdown-item-bento"
-            onclick={() => {
-              isMobileMenuOpen = false;
-              onExportExcel();
-            }}
-          >
-            <Download size={16} color="var(--success)" />
-            <span>{$tStore('navbar.export_excel')}</span>
-          </button>
+            {#if onExportExcel}
+              <button
+                type="button"
+                class="dropdown-item-bento"
+                onclick={() => {
+                  isMobileMenuOpen = false;
+                  onExportExcel?.();
+                }}
+              >
+                <Download size={16} color="var(--success)" />
+                <span>{$tStore('navbar.export_excel')}</span>
+              </button>
+            {/if}
+          {/if}
         </div>
       {/if}
     </div>
@@ -532,6 +478,36 @@
 </header>
 
 <style>
+  .nav-links-desktop {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--text-primary);
+    background: var(--surface-card-subtle);
+  }
+
+  .nav-link.is-active {
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
   .user-badge {
     display: inline-flex;
     align-items: center;
@@ -586,7 +562,7 @@
   }
 
   .nav-dropdown {
-    min-width: 240px;
+    min-width: 250px;
   }
 
   .text-orange { color: #ff6b00; }
@@ -594,4 +570,10 @@
   .text-green { color: #16a34a; }
   .text-purple { color: #9333ea; }
   .text-red { color: #ef4444; }
+
+  @media (max-width: 960px) {
+    .nav-links-desktop {
+      display: none;
+    }
+  }
 </style>

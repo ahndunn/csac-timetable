@@ -133,20 +133,7 @@
   <title>{$tStore('admin_users.page_title')}</title>
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('admin_users.navbar_title')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => {}}
-  onLoadSampleMultiTab={() => {}}
-  onLoadSampleMixed={() => {}}
-  onResetSchedule={() => {}}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="admin-container">
   <div class="header-card">

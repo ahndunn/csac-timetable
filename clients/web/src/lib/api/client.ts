@@ -97,4 +97,104 @@ export const api = {
         body: JSON.stringify(payload),
       }),
   },
+  music: {
+    listNumbers: () => request<any[]>('/music/numbers'),
+    createNumber: (payload: {
+      title: string;
+      genre?: string;
+      pm_user_id?: string;
+      target_sessions_per_week?: number;
+      description?: string;
+    }) =>
+      request<any>('/music/numbers', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    listInstruments: () => request<{ instruments: any[]; reservations: any[] }>('/music/instruments'),
+    registerInstrument: (payload: {
+      name: string;
+      code: string;
+      category: string;
+      ownership_type: 'club_property' | 'member_owned';
+      owner_user_id?: string;
+      custody_user_id?: string;
+      custody_location?: string;
+      availability_status?: 'free_to_borrow' | 'in_use' | 'unavailable' | 'in_maintenance';
+      notes?: string;
+    }) =>
+      request<any>('/music/instruments', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    updateInstrumentStatus: (
+      id: string,
+      payload: {
+        availability_status?: 'free_to_borrow' | 'in_use' | 'unavailable' | 'in_maintenance';
+        custody_user_id?: string;
+        custody_location?: string;
+        notes?: string;
+      }
+    ) =>
+      request<any>(`/music/instruments/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    reserveInstrument: (payload: {
+      instrument_id: string;
+      music_number_id: string;
+      day_of_week: string;
+      slot_label: string;
+      notes?: string;
+    }) =>
+      request<any>('/music/instruments/reserve', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+  },
+  sprints: {
+    list: () => request<any[]>('/sprints'),
+    listTasks: (sprintId: string) => request<any[]>(`/sprints/${sprintId}/tasks`),
+    createTask: (
+      sprintId: string,
+      payload: {
+        music_number_id: string;
+        task_type: 'study' | 'create' | 'review_qc';
+        title: string;
+        description?: string;
+        assigned_to?: string;
+        qc_reviewer_id?: string;
+      }
+    ) =>
+      request<any>(`/sprints/${sprintId}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    reviewTask: (
+      sprintId: string,
+      taskId: string,
+      payload: {
+        status: 'passed' | 'blocked' | 'in_progress';
+        qc_feedback?: string;
+      }
+    ) =>
+      request<any>(`/sprints/${sprintId}/tasks/${taskId}/review`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    submitAvailability: (
+      sprintId: string,
+      payload: {
+        slots: Array<{ day_of_week: string; slot_label: string; is_available: boolean }>;
+      }
+    ) =>
+      request<any>(`/sprints/${sprintId}/availability`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    scheduleStub: (sprintId: string) =>
+      request<any>(`/sprints/${sprintId}/schedule`, {
+        method: 'POST',
+      }),
+  },
 };
+

@@ -108,20 +108,7 @@
   <title>{$tStore('admin_approve.page_title')}</title>
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('admin_approve.navbar_title')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => {}}
-  onLoadSampleMultiTab={() => {}}
-  onLoadSampleMixed={() => {}}
-  onResetSchedule={() => {}}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="approve-container">
   <div class="header-card">

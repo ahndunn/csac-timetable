@@ -39,20 +39,7 @@
   <title>{$tStore('inspector.page_title')}</title>
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('inspector.navbar_title')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => loadSample('single')}
-  onLoadSampleMultiTab={() => loadSample('multi')}
-  onLoadSampleMixed={() => loadSample('mixed')}
-  onResetSchedule={() => inspections = []}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="inspector-container">
   <div class="header-card">

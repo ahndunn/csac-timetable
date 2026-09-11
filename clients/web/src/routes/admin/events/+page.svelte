@@ -127,20 +127,7 @@
   <title>{$tStore('admin_events.page_title')}</title>
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('admin_events.navbar_title')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => {}}
-  onLoadSampleMultiTab={() => {}}
-  onLoadSampleMixed={() => {}}
-  onResetSchedule={() => {}}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="events-container">
   <div class="header-card">

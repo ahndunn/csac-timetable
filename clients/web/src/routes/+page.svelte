@@ -15,6 +15,7 @@
     Activity,
     Lock,
     CheckCircle2,
+    Music,
   } from '@lucide/svelte';
 
   let activeEvents = $state<any[]>([]);
@@ -37,20 +38,7 @@
   <meta name="description" content={$tStore('hub.meta_description')} />
 </svelte:head>
 
-<Navbar
-  weekTitle={$tStore('nav.brand')}
-  onUpdateWeekTitle={() => {}}
-  onOpenUpload={() => {}}
-  onRunScheduler={() => {}}
-  onExportExcel={() => {}}
-  onLoadSampleSingleTab={() => {}}
-  onLoadSampleMultiTab={() => {}}
-  onLoadSampleMixed={() => {}}
-  onResetSchedule={() => {}}
-  onDownloadTemplate={() => {}}
-  isSolving={false}
-  onToggleSidebar={() => {}}
-/>
+<Navbar />
 
 <div class="hub-container">
   <!-- Hero Bento Banner -->
@@ -66,9 +54,14 @@
       </p>
 
       <div class="hero-actions">
-        <a href="/utils/timetable" class="primary-hero-btn">
-          <span>{$tStore('hub.open_timetable')}</span>
+        <a href="/studio" class="primary-hero-btn">
+          <Music size={18} />
+          <span>{$tStore('studio.heading')}</span>
           <ArrowRight size={18} />
+        </a>
+        <a href="/utils/timetable" class="secondary-hero-btn">
+          <Calendar size={18} />
+          <span>{$tStore('hub.open_timetable')}</span>
         </a>
         {#if auth.isAuthenticated}
           <a href="/admin/users" class="secondary-hero-btn">
@@ -87,45 +80,26 @@
 
   <!-- Bento Grid Navigation Modules -->
   <div class="bento-grid">
-    <!-- Card 1: Timetable Solver Utilities -->
+    <!-- Card 1: CSAC Production Studio & Gear Fleet (Featured Primary) -->
     <div class="bento-card card-featured">
       <div class="card-icon-wrap bg-orange-soft">
-        <Calendar size={24} class="text-orange" />
+        <Music size={24} class="text-orange" />
       </div>
       <div class="card-body">
-        <h3 class="card-title">{$tStore('hub.card_timetable_title')}</h3>
+        <h3 class="card-title">{$tStore('studio.nav_title')}</h3>
         <p class="card-desc">
-          {$tStore('hub.card_timetable_desc')}
+          {$tStore('studio.subheading')}
         </p>
       </div>
       <div class="card-footer">
-        <a href="/utils/timetable" class="card-link">
-          <span>{$tStore('hub.card_timetable_link')}</span>
+        <a href="/studio" class="card-link">
+          <span>{$tStore('studio.heading')}</span>
           <ArrowRight size={16} />
         </a>
       </div>
     </div>
 
-    <!-- Card 2: Excel Inspector -->
-    <div class="bento-card">
-      <div class="card-icon-wrap bg-blue-soft">
-        <FileSpreadsheet size={24} class="text-blue" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">{$tStore('hub.card_inspector_title')}</h3>
-        <p class="card-desc">
-          {$tStore('hub.card_inspector_desc')}
-        </p>
-      </div>
-      <div class="card-footer">
-        <a href="/utils/inspector" class="card-link">
-          <span>{$tStore('hub.card_inspector_link')}</span>
-          <ArrowRight size={16} />
-        </a>
-      </div>
-    </div>
-
-    <!-- Card 3: Active Voting Events -->
+    <!-- Card 2: Active Voting Events -->
     <div class="bento-card">
       <div class="card-icon-wrap bg-green-soft">
         <Vote size={24} class="text-green" />
@@ -148,7 +122,7 @@
       </div>
     </div>
 
-    <!-- Card 4: User Directory & RBAC -->
+    <!-- Card 3: User Directory & RBAC -->
     <div class="bento-card">
       <div class="card-icon-wrap bg-purple-soft">
         <Users size={24} class="text-purple" />
@@ -167,7 +141,7 @@
       </div>
     </div>
 
-    <!-- Card 5: Quorum Approval Governance -->
+    <!-- Card 4: Quorum Approval Governance -->
     <div class="bento-card">
       <div class="card-icon-wrap bg-red-soft">
         <ShieldAlert size={24} class="text-red" />
@@ -186,7 +160,45 @@
       </div>
     </div>
 
-    <!-- Card 6: Infrastructure & Observability Status -->
+    <!-- Card 5: Legacy Timetable Solver Utilities -->
+    <div class="bento-card">
+      <div class="card-icon-wrap bg-orange-soft">
+        <Calendar size={24} class="text-orange" />
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">{$tStore('hub.card_timetable_title')}</h3>
+        <p class="card-desc">
+          {$tStore('hub.card_timetable_desc')}
+        </p>
+      </div>
+      <div class="card-footer">
+        <a href="/utils/timetable" class="card-link">
+          <span>{$tStore('hub.card_timetable_link')}</span>
+          <ArrowRight size={16} />
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 6: Excel Workbook Inspector -->
+    <div class="bento-card">
+      <div class="card-icon-wrap bg-blue-soft">
+        <FileSpreadsheet size={24} class="text-blue" />
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">{$tStore('hub.card_inspector_title')}</h3>
+        <p class="card-desc">
+          {$tStore('hub.card_inspector_desc')}
+        </p>
+      </div>
+      <div class="card-footer">
+        <a href="/utils/inspector" class="card-link">
+          <span>{$tStore('hub.card_inspector_link')}</span>
+          <ArrowRight size={16} />
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 7: Infrastructure & Observability Status -->
     <div class="bento-card">
       <div class="card-icon-wrap bg-emerald-soft">
         <Activity size={24} class="text-emerald" />

@@ -177,43 +177,23 @@
         {/if}
       </div>
 
-      <!-- Quick sample test buttons -->
-      <div style="padding: 14px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px;">
-        <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">
-          {$tStore('upload_modal.quick_test')}
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <!-- Official Excel Template Download -->
+      {#if onDownloadTemplate}
+        <div style="padding: 12px 14px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <FileSpreadsheet size={16} color="var(--success)" />
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{$tStore('upload_modal.download_template')}</span>
+          </div>
           <button
             type="button"
             class="bento-btn"
             style="font-size: 12px; padding: 6px 12px;"
-            onclick={handleTestMultiTab}
+            onclick={onDownloadTemplate}
           >
-            <Layers size={14} color="var(--accent)" />
-            <span>{$tStore('upload_modal.test_multitab')}</span>
+            <span>{$tStore('upload_modal.download_template')}</span>
           </button>
-          <button
-            type="button"
-            class="bento-btn"
-            style="font-size: 12px; padding: 6px 12px;"
-            onclick={handleTestSingleTab}
-          >
-            <Files size={14} color="var(--accent)" />
-            <span>{$tStore('upload_modal.test_singletab')}</span>
-          </button>
-          {#if onDownloadTemplate}
-            <button
-              type="button"
-              class="bento-btn"
-              style="font-size: 12px; padding: 6px 12px;"
-              onclick={onDownloadTemplate}
-            >
-              <FileSpreadsheet size={14} color="var(--success)" />
-              <span>{$tStore('upload_modal.download_template')}</span>
-            </button>
-          {/if}
         </div>
-      </div>
+      {/if}
 
       <!-- Error alert -->
       {#if errorMsg}
