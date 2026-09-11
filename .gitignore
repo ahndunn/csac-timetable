@@ -23,4 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-target
+# Rust build artifacts
+**/target/
+**/*.rs.bk
+Cargo.lock.orig
