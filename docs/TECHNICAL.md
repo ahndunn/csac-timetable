@@ -366,7 +366,7 @@ CREATE TABLE member_sprint_availabilities (
 
 ### 6.1 Route Directory & Primary Application Pillars
 * `/`: Main Entrypoint Hub with Bento grid navigation modules, highlighting the CSAC Music Production Studio as the primary flagship workflow.
-* `/studio`: CSAC Music Production Studio — Agile Practice SDLC (Study, Create, Review QC), song lineup tracking, dual-ownership instrument fleet management, and 1-click sprint free-time registration.
+* `/studio`: CSAC Music Production Studio — Agile Practice SDLC (Study, Create, Review QC), song lineup tracking, dual-ownership instrument fleet management, 15-minute fine-grained click-and-drag sprint free-time registration grid, and auto-scheduled sprint rehearsals calendar display.
 * `/auth/login`: Bento-styled modern login card with True Orange accents.
 * `/admin/users`: User management table, role modal, user onboarding form.
 * `/admin/events`: Event creation wizard, voting status toggle (Open/Close), slot configuration.

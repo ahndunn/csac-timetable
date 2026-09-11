@@ -123,7 +123,9 @@ sequenceDiagram
 ### 6.2 Agile Practice SDLC (Software Development Life Cycle for Music)
 Each music event is divided into **Practice Sprints** (typically 1 to 2 weeks per sprint) mirroring the Agile SDLC:
 1. **Sprint Planning & Free-Time Registration**:
-   - Members register their available time slots for the active sprint via an ergonomic 1-click grid.
+   - **15-Minute Precision Grid**: Members register available time slots for active practice sprints using a fine-grained 15-minute resolution matrix (e.g. 08:00, 08:15, 08:30 up to 22:45).
+   - **Click-and-Drag Selection**: Supports intuitive click-and-drag mouse painting across days and 15-minute sub-slots for rapid multi-slot availability entry, alongside preset selection shortcuts (Peak Evenings, Afternoons, Clear).
+   - **Auto-Scheduled Sprint Rehearsals Calendar Display**: Clicking "Auto-Schedule Sprint Rehearsals" triggers CSP optimization to solve practice session assignments. Scheduled rehearsals are rendered on an interactive Calendar Display grid showing exact 15-minute start/end times, assigned music numbers, PMs, performer lineups, studio room allocations (e.g. Studio Room A / Studio Room B), and conflict indicators.
    - PMs define weekly sprint objectives and requested rehearsal sessions.
 2. **Study & Create Tasks**:
    - **Study Task**: Individual member homework (e.g., memorizing vocal melodies, studying guitar chords/tabs, mastering drum fills).
