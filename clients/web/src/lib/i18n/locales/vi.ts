@@ -572,6 +572,17 @@ export const vi = {
       qc_approved: 'Đã đạt QC',
       stage_ready: 'Sẵn sàng lên sân khấu',
     },
+    roster_modal: {
+      btn_add_member: 'Thêm nhân sự vào Show',
+      title_add: 'Thêm Thành Viên Vào Roster Show',
+      title_edit: 'Chỉnh Sửa Thông Tin Nhân Sự',
+      select_member: 'Chọn thành viên',
+      select_role: 'Vai trò quản lý Show',
+      select_instrument: 'Nhạc cụ chính',
+      btn_submit: 'Lưu Phân Công Nhân Sự',
+      btn_remove: 'Xóa khỏi Roster',
+    },
   },
 };
+
 

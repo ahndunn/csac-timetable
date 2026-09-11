@@ -51,6 +51,62 @@
     },
   ]);
 
+  let isAddModalOpen = $state(false);
+  let editingPerson = $state<Performer | null>(null);
+
+  // Form State
+  let formName = $state('');
+  let formEmail = $state('');
+  let formRole = $state<'DM' | 'PM' | 'Performer'>('Performer');
+  let formInstrument = $state('Vocal Lead');
+
+  function openAddModal() {
+    editingPerson = null;
+    formName = '';
+    formEmail = '';
+    formRole = 'Performer';
+    formInstrument = 'Vocal Lead';
+    isAddModalOpen = true;
+  }
+
+  function openEditModal(person: Performer) {
+    editingPerson = person;
+    formName = person.name;
+    formEmail = person.email;
+    formRole = person.role;
+    formInstrument = person.instrument;
+    isAddModalOpen = true;
+  }
+
+  function handleSaveMember(e: Event) {
+    e.preventDefault();
+    if (!formName.trim()) return;
+
+    if (editingPerson) {
+      roster = roster.map((p) =>
+        p.id === editingPerson?.id
+          ? { ...p, name: formName, email: formEmail, role: formRole, instrument: formInstrument }
+          : p
+      );
+    } else {
+      const newPerson: Performer = {
+        id: `p-${Date.now()}`,
+        name: formName,
+        email: formEmail || `${formName.toLowerCase().replace(/\s+/g, '')}@csac.local`,
+        role: formRole,
+        instrument: formInstrument,
+        assignedSongsCount: 1,
+        totalPracticeHours: 4,
+      };
+      roster = [...roster, newPerson];
+    }
+    isAddModalOpen = false;
+  }
+
+  function handleRemoveMember(id: string) {
+    roster = roster.filter((p) => p.id !== id);
+  }
+
   function getWorkloadStatus(songCount: number): { key: string; level: 'optimal' | 'moderate' | 'fatigued'; colorClass: string } {
     if (songCount >= 5) return { key: 'show_mgmt.workload_fatigued', level: 'fatigued', colorClass: 'workload-red' };
     if (songCount >= 3) return { key: 'show_mgmt.workload_moderate', level: 'moderate', colorClass: 'workload-yellow' };
@@ -64,7 +120,13 @@
       <h2>Show Band Roster ({roster.length} Members)</h2>
       <p>Delivery Manager (DM), Performance Managers (PMs), and assigned performers for this show.</p>
     </div>
+
+    <button type="button" class="bento-btn bento-btn-primary" onclick={openAddModal}>
+      <Users size={16} />
+      <span>{$tStore('show_mgmt.roster_modal.btn_add_member')}</span>
+    </button>
   </div>
+
 
   <!-- Resource Allocation Workload Summary -->
   <div class="workload-summary bento-card">
@@ -116,11 +178,95 @@
             {/if}
             <span>{$tStore(workload.key)}</span>
           </div>
+
+          <div class="card-actions">
+            <button
+              type="button"
+              class="bento-btn bento-btn-sm"
+              onclick={() => openEditModal(person)}
+            >
+              <span>Edit</span>
+            </button>
+            <button
+              type="button"
+              class="bento-btn bento-btn-sm btn-danger"
+              onclick={() => handleRemoveMember(person.id)}
+            >
+              <span>Remove</span>
+            </button>
+          </div>
         </div>
       </div>
     {/each}
   </div>
 </div>
+
+<!-- Modal: Add / Edit Roster Member -->
+{#if isAddModalOpen}
+  <div class="modal-backdrop" onclick={() => (isAddModalOpen = false)} role="presentation">
+    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
+      <h2>{editingPerson ? $tStore('show_mgmt.roster_modal.title_edit') : $tStore('show_mgmt.roster_modal.title_add')}</h2>
+
+      <form onsubmit={handleSaveMember} class="modal-form">
+        <div class="form-group">
+          <label for="member-name">Member Name</label>
+          <input
+            id="member-name"
+            type="text"
+            bind:value={formName}
+            placeholder="e.g. Minh Pháp"
+            required
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="member-email">Email Address</label>
+          <input
+            id="member-email"
+            type="email"
+            bind:value={formEmail}
+            placeholder="e.g. minhphap@csac.local"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="member-role">{$tStore('show_mgmt.roster_modal.select_role')}</label>
+            <select id="member-role" bind:value={formRole} class="form-input">
+              <option value="DM">Delivery Manager (DM)</option>
+              <option value="PM">Performance Manager (PM)</option>
+              <option value="Performer">Performer</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="member-inst">{$tStore('show_mgmt.roster_modal.select_instrument')}</label>
+            <input
+              id="member-inst"
+              type="text"
+              bind:value={formInstrument}
+              placeholder="e.g. Lead Vocal / Acoustic Guitar"
+              required
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="bento-btn" onclick={() => (isAddModalOpen = false)}>
+            Cancel
+          </button>
+          <button type="submit" class="bento-btn bento-btn-primary">
+            {$tStore('show_mgmt.roster_modal.btn_submit')}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 
 <style>
   .roster-subpage {
@@ -265,5 +411,78 @@
   .workload-green { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
   .workload-yellow { background: rgba(217, 119, 6, 0.1); color: #d97706; }
   .workload-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .btn-danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .modal-card h2 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0 0 16px 0;
+  }
+
+  .modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .form-input {
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+  }
 </style>
+
 

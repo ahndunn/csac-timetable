@@ -572,6 +572,17 @@ export const en = {
       qc_approved: 'QC Approved',
       stage_ready: 'Stage Ready',
     },
+    roster_modal: {
+      btn_add_member: 'Add Member to Roster',
+      title_add: 'Add Member to Show Roster',
+      title_edit: 'Edit Roster Member',
+      select_member: 'Select Member',
+      select_role: 'Show Management Role',
+      select_instrument: 'Primary Band Instrument',
+      btn_submit: 'Save Member Assignment',
+      btn_remove: 'Remove from Roster',
+    },
   },
 };
+
 
