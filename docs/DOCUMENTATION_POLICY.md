@@ -45,6 +45,7 @@ Whenever introducing a change (new component, modified algorithm, changed data s
 | [`docs/BUSINESS.md`](file:///home/ahndunn/dev/csac-timetable/docs/BUSINESS.md) | Business requirements, user personas, domain rules, export formats, UI sequence flows. | Changes in business logic, user features, file standards, or UI workflows. |
 | [`docs/TECHNICAL.md`](file:///home/ahndunn/dev/csac-timetable/docs/TECHNICAL.md) | Architecture, tech stack, data models (`timetable.ts`), CSP algorithm rules, parser/exporter designs, test specifications. | Changes in TypeScript types, algorithm heuristics, project layout, dependencies, or test suite. |
 | [`docs/DOCUMENTATION_POLICY.md`](file:///home/ahndunn/dev/csac-timetable/docs/DOCUMENTATION_POLICY.md) | Governance rules, DDD policy, AI agent instructions. | Changes in project governance or development guidelines. |
+| [`docs/TEAM_ROLES_AND_MINDSETS.md`](file:///home/ahndunn/dev/csac-timetable/docs/TEAM_ROLES_AND_MINDSETS.md) | Team mindset rules, decision heuristics, and roleplay persona guidelines. | Changes in team roles, thinking frameworks, or roleplay directives. |
 
 ---
 

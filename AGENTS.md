@@ -12,6 +12,7 @@ Before inspecting, modifying, or generating any code in `clients/web/src/` or `c
    - [`docs/BUSINESS.md`](file:///home/ahndunn/dev/csac-timetable/docs/BUSINESS.md) for business logic, constraints, user flows, and export formats.
    - [`docs/TECHNICAL.md`](file:///home/ahndunn/dev/csac-timetable/docs/TECHNICAL.md) for architecture, TypeScript contracts, CSP solver heuristics, and test suite specs.
    - [`docs/DOCUMENTATION_POLICY.md`](file:///home/ahndunn/dev/csac-timetable/docs/DOCUMENTATION_POLICY.md) for governance policy.
+   - [`docs/TEAM_ROLES_AND_MINDSETS.md`](file:///home/ahndunn/dev/csac-timetable/docs/TEAM_ROLES_AND_MINDSETS.md) for team thinking rules, decision heuristics, and roleplay directives.
 
 ### 2. Documentation-First Change Workflow
 When asked to implement any feature, bug fix, algorithm tweak, or schema edit:
