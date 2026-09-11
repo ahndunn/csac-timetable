@@ -9,112 +9,111 @@
 ## 1. Product Vision & Value Proposition
 
 ### 1.1 Executive Summary
-**CSAC Timetable Studio** is an automated scheduling system created for university music clubs, bands, and cultural performance groups (specifically CSAC — Club of Songs And Culture). 
+**CSAC Timetable Studio** is an enterprise-grade automated scheduling and member management system created for university music clubs, bands, and cultural performance groups (specifically CSAC — Club of Songs And Culture). 
 
-The application transforms raw member availability votes submitted via Excel workbooks into an optimized, conflict-free weekly practice schedule in seconds.
+The platform provides:
+1. **Club Administration & User Directory (`/admin/*`)**: Role-based user onboarding (with initial credential email dispatch) and dynamic promotion/demotion governance.
+2. **Voting Event Lifecycle Management (`/admin/events`, `/events/[id]/vote`)**: Creating structured time-window events for member availability voting and automatic voting closures.
+3. **Multi-Admin Quorum Demotion Protocol (`/admin/approve`)**: Cryptographically verified peer-review governance requiring OTP approval from peer administrators before an Admin can be downgraded.
+4. **Standalone Utility Suite (`/utils/*`)**: Instant, conflict-free rehearsal timetable generation via CSP heuristics, multi-tab Excel ingestion, and 3-sheet Excel reporting.
 
-### 1.2 Core Business Pain Points Addressed
+---
 
-| Pain Point | Operational Impact | CSAC Timetable Studio Solution |
+## 2. Role-Based Access Control (RBAC) & Governance Rules
+
+### 2.1 Role Hierarchy & Capabilities
+
+| Role | Scope & Permissions | Key User Flows |
 | :--- | :--- | :--- |
-| **Member Overlap Conflict** | Performers belong to multiple songs simultaneously; manual scheduling causes double-booking. | Hard constraint enforcement guaranteeing **0 member double-bookings** across practice rooms. |
-| **Suboptimal Attendance** | Rehearsals scheduled with missing key band members lower practice efficiency. | Multi-pass CSP algorithm prioritizing **100% full attendance** slots. |
-| **Excel Ingestion Friction** | Multi-sheet files (1 tab per song) require manual copying & pasting. | Automated multi-tab inspection with interactive **Sheet Selection Modal**. |
-| **Manual Frequency Tuning** | Different songs need 1, 2, or 3+ sessions based on performance difficulty. | Per-song configurable target frequency with automatic capacity bottleneck warnings. |
-| **Reporting Complexity** | Generating individual schedules for 50+ members takes hours. | 1-click **3-Sheet Excel Exporter** generating master grid, song breakdown, and individual member timetables. |
+| **Admin** | Full system governance: Manage users, promote/demote roles, create & close voting events, vote on events, access `/utils/*`. | User onboarding, quorum ballot reviews, system audit inspection. |
+| **Moderator** | Event operations: Create voting events, define time slots & date ranges, close events to stop voting, vote on events, access `/utils/*`. | Event creation, schedule finalization, voting monitoring. |
+| **Member** | Performer participation: Vote in open events (`/events/[id]/vote`), view personal schedules, access `/utils/*`. | Availability submission, timetable inspection. |
+
+### 2.2 Business Rules for Administration
+
+* **BR-ADM-01 (User Onboarding & Credential Dispatch)**:
+  * When an Admin creates a user (Name, Email, Role), the system generates a secure initial password.
+  * The password is encrypted with **Argon2id** for database storage.
+  * An asynchronous event is dispatched to send the user their login credentials via SMTP email.
+* **BR-ADM-02 (Promotion Authority)**:
+  * Any active Admin can promote a Member to Moderator or Admin immediately.
+  * Any active Admin can promote a Moderator to Admin immediately.
+* **BR-ADM-03 (Admin Downgrade Quorum Protocol)**:
+  * Downgrading an Admin (to Moderator or Member) **cannot** be executed unilaterally.
+  * Initiating a downgrade creates an **Admin Downgrade Proposal** with status `PENDING`.
+  * The required approval count $M$ is calculated as:
+    $$M = \min\left(\left\lceil \frac{N}{2} \right\rceil, 3\right)$$
+    where $N$ is the total count of active Admins at the time of proposal creation.
+  * **Sole Admin Protection**: If $N = 1$, downgrade proposals are strictly prohibited.
+  * **Peer Review & Self-Resignation**: An Admin can initiate a demotion on any Admin or on themselves (self-resignation).
+  * **OTP Verification**: To approve/reject, each peer Admin requests a 6-digit one-time password (OTP) sent to their email (TTL: 10 minutes) and submits it at `/admin/approve`.
+  * Once $M$ approvals are collected, the target user's role is downgraded in PostgreSQL and audit logs are recorded.
 
 ---
 
-## 2. Target User Personas & Use Cases
+## 3. Event Management & Voting Rules
 
-### 2.1 User Personas
-
-1. **Club President / Manager (Organizer)**
-   * *Goals*: Wants to upload vote files for the upcoming week, set room limits (e.g., 1 or 2 rooms), solve schedule, and export the official Excel timetable for club announcement.
-   * *Key Needs*: Speed, zero double-booking errors, clean exportable reports.
-
-2. **Band Leader / Song Lead**
-   * *Goals*: Inspect candidate rehearsal slots for their specific song, set rehearsal frequency target (e.g., practice 2x this week), and review member availability notes (e.g., "bận thi thứ 4").
-   * *Key Needs*: Transparency into candidate slots, ability to add notes or manually adjust slots.
-
-3. **Club Member (Performer)**
-   * *Goals*: Easily check their personalized rehearsal schedule for the week.
-   * *Key Needs*: Clear filterable timetable view (e.g., select my name in UI to see my slots) and individual member schedule tab in exported Excel.
+* **BR-EVT-01 (Event Creation & Date Range)**:
+  * Admins and Moderators can create voting events with a title, description, start date, end date, and customizable time slots (e.g., 17h-18h, 18h-19h).
+  * Events are created in status `OPEN` (or `DRAFT`).
+* **BR-EVT-02 (Voting Window & Invariant)**:
+  * While status is `OPEN`, registered Members can cast/update their availability.
+* **BR-EVT-03 (Event Closing)**:
+  * Admins and Moderators can transition an event status to `CLOSED`.
+  * Once `CLOSED`, all subsequent vote submissions are rejected immediately.
+  * Closed events serve as input data to generate optimized rehearsal timetables.
 
 ---
 
-## 3. Functional Requirements & Business Rules
+## 4. Standalone Utilities Suite (`/utils/*`)
 
-### 3.1 Data Ingestion & File Standards
-* **BR-01 (Supported Formats)**: Must accept standard `.xlsx` workbooks generated from Excel, Google Sheets, or LibreOffice.
-* **BR-02 (Multi-Sheet Recognition)**: When a uploaded file contains 2+ sheets, the application **must** open the `SheetSelectionModal` allowing the user to select which song tabs to import. Single-sheet files should import automatically.
-* **BR-03 (Tolerant Checkbox Evaluation)**: Must recognize various availability representations: `TRUE`/`FALSE`, `1`/`0`, `"x"`, `"v"`, `"ok"`, `"có"`, `"17h-18h"`, and string checkmarks.
-
-### 3.2 Timetable Constraint Governance
-* **BR-04 (Zero Double-Booking Guarantee)**: A member **shall never** be scheduled for two different songs in the same day/time slot.
-* **BR-05 (Room Allocation Limit)**: Total concurrent rehearsal sessions in any slot **shall not** exceed `maxRooms` (default: 1 room).
-* **BR-06 (Attendance Priority)**:
-  * *Strict Mode*: Require 100% member presence for every session.
-  * *Relaxed Mode*: If `allowPartialAttendance` is enabled, permit sessions with at most 1 missing member only when 100% presence is impossible.
-* **BR-07 (Session Spreading)**: Multiple sessions of the same song **should** be scheduled on distinct days of the week when possible (`spreadDays = true`).
-
-### 3.3 Reporting & Export Rules
-* **BR-08 (Excel Master Report)**: Exported `.xlsx` file **must** contain 3 sheets:
-  1. `LỊCH TẬP TUẦN`: Graphical timetable grid matching pastel color themes.
-  2. `CHI TIẾT BÀI HÁT`: Tabular summary sorted by song name, day, time, room, and member lists.
-  3. `LỊCH CÁ NHÂN`: Comprehensive personal timetable matrix for every performer.
-
-### 3.4 Internationalization & Localization (i18n)
-* **BR-09 (ISO 639-1 Multilingual Support)**: The web client **must** support both Vietnamese (`vi`) and English (`en`) with first-class fidelity.
-  * **Machine Locale Auto-Detection**: If no language is explicitly requested, the application defaults to the client's browser locale (`navigator.language`).
-  * **Persistent URL Search Parameter**: Active language is synchronized globally via the URL parameter (`?lang=vi` / `?lang=en`) handled in `+layout.svelte`.
-  * **Language Switcher UI**: A dedicated dropdown in the top-right navigation bar presents supported languages with national flag icons and native tongue labels (`🇻🇳 Tiếng Việt` / `🇺🇸 English`).
-
+All original client-side timetable generation and Excel tools reside under `/utils/*`:
+* **BR-UTL-01 (`/utils/timetable`)**: The primary automated CSP timetable solver, interactive pastel calendar grid, manual slot override, and conflict resolver modal.
+* **BR-UTL-02 (`/utils/inspector`)**: Multi-sheet workbook inspector and sheet selector.
+* **BR-UTL-03 (Zero Double-Booking Guarantee)**: A member **shall never** be scheduled for two different songs in the same day/time slot.
+* **BR-UTL-04 (Room Allocation Limit)**: Total concurrent sessions **shall not** exceed `maxRooms` (default: 1 room).
+* **BR-UTL-05 (Excel Master Report)**: Generates 3-sheet `.xlsx` workbook (`LỊCH TẬP TUẦN`, `CHI TIẾT BÀI HÁT`, `LỊCH CÁ NHÂN`).
 
 ---
 
-## 4. User Journey & Workflow Specifications
+## 5. User Journey & Workflow Specifications
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Club Organizer
-    participant UI as Navbar & Upload Modal
-    participant Inspector as Excel Inspector
-    participant Solver as CSP Scheduler Engine
-    participant Grid as Calendar Grid UI
-    participant Exporter as Excel Exporter
+    actor Admin as Admin
+    actor Peer as Peer Admin
+    participant Gateway as Axum Gateway
+    participant DB as PostgreSQL 16
+    participant Redis as Redis 7
+    participant Kafka as Apache Kafka
+    participant Mailer as SMTP Mailer
 
-    User->>UI: Click Upload Excel File
-    UI->>Inspector: Inspect Workbook Sheets
-    alt Multi-Sheet File Detected
-        Inspector-->>UI: Return Sheet Metadata
-        UI->>User: Display SheetSelectionModal
-        User->>UI: Select Target Songs & Confirm
-    else Single-Sheet File
-        Inspector-->>UI: Auto-select Sheet
+    Admin->>Gateway: POST /api/v1/admin/users/downgrade (Target: Admin B)
+    Gateway->>DB: Check N (Active Admins count)
+    Gateway->>DB: Insert Proposal (Req Approvals = min(ceil(N/2), 3))
+    Gateway->>Kafka: Publish admin.downgrade.requested
+    
+    Peer->>Gateway: POST /api/v1/admin/approve/request-otp
+    Gateway->>Redis: Store OTP (6-digits, 10 min TTL)
+    Gateway->>Kafka: Publish admin.otp.generated
+    Kafka->>Mailer: Send OTP Email to Peer Admin
+    
+    Peer->>Gateway: POST /api/v1/admin/approve/verify-and-vote (Proposal ID, OTP, Decision: APPROVE)
+    Gateway->>Redis: Validate and Invalidate OTP
+    Gateway->>DB: Record Admin Vote
+    alt Quorum Reached (Approvals >= M)
+        Gateway->>DB: UPDATE users SET role = 'moderator' WHERE id = Target
+        Gateway->>DB: UPDATE proposals SET status = 'approved'
+        Gateway->>Kafka: Publish admin.downgraded
     end
-    UI->>Solver: Execute solveTimetable(songs, settings)
-    Solver-->>Grid: Render Scheduled Sessions & Pastel Cards
-    alt Unresolved Songs Exist
-        Solver-->>UI: Auto-open ConflictResolverModal
-        User->>UI: Adjust Settings or Manual Slot Override
-    end
-    User->>UI: Click "Xuất File Excel"
-    UI->>Exporter: Generate 3-Sheet .xlsx Workbook
-    Exporter-->>User: Download File
 ```
 
 ---
 
-## 5. Multi-Client & Microservices Evolution
+## 4. Internationalization (i18n) & Dual-Language Policy
 
-### 5.1 Platform Strategy
-* **Web Client (`clients/web`)**: Primary rich web application running on SvelteKit SSR with progressive enhancement, designed in tactile Neumorphic (Soft UI) physical materiality (`#e0e5ec`).
-* **Mobile Clients (`clients/ios`, `clients/android`, `clients/mobile-cross`)**: Future native and cross-platform clients consuming the standardized RESTful API exposed by the Reverse Proxy Gateway.
-
-### 5.2 Server Architecture Business Value
-* **Unified Security & Governance**: A single Rust Reverse Proxy handles rate-limiting, authentication tokens, and request security, shielding internal services.
-* **Synchronous Low-Latency Operations**: Critical calculations (CSP schedule generation) execute via high-performance Rust gRPC (`scheduler-service`).
-* **Asynchronous Resilient Operations**: Heavy tasks (bulk Excel ingestion across 50+ songs, email/push notification dispatch) publish to Apache Kafka, ensuring non-blocking user experiences.
+* **Target Audience Inclusion**: CSAC includes performers, mentors, and international exchange members. Consequently, 100% of the platform interface must be natively available in both Vietnamese (`vi`) and English (`en`).
+* **Zero Missing Copy Mandate**: All pages—including Studio Hub, User Governance, Quorum Approvals, Event Lifecycle, Member Voting Portal, Workbook Inspector, and Timetable Solver—must provide 100% complete, contextual translations. No raw English strings may leak into the Vietnamese experience, and no Vietnamese strings may leak into the English experience.
+* **Persistent User Choice**: The selected language is remembered and synchronized via top-level URL state (`?lang=vi` or `?lang=en`) and machine environment detection, allowing easy sharing and consistent presentation.
 

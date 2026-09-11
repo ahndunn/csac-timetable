@@ -7,239 +7,257 @@
 ---
 
 ## 1. System Architecture & Tech Stack
- 
+
 ### 1.1 Architecture Overview
-CSAC Timetable Studio is architected as a modular multi-service monorepo:
-1. **Clients (`clients/`)**:
-   - `clients/web`: Web Frontend implemented with **SvelteKit** (Svelte 5 Runes, SSR, progressive enhancement Form Actions) replacing the legacy vanilla/React client.
-   - Placeholders for future platforms (`ios`, `android`, `mobile-cross`).
-2. **Servers (`servers/`)**:
-   - High-performance Rust microservices workspace.
-   - `gateway`: Unified reverse proxy / API Gateway built on **Axum** and **Tower** exposing standard RESTful HTTP endpoints with rate-limiting, CORS, authentication, and security headers.
-   - Downstream services communicated synchronously via **gRPC (Tonic)** with Protobuf definitions.
-   - Downstream asynchronous operations (ingestion, bulk tasks, notifications) processed via **Apache Kafka (rdkafka)**.
-   - Persistence layer backed by **PostgreSQL 16** (relational data) and **Redis 7** (caching, session store, rate-limiting tokens).
-3. **Infrastructure (`deploy/`)**:
-   - Containerized deployment powered by `deploy/compose.yml` orchestrating Kafka in KRaft mode, PostgreSQL, Redis, Gateway, and Web SSR containers.
+CSAC Timetable Studio is architected as a production-grade multi-service monorepo:
 
 ```mermaid
 flowchart TB
     subgraph Clients ["Client Layer (clients/)"]
-        Web["Web Client (SvelteKit SSR)"]
-        iOS["iOS Client (Native - Future)"]
-        Android["Android Client (Native - Future)"]
-        Cross["Mobile Cross-Platform (Future)"]
+        Web["Web Client (SvelteKit SSR / Svelte 5 Runes)<br/>Routes: /, /utils/*, /admin/*, /auth/login, /events/*"]
     end
 
     subgraph GatewayLayer ["Reverse Proxy & Edge Gateway"]
-        GW["API Gateway (Rust / Axum + Tower)<br/>Rate Limiting, Auth, CORS, REST API"]
+        GW["API Gateway (Rust / Axum + Tower)<br/>Argon2id Auth, JWT Middleware, RBAC, REST API"]
     end
 
-    subgraph EventAndCache ["Event Bus & Cache"]
-        Redis[("Redis 7<br/>Token Bucket / Session Cache")]
-        Kafka{{"Apache Kafka (KRaft Mode)<br/>Async Message Stream"}}
+    subgraph EventAndCache ["Event Bus, Cache & Observability"]
+        Redis[("Redis 7.4<br/>OTP Storage (TTL 10m), Token Rate Limiting")]
+        Kafka{{"Apache Kafka 3.9 (KRaft Mode)<br/>Topics: user.created, otp.generated, event.status_changed"}}
+        OpenObserve[("OpenObserve v0.14<br/>Unified Structured JSON Logs & OTLP Traces (:5080)")]
+        Mailpit[("Mailpit / SMTP<br/>Dev/Prod SMTP Email Dispatcher (:1025/:8025)")]
     end
 
-    subgraph Microservices ["Backend Microservices (servers/)"]
-        SchedSvc["Scheduler Service (Rust / Tonic gRPC)<br/>CSP Timetable Engine"]
-        VoteSvc["Vote Ingestion Service (Rust / Tonic & Kafka)<br/>Excel Parsing & Sheet Ingestion"]
+    subgraph Microservices ["Backend Services & Workers (servers/)"]
+        SchedSvc["Scheduler Service (Rust 1.85+ / Tonic gRPC)<br/>CSP Timetable Engine"]
+        NotifyWorker["Notification Worker (Rust 1.85+ / rdkafka + lettre)<br/>Async SMTP Email Dispatcher"]
     end
 
     subgraph DataStore ["Persistence Layer"]
-        PG[("PostgreSQL 16<br/>Schedules, Votes, Members")]
+        PG[("PostgreSQL 17<br/>users, events, event_time_slots, votes, admin_downgrade_proposals, admin_downgrade_votes, audit_logs")]
     end
 
     Web -->|HTTP / REST| GW
-    iOS -.->|HTTP / REST| GW
-    Android -.->|HTTP / REST| GW
-    Cross -.->|HTTP / REST| GW
+    GW <-->|Check / Consume OTP & Rate Limits| Redis
+    GW <-->|CRUD & Relational Integrity| PG
+    GW -->|Produce Events| Kafka
+    GW -->|Sync RPC: solve| SchedSvc
+    GW -->|JSON Telemetry Logs| OpenObserve
 
-    GW <-->|Check / Consume Tokens| Redis
-    GW -->|Sync RPC: solve, query| SchedSvc
-    GW -->|Async Events: upload, notify| Kafka
-
-    Kafka -->|Consume Task| VoteSvc
-    VoteSvc -->|Read / Write| PG
-    SchedSvc -->|Read / Write| PG
-    SchedSvc <-->|Cache Solver Results| Redis
-```
-
-### 1.2 Technology Stack
-
-| Subsystem | Layer | Technology / Library | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Clients** | Web Frontend | SvelteKit + Svelte 5 | Modern reactive UI, SSR, Form Actions, runes (`$state`, `$derived`). |
-| **Clients** | Web Styling & UI | Neumorphism / Soft UI System | Physical extruded/pressed materiality (`#e0e5ec`), dual-shadow elevation, crisp typography. |
-| **Clients** | Web Excel Engine | SheetJS (`xlsx`) + `exceljs` | Multi-sheet parsing and styled workbook generation. |
-| **Servers** | API Gateway | Rust (`axum`, `tower`, `tower-http`) | Unified reverse proxy, rate limiting, REST routing, CORS, JWT. |
-| **Servers** | Inter-Service Sync | Rust (`tonic`, `prost`) | Low-latency type-safe gRPC remote procedure calls. |
-| **Servers** | Inter-Service Async | Rust (`rdkafka`) + Kafka KRaft | Scalable asynchronous event-driven message bus. |
-| **Servers** | Data Persistence | PostgreSQL 16 + SQLx | Type-safe compile-time verified database persistence. |
-| **Servers** | Caching & Rates | Redis 7 + `redis-rs` | Distributed rate limiting, session storage, and solver result cache. |
-| **Infra** | Orchestration | Docker & Compose | Multi-container local orchestration and deployment. |
-| **Tooling** | Monorepo Governance | Antigravity Scoped Rules | Context-isolated agent rules per directory and domain. |
-
----
-
-## 2. Core Data Models (`src/types/timetable.ts`)
-
-### 2.1 Domain Entities
-
-```typescript
-export type DayOfWeek = 
-  | 'THỨ HAI' | 'THỨ BA' | 'THỨ TƯ' | 'THỨ NĂM' 
-  | 'THỨ SÁU' | 'THỨ BẢY' | 'CHỦ NHẬT';
-
-export interface PastelColor {
-  id: string;
-  name: string;
-  bg: string;
-  border: string;
-  text: string;
-  chipBg: string;
-}
-
-export interface SongVoteData {
-  id: string;
-  name: string;
-  weekTitle: string;
-  members: string[];
-  // Composite key: `${day}__${slot}__${member}` -> boolean
-  availability: Record<string, boolean>;
-  // Composite key: `${day}__${slot}` -> note string
-  notes: Record<string, string>;
-  color: PastelColor;
-  targetSessions: number; // Configurable practice count per week
-  sourceFileName?: string;
-}
-
-export interface ScheduledSession {
-  id: string;
-  songId: string;
-  songName: string;
-  day: DayOfWeek;
-  slot: string; // e.g. '17h - 18h'
-  room: number; // 1, 2, etc.
-  allMembers: string[];
-  availableMembers: string[];
-  absentMembers: string[];
-  color: PastelColor;
-  note?: string;
-  isManual?: boolean;
-}
-
-export interface SolverSettings {
-  maxRooms: number;              // Default 1 room
-  allowPartialAttendance: boolean; // Fallback if 100% attendance impossible
-  spreadDays: boolean;            // Prefer distinct days for multiple sessions
-}
-
-export interface SolverResult {
-  schedule: ScheduledSession[];
-  unresolved: UnresolvedSong[];
-  conflicts: ConflictItem[];
-  stats: {
-    totalRequested: number;
-    totalScheduled: number;
-    perfectAttendanceCount: number;
-    partialAttendanceCount: number;
-  };
-}
+    Kafka -->|Consume Events| NotifyWorker
+    NotifyWorker -->|Send Email Credentials / OTP| Mailpit
+    NotifyWorker -->|JSON Telemetry Logs| OpenObserve
+    SchedSvc -->|JSON Telemetry Logs| OpenObserve
 ```
 
 ---
 
-## 3. Algorithm Specifications
+## 2. Database Schema (PostgreSQL 16)
 
-### 3.1 CSP Solver Engine (`src/services/scheduler.ts`)
+```sql
+-- Role and Status Enums
+CREATE TYPE user_role AS ENUM ('admin', 'moderator', 'member');
+CREATE TYPE user_status AS ENUM ('active', 'suspended');
+CREATE TYPE event_status AS ENUM ('draft', 'open', 'closed');
+CREATE TYPE proposal_status AS ENUM ('pending', 'approved', 'rejected', 'expired');
+CREATE TYPE vote_decision AS ENUM ('approve', 'reject');
 
-The main solver function `solveTimetable()` runs a multi-pass heuristic algorithm:
+-- 1. Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Argon2id hash
+    role user_role NOT NULL DEFAULT 'member',
+    status user_status NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-```typescript
-export function solveTimetable(
-  songs: SongVoteData[],
-  settings: SolverSettings,
-  days: DayOfWeek[] = DAYS_OF_WEEK,
-  timeSlots: string[] = DEFAULT_TIME_SLOTS,
-  manualFixedSessions: ScheduledSession[] = []
-): SolverResult
+-- 2. Events Table
+CREATE TABLE events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status event_status NOT NULL DEFAULT 'open',
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closed_at TIMESTAMPTZ
+);
+
+-- 3. Event Time Slots Table
+CREATE TABLE event_time_slots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(50) NOT NULL,
+    slot_label VARCHAR(100) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Member Votes Table
+CREATE TABLE votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    slot_id UUID NOT NULL REFERENCES event_time_slots(id) ON DELETE CASCADE,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    note TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_user_event_slot UNIQUE (event_id, user_id, slot_id)
+);
+
+-- 5. Admin Downgrade Proposals
+CREATE TABLE admin_downgrade_proposals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    target_admin_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_role user_role NOT NULL DEFAULT 'moderator',
+    initiated_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    total_admins_at_proposal INT NOT NULL,
+    required_approvals INT NOT NULL,
+    current_approvals INT NOT NULL DEFAULT 0,
+    status proposal_status NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days')
+);
+
+-- 6. Admin Downgrade Quorum Votes
+CREATE TABLE admin_downgrade_votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    proposal_id UUID NOT NULL REFERENCES admin_downgrade_proposals(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    decision vote_decision NOT NULL,
+    voted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_proposal_admin UNIQUE (proposal_id, admin_id)
+);
+
+-- 7. Audit Logs Table
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(100) NOT NULL,
+    resource_id UUID,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 ```
-
-#### Step-by-Step Execution Flow
-1. **Initialize Grid & Fixed Sessions**: Build slot occupancy map `Map<"${day}__${slot}", ScheduledSession[]>`. Retain manual fixed sessions provided by user.
-2. **Calculate Session Requirements**: Expand song target frequencies into discrete session units `neededSessions`.
-3. **MRV Ordering (Most Constrained Variable First)**:
-   * Calculate `perfectCount` (number of candidate 100%-attendance slots) for each song.
-   * Sort `neededSessions` by:
-     1. Ascending candidate slots (songs with fewer choices scheduled first).
-     2. Descending team member count (larger bands scheduled first).
-4. **Pass 1 — Strict 100% Attendance Placement**:
-   * For each session, evaluate available slots using `canPlaceSong()`.
-   * Score candidates using **LCV (Least Constraining Value)**:
-     $$\text{Score} = 100 - \text{OtherSongDemand}$$
-   * Assign session to the slot with the highest score.
-5. **Pass 2 — Fallback Partial Attendance Placement** (if enabled):
-   * If a session could not be placed in Pass 1 and `allowPartialAttendance === true`, attempt placement allowing at most 1 missing member:
-     $$\text{Score} = \left( \frac{|\text{AvailableMembers}|}{|\text{TotalMembers}|} \right) \times 80$$
-6. **Conflict Detection**:
-   * Any unplaced sessions are collected into `unresolved` array along with candidate slot rankings and clear reasons (e.g. "Room limit exceeded", "Member overlap with Song X").
 
 ---
 
-## 4. Subsystem Details
+## 3. Security, Authentication & Cryptography
 
-### 4.1 Excel Parser (`src/services/excelParser.ts`)
-* **Multi-Tab Inspection**: `inspectExcelFiles(files: File[])` returns `FileInspection[]` containing workbook structure without consuming memory for full sheet processing.
-* **Selective Sheet Parser**: `parseSelectedSheets(inspections, selectedKeys)` parses only sheets matching key `${fileId}::${sheetName}`.
-* **Matrix Normalization**: Standardizes Vietnamese day names (`THỨ HAI` to `CHỦ NHẬT`), slot time strings (`17h - 18h`), and member column layouts.
+### 3.1 Argon2id Password Hashing
+- **Algorithm**: `Argon2id` (RFC 9106)
+- **Parameters**:
+  - Memory: $19\text{ MiB}$ ($19456\text{ KiB}$)
+  - Iterations: $2$
+  - Parallelism: $1$
+  - Salt: $16$ cryptographically secure random bytes
 
-### 4.2 Excel Exporter (`src/services/excelExporter.ts`)
-Uses `exceljs` to generate 3 formatted worksheets:
-1. `LỊCH TẬP TUẦN`: Weekly grid layout with background colors matching `PASTEL_PALETTE`.
-2. `CHI TIẾT BÀI HÁT`: Tabular summary of scheduled sessions.
-3. `LỊCH CÁ NHÂN`: Individual member timetables.
-
-### 4.3 Web Frontend Bento Grid UI (`clients/web/`)
-* **Design System**: Bento Grid UI layout using modular card surfaces, clean 1px borders, subtle elevation, and True Orange accent (`#ff6b00` / `#f97316`).
-* **Design Skill & Rules**: Governed by `bento-design` skill (`.agents/skills/bento-design/SKILL.md`) and scoped rule `.agents/rules/web-frontend.md`.
-* **70/20/10 Palette**: 70% deep neutral base (`#f8fafc`), 20% elevated white bento cards (`#ffffff`), 10% vivid True Orange accent. Zero neumorphic muddy dual-shadows.
-
-### 4.4 Internationalization Subsystem (`clients/web/src/lib/i18n/`)
-* **Standard Compliance**: ISO 639-1 standard identifiers (`vi`, `en`).
-* **Core Types**:
-  ```typescript
-  export type Iso639_1Locale = 'vi' | 'en';
-  export interface LanguageOption {
-    code: Iso639_1Locale;
-    nativeName: string;
-    englishName: string;
-    flag: string;
+### 3.2 JWT Token Architecture
+- **Header**: `{"alg": "HS256", "typ": "JWT"}`
+- **Payload Claims**:
+  ```json
+  {
+    "sub": "uuid-user-id",
+    "email": "user@csac.local",
+    "name": "Member Name",
+    "role": "admin" | "moderator" | "member",
+    "exp": 1780000000,
+    "iat": 1779000000
   }
   ```
-* **Rune State**: Zero-dependency Svelte 5 rune reactive store (`$state` current locale, `$derived` active dictionary, dot-notation resolver `t(key, params)`).
-* **URL Sync Flow**: Synchronized globally in `+layout.svelte` via `page.url.searchParams.get('lang')` and client browser locale fallback (`navigator.language`). Changes push URL state via `replaceState` without page reloads.
+- **Transmission**: `Authorization: Bearer <token>` or HttpOnly cookie `csac_session`.
 
+### 3.3 Redis OTP Storage Protocol
+- **Key Pattern**: `otp:admin:{admin_id}:{proposal_id}`
+- **Value**: `{"code": "6-digit-string", "attempts": 0}`
+- **TTL**: $600\text{ seconds}$ (10 minutes).
+- **Rate Limit**: Max 3 incorrect attempts before key invalidation.
 
 ---
 
-## 5. Verification & Testing
+## 4. REST API Endpoint Specifications
 
-### 5.1 Test Suite Structure (`test_system.ts`)
-The project includes an automated Node.js test runner covering 38 assertions:
+### 4.1 Authentication (`/api/v1/auth`)
+* `POST /api/v1/auth/login`: `{ email, password }` $\rightarrow$ `{ token, user: { id, email, full_name, role } }`.
+* `GET /api/v1/auth/me`: Validates JWT $\rightarrow$ returns current user profile.
 
-```bash
-npx tsx test_system.ts
-```
+### 4.2 Admin User Management (`/api/v1/admin/users`) — *Admin Only*
+* `GET /api/v1/admin/users`: List users with pagination and role filter.
+* `POST /api/v1/admin/users`: Create user `{ email, full_name, role }` $\rightarrow$ generates random password, hashes with Argon2id, writes to DB, emits Kafka `csac.user.created` event.
+* `PUT /api/v1/admin/users/:id/role`: Change user role to `moderator` or `admin` (or initiate downgrade proposal if target is `admin`).
+* `POST /api/v1/admin/users/:id/downgrade-proposal`: Create downgrade proposal `{ target_role, reason }` $\rightarrow$ calculates required approvals $M = \min(\lceil N/2 \rceil, 3)$.
 
-| Test # | Focus Area | Assertions Verified |
-| :--- | :--- | :--- |
-| **TEST 1** | Sample Data Generation | 5 sample songs, member overlap detection. |
-| **TEST 2** | Solver Core Constraints | Zero double-bookings, 100% attendance enforcement. |
-| **TEST 3** | Configurable Frequencies & Conflicts | Custom frequencies (3x/week) and extreme capacity overload detection. |
-| **TEST 4** | Excel Parser Round-Trip | Synthetic sheet parsing & Vietnamese character support. |
-| **TEST 5** | Excel Exporter | 3-sheet workbook generation & valid binary buffer. |
-| **TEST 6** | Sample File Generation | In-memory `.xlsx` generation for multi-tab and single-tab files. |
-| **TEST 7** | Multi-Tab Inspection | Sheet metadata discovery and multi-tab flag detection. |
-| **TEST 8** | Selective Tab Parsing | Partial sheet importing and schedule solving. |
+### 4.3 Admin Quorum Approval (`/api/v1/admin/approve`) — *Admin Only*
+* `GET /api/v1/admin/approve/proposals`: List all pending and historical downgrade proposals.
+* `POST /api/v1/admin/approve/:proposal_id/request-otp`: Generates 6-digit OTP in Redis and sends via Kafka `csac.admin.otp_generated`.
+* `POST /api/v1/admin/approve/:proposal_id/vote`: Submit `{ otp, decision: 'approve' | 'reject' }` $\rightarrow$ checks OTP, records vote, updates role if quorum met.
 
-**Execution Result**: `38 PASSED, 0 FAILED`.
+### 4.4 Event Management (`/api/v1/events`) — *Admin & Moderator*
+* `GET /api/v1/events`: List events.
+* `POST /api/v1/events`: Create event `{ title, description, start_date, end_date, time_slots: [...] }`.
+* `PUT /api/v1/events/:id/close`: Close event $\rightarrow$ prevents further voting.
+* `GET /api/v1/events/:id/votes`: Retrieve voting matrix for event.
+* `POST /api/v1/events/:id/vote`: Submit member vote `{ slot_id, is_available, note }` *(Any authenticated user if event is open)*.
+
+---
+
+## 5. Observability & Telemetry (OpenObserve)
+
+* **OpenObserve Service**: Deployed on port `5080` (HTTP web console & API), with user/password credentials configured via container environment.
+* **Structured Tracing**: All Rust Axum endpoints emit JSON logs containing:
+  ```json
+  {
+    "timestamp": "2026-09-11T00:45:00Z",
+    "level": "INFO",
+    "service": "gateway",
+    "request_id": "req-12345",
+    "method": "POST",
+    "path": "/api/v1/admin/users",
+    "status": 201,
+    "user_id": "uuid-admin-id",
+    "role": "admin",
+    "latency_ms": 12.4
+  }
+  ```
+* **Log Shipper**: Services stream structured logs to OpenObserve via HTTP endpoint `http://openobserve:5080/api/default/default/_json`.
+
+---
+
+## 6. SvelteKit Web Route Restructuring
+
+* `/`: Landing portal with Quick Access Bento cards.
+* `/auth/login`: Bento-styled modern login card with True Orange accents.
+* `/utils/timetable`: Existing full timetable solver, pastel cards, sheet selector modal, conflict resolver, and Excel exporter.
+* `/utils/inspector`: Excel workbook multi-tab inspector.
+* `/admin/users`: User management table, role modal, user onboarding form.
+* `/admin/events`: Event creation wizard, voting status toggle (Open/Close), slot configuration.
+* `/admin/approve`: Quorum approval cards, interactive OTP modal, ballot progress bar ($k / M$ votes).
+* `/events/[id]/vote`: Performer availability voting matrix.
+
+---
+
+## 7. Internationalization (i18n) Architecture & Standards
+
+### 7.1 ISO 639-1 Compliance & Zero-Dependency Svelte 5 Runes Engine
+* **Supported Locales**: Strictly standardized on ISO 639-1 two-letter codes:
+  * `vi`: Vietnamese (Tiếng Việt 🇻🇳)
+  * `en`: English (English 🇺🇸)
+* **Zero Hardcoded Display Text Rule**: Every single user-visible string across all routes (`/`, `/auth/*`, `/admin/*`, `/events/*`, `/utils/*`) must be rendered using reactive translations via `$tStore('namespace.key')` or `translate(locale, 'namespace.key', params)`. Hardcoded template text is strictly prohibited.
+* **1-to-1 Translation Parity**: Dictionaries (`clients/web/src/lib/i18n/locales/vi.ts` and `clients/web/src/lib/i18n/locales/en.ts`) must maintain exact symmetric key parity. Automated tests validate 100% mutual presence and fail if any key is missing in either dictionary.
+* **Key Namespaces**:
+  * `hub`: Landing page hero, tags, descriptions, CTA buttons, and Bento card modules.
+  * `auth`: Login card, form fields, placeholders, action buttons, error messages.
+  * `admin_users`: User directory, role promotion, downgrade proposals, credentials dispatch.
+  * `admin_approve`: Multi-admin quorum approval ballots, OTP verification modal, voting decisions.
+  * `admin_events`: Rehearsal voting events lifecycle, slot builder, date ranges.
+  * `events_vote`: Performer interactive availability matrix, slot checkboxes, submission feedback.
+  * `inspector`: Excel workbook validator, sheet previews, integrity inspection.
+  * `nav`: Studio app switcher dropdown, auth badges, profile indicators, mobile navigation.
+  * `navbar`, `days`, `sidebar`, `calendar`, `upload_modal`, `sheet_modal`, `conflict_modal`, `event_detail_modal`, `slot_add_modal`, `raw_vote_modal`, `messages`: Core timetable scheduler engine and solver dialogs.
+
