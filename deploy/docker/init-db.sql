@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Seed Initial Admin Account
+-- password: password
+INSERT INTO users (email, full_name, password_hash, role, status)
+VALUES ('admin@csac.local', 'System Administrator', '$argon2d$v=19$m=16,t=2,p=1$U2lYQjBCNmlMakxURUlRag$M/e/uvcWAVwPmvflmP0Yfg', 'admin', 'active')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role, status = EXCLUDED.status;
+
 -- 2. Events Table
 CREATE TABLE IF NOT EXISTS events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
