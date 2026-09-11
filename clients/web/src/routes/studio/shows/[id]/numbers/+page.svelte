@@ -81,6 +81,10 @@
     isQcDrawerOpen = false;
     activeSongForQc = null;
   }
+
+  function advanceStatus(song: SongNumber, nextStage: SongNumber['stage']) {
+    numbers = numbers.map((n) => (n.id === song.id ? { ...n, stage: nextStage } : n));
+  }
 </script>
 
 <div class="numbers-subpage">
@@ -92,21 +96,53 @@
     </button>
   </div>
 
-  <!-- Kanban Columns -->
+  <!-- Kanban Board: 5 FSM Columns -->
   <div class="kanban-board">
+    <!-- Stage: Draft -->
+    <div class="kanban-col bento-card">
+      <div class="col-header">
+        <span class="col-title" style="color: #64748b">{$tStore('show_mgmt.status.draft')}</span>
+        <span class="col-count">{numbers.filter((n) => n.stage === 'draft').length}</span>
+      </div>
+      <div class="col-cards">
+        {#each numbers.filter((n) => n.stage === 'draft') as song (song.id)}
+          <div class="song-card bento-card">
+            <h4 class="song-title">{song.title}</h4>
+            <div class="song-pm">Leader (PM): {song.pmName}</div>
+            <button
+              type="button"
+              class="bento-btn bento-btn-sm action-btn"
+              onclick={() => advanceStatus(song, 'in_practice')}
+            >
+              <span>Start Practice</span>
+            </button>
+          </div>
+        {/each}
+      </div>
+    </div>
+
     <!-- Stage: In Practice -->
     <div class="kanban-col bento-card">
       <div class="col-header">
-        <span class="col-title">{$tStore('studio_shows.kanban_practice')}</span>
+        <span class="col-title text-blue">{$tStore('studio_shows.kanban_practice')}</span>
         <span class="col-count">{numbers.filter((n) => n.stage === 'in_practice').length}</span>
       </div>
-
       <div class="col-cards">
         {#each numbers.filter((n) => n.stage === 'in_practice') as song (song.id)}
           <div class="song-card bento-card">
             <h4 class="song-title">{song.title}</h4>
             <div class="song-pm">Leader (PM): {song.pmName}</div>
             <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
+            {#if song.qcNotes}
+              <div class="qc-notes-box warning"><MessageSquare size={12} /> {song.qcNotes}</div>
+            {/if}
+            <button
+              type="button"
+              class="bento-btn bento-btn-sm action-btn-orange"
+              onclick={() => advanceStatus(song, 'ready_for_qc')}
+            >
+              <span>Submit for QC</span>
+            </button>
           </div>
         {/each}
       </div>
@@ -118,14 +154,12 @@
         <span class="col-title text-orange">{$tStore('studio_shows.kanban_ready_qc')}</span>
         <span class="col-count">{numbers.filter((n) => n.stage === 'ready_for_qc').length}</span>
       </div>
-
       <div class="col-cards">
         {#each numbers.filter((n) => n.stage === 'ready_for_qc') as song (song.id)}
           <div class="song-card bento-card">
             <h4 class="song-title">{song.title}</h4>
             <div class="song-pm">Leader (PM): {song.pmName}</div>
             <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
-
             <button
               type="button"
               class="bento-btn bento-btn-sm qc-btn"
@@ -145,7 +179,6 @@
         <span class="col-title text-blue">{$tStore('studio_shows.kanban_qc_approved')}</span>
         <span class="col-count">{numbers.filter((n) => n.stage === 'qc_approved').length}</span>
       </div>
-
       <div class="col-cards">
         {#each numbers.filter((n) => n.stage === 'qc_approved') as song (song.id)}
           <div class="song-card bento-card">
@@ -155,6 +188,13 @@
             {#if song.qcNotes}
               <div class="qc-notes-box"><MessageSquare size={12} /> {song.qcNotes}</div>
             {/if}
+            <button
+              type="button"
+              class="bento-btn bento-btn-sm action-btn-green"
+              onclick={() => advanceStatus(song, 'stage_ready')}
+            >
+              <span>Promote to Stage Ready</span>
+            </button>
           </div>
         {/each}
       </div>
@@ -166,7 +206,6 @@
         <span class="col-title text-green">{$tStore('studio_shows.kanban_stage_ready')}</span>
         <span class="col-count">{numbers.filter((n) => n.stage === 'stage_ready').length}</span>
       </div>
-
       <div class="col-cards">
         {#each numbers.filter((n) => n.stage === 'stage_ready') as song (song.id)}
           <div class="song-card bento-card highlight-green">
@@ -254,9 +293,8 @@
 
   .kanban-board {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
   }
 
   .bento-card {
@@ -281,7 +319,7 @@
   }
 
   .col-title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: #475569;
   }
@@ -313,6 +351,10 @@
     background: #ffffff;
   }
 
+  .song-card.highlight-green {
+    border-left: 3px solid #16a34a;
+  }
+
   .song-title {
     font-size: 14px;
     font-weight: 700;
@@ -337,11 +379,42 @@
     gap: 4px;
   }
 
+  .qc-notes-box.warning {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+  }
+
+  .action-btn {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .action-btn-orange {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 4px 8px;
+    background: rgba(255, 107, 0, 0.1);
+    color: #ff6b00;
+    font-weight: 700;
+  }
+
+  .action-btn-green {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 4px 8px;
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+    font-weight: 700;
+  }
+
   .qc-btn {
     margin-top: 6px;
     background: rgba(255, 107, 0, 0.1);
     color: #ff6b00;
     font-weight: 700;
+    font-size: 11px;
   }
 
   .modal-backdrop {
@@ -412,9 +485,10 @@
     gap: 10px;
   }
 
-  @media (max-width: 960px) {
+  @media (max-width: 1100px) {
     .kanban-board {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 </style>
+

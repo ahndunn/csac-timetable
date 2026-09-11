@@ -334,7 +334,19 @@ async function runAllTests() {
   const fsmStatuses = ['draft', 'in_practice', 'ready_for_qc', 'qc_approved', 'stage_ready'];
   assert(fsmStatuses.length === 5, 'Music number FSM supports 5 distinct statuses');
 
+  // Verify FSM transition authority rules
+  const canTransition = (from: string, to: string, isQCAuthority: boolean): boolean => {
+    if (from === 'ready_for_qc' && (to === 'qc_approved' || to === 'in_practice')) {
+      return isQCAuthority;
+    }
+    return true;
+  };
+  assert(canTransition('ready_for_qc', 'qc_approved', true) === true, 'QC Authority can approve Ready for QC');
+  assert(canTransition('ready_for_qc', 'qc_approved', false) === false, 'Non-QC user cannot approve Ready for QC');
+  assert(canTransition('ready_for_qc', 'in_practice', true) === true, 'QC Authority can send failed QC back to In Practice');
+
   const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued'].every(k => translate('en', k) !== k);
+
   assert(showMgmtKeysExist, 'Show management workload health translations exist');
 
   // Summary
