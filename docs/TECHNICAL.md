@@ -58,6 +58,12 @@ flowchart TB
 * **Vite Dev Server Proxy (`clients/web/vite.config.ts`)**:
   * Configures development server proxy for `/api` pointing to `http://localhost:8080`.
 
+### 1.3 Web Client Component Specifications
+* **Bento Card Surfaces (`.bento-card`)**: 18px rounded corner radius (`--radius-bento`), 1px translucent border (`rgba(0,0,0,0.08)`), multi-layer elevation shadow (`--shadow-card`).
+* **Kanban Music Numbers (`/studio/shows/[id]/numbers`)**:
+  * Action button row (`.card-btn-row`) uses responsive wrapping (`flex-wrap: wrap`) and full flex sizing (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC" and "Assign Lineup") adapt without text clipping.
+
+
 ---
 
 ## 2. Database Schema (PostgreSQL 16)

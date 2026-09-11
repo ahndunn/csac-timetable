@@ -652,13 +652,24 @@
 
   .card-btn-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-top: 6px;
+    width: 100%;
+  }
+
+  .lineup-btn, .action-btn-orange {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 8px;
   }
 
   .lineup-btn {
-    font-size: 11px;
-    padding: 4px 8px;
     background: #f1f5f9;
     color: #334155;
   }
