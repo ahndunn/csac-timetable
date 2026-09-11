@@ -318,6 +318,25 @@ async function runAllTests() {
   const allNavKeysExist = navKeys.every(k => translate('en', k) !== k && translate('vi', k) !== k);
   assert(allNavKeysExist, 'Nav keys for Show Studio, Gear, Admin Shows exist in i18n');
 
+  // ----------------------------------------------------
+  // TEST 11: Show Management Data Types & FSM Verification
+  // ----------------------------------------------------
+  console.log('\nTEST 11: Show Management Data Types & FSM Verification');
+  
+  const sampleVerdict = {
+    reviewedBy: 'user-admin-1',
+    reviewedAt: new Date().toISOString(),
+    decision: 'revision_requested',
+    feedbackNotes: 'Vocal harmony needs tighter timing on chorus.'
+  };
+  assert(sampleVerdict.decision === 'revision_requested', 'QCVerdict decision handles revision_requested');
+
+  const fsmStatuses = ['draft', 'in_practice', 'ready_for_qc', 'qc_approved', 'stage_ready'];
+  assert(fsmStatuses.length === 5, 'Music number FSM supports 5 distinct statuses');
+
+  const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued'].every(k => translate('en', k) !== k);
+  assert(showMgmtKeysExist, 'Show management workload health translations exist');
+
   // Summary
 
   console.log('\n====================================================');

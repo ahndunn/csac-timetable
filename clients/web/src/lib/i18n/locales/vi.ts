@@ -550,4 +550,28 @@ export const vi = {
     modal_location_placeholder: 'Ví dụ: Tủ Studio A, Để tại nhà Minh',
     success_transfer: 'Cập nhật bàn giao thành công!',
   },
+  show_mgmt: {
+    workload_optimal: 'Tải lượng tối ưu',
+    workload_moderate: 'Tải lượng vừa phải',
+    workload_fatigued: 'Cảnh báo quá tải (5+ bài)',
+    roles: {
+      vocal_lead: 'Hát chính',
+      vocal_harmony: 'Hát bè',
+      guitar_lead: 'Guitar solo/lead',
+      guitar_rhythm: 'Guitar đệm',
+      bass: 'Guitar Bass',
+      keys: 'Keyboards',
+      drums: 'Trống bộ',
+      percussion: 'Nhạc cụ gõ',
+      sound_tech: 'Kỹ thuật âm thanh',
+    },
+    status: {
+      draft: 'Dự thảo',
+      in_practice: 'Đang tập luyện',
+      ready_for_qc: 'Chờ duyệt QC',
+      qc_approved: 'Đã đạt QC',
+      stage_ready: 'Sẵn sàng lên sân khấu',
+    },
+  },
 };
+

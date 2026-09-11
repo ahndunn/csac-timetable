@@ -550,4 +550,28 @@ export const en = {
     modal_location_placeholder: 'e.g. Studio Locker A, Kept at Minh\'s home',
     success_transfer: 'Custody updated successfully!',
   },
+  show_mgmt: {
+    workload_optimal: 'Optimal Workload',
+    workload_moderate: 'Moderate Workload',
+    workload_fatigued: 'Fatigue Alert (5+ Numbers)',
+    roles: {
+      vocal_lead: 'Vocal Lead',
+      vocal_harmony: 'Vocal Harmony',
+      guitar_lead: 'Guitar Lead',
+      guitar_rhythm: 'Guitar Rhythm',
+      bass: 'Bass Guitar',
+      keys: 'Keyboards',
+      drums: 'Drums',
+      percussion: 'Percussion',
+      sound_tech: 'Sound Technician',
+    },
+    status: {
+      draft: 'Draft',
+      in_practice: 'In Practice',
+      ready_for_qc: 'Ready for QC',
+      qc_approved: 'QC Approved',
+      stage_ready: 'Stage Ready',
+    },
+  },
 };
+

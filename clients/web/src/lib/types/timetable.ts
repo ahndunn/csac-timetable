@@ -106,3 +106,53 @@ export interface SolverResult {
     partialAttendanceCount: number;
   };
 }
+
+// Show Management & Resource Allocation Types
+export type MusicNumberStatus = 
+  | 'draft' 
+  | 'in_practice' 
+  | 'ready_for_qc' 
+  | 'qc_approved' 
+  | 'stage_ready';
+
+export type BandRole = 
+  | 'vocal_lead' 
+  | 'vocal_harmony' 
+  | 'guitar_lead' 
+  | 'guitar_rhythm' 
+  | 'bass' 
+  | 'keys' 
+  | 'drums' 
+  | 'percussion' 
+  | 'sound_tech';
+
+export interface QCVerdict {
+  reviewedBy: string;
+  reviewedAt: string;
+  decision: 'passed' | 'revision_requested';
+  feedbackNotes: string;
+  actionItems?: string[];
+}
+
+export interface RosterMember {
+  userId: string;
+  fullName: string;
+  email: string;
+  primaryRole: BandRole;
+  assignedNumberIds: string[];
+  totalPracticeHours: number;
+  workloadStatus: 'optimal' | 'moderate' | 'fatigued';
+}
+
+export interface MusicNumber {
+  id: string;
+  showId: string;
+  title: string;
+  originalArtist: string;
+  status: MusicNumberStatus;
+  rolesRequired: BandRole[];
+  assignedMembers: Record<string, string>;
+  qcHistory: QCVerdict[];
+  notes?: string;
+}
+
