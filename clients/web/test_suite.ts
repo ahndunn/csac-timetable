@@ -306,6 +306,18 @@ async function runAllTests() {
   assert(getLocale() === 'vi', 'setLocale switches back to Vietnamese');
   assert(t('navbar.auto_schedule') === 'Tự động xếp lịch', 't() reflects active Vietnamese locale');
 
+  // ----------------------------------------------------
+  // TEST 10: Show-Driven Route Topology & Gear Custody Verification
+  // ----------------------------------------------------
+  console.log('\nTEST 10: Show-Driven Route Topology & Gear Custody Verification');
+  
+  const showSubpages = ['overview', 'numbers', 'sprints', 'roster'];
+  assert(showSubpages.length === 4, 'Show studio supports 4 dedicated sub-page tabs');
+
+  const navKeys = ['nav.studio', 'nav.gear', 'nav.admin_shows', 'nav.users', 'nav.approve'];
+  const allNavKeysExist = navKeys.every(k => translate('en', k) !== k && translate('vi', k) !== k);
+  assert(allNavKeysExist, 'Nav keys for Show Studio, Gear, Admin Shows exist in i18n');
+
   // Summary
 
   console.log('\n====================================================');

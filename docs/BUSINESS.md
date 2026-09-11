@@ -12,11 +12,12 @@
 **CSAC Timetable Studio** is an enterprise-grade automated scheduling and member management system created for university music clubs, bands, and cultural performance groups (specifically CSAC — Club of Songs And Culture). 
 
 The platform provides:
-1. **Music Production Studio & Instrument Fleet (`/studio`)**: Agile SDLC practice sprints (Study, Create, Review QC), song lineup tracking, dual-ownership instrument registry (club property & member-owned gear), and 1-click sprint free-time registration.
-2. **Club Administration & User Directory (`/admin/*`)**: Role-based user onboarding (with initial credential email dispatch) and dynamic promotion/demotion governance.
-3. **Voting Event Lifecycle Management (`/admin/events`, `/events/[id]/vote`)**: Creating structured time-window events for member availability voting and automatic voting closures.
-4. **Multi-Admin Quorum Demotion Protocol (`/admin/approve`)**: Cryptographically verified peer-review governance requiring OTP approval from peer administrators before an Admin can be downgraded.
-5. **Standalone Utility Suite (`/utils/*`)**: Legacy automated rehearsal timetable generation via CSP heuristics, multi-tab Excel ingestion, and 3-sheet Excel reporting.
+1. **Show-Driven Music Production Studio (`/studio`)**: Centered around active Music Shows (`/studio/shows/[id]/*`) with dedicated sub-pages for Show Overview, Music Numbers (Kanban & QC audit), Practice Sprints (1-click free-time registration), and Show Roster.
+2. **Independent Instrument Fleet & Custody (`/studio/gear`)**: Centralized dual-ownership instrument registry (club property & member-owned gear) and physical location tracking.
+3. **Show Administration & Live Monitoring (`/admin/shows`)**: Show design, capacity planning, create modal, and live rehearsal monitor dashboard.
+4. **User Governance Directory (`/admin/users`)**: Role-based user onboarding (Argon2id auth) and dynamic promotion/demotion authority.
+5. **Multi-Admin Quorum Demotion Protocol (`/admin/approve`)**: Cryptographically verified peer-review governance requiring OTP approval from peer administrators before an Admin can be downgraded.
+6. **Legacy Code Deprecation**: Standalone utility routes (`/utils/*`) and voting event routes (`/events/*`) are eliminated and replaced by show-driven practice sprints.
 
 ---
 

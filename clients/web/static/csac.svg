@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="csac-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b00" />
+      <stop offset="100%" stop-color="#ff8800" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="url(#csac-grad)" />
+  <path d="M35 68 C30 68 26 64 26 59 C26 54 30 50 35 50 C37 50 39 51 40 52 L40 30 C40 28 41 27 43 27 L68 22 C70 21 72 23 72 25 L72 54 C67 54 63 50 63 45 C63 40 67 36 72 36 C74 36 76 37 77 38 L77 20 C77 18 75 16 73 17 L43 23 C41 23 40 25 40 27 L40 52 Z" fill="#ffffff" />
+</svg>

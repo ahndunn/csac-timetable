@@ -118,89 +118,24 @@
       </button>
     {/if}
 
-    <!-- Brand Dropdown / Home Link -->
-    <div class="nav-menu-container sample-dropdown-container">
-      <button
-        type="button"
-        class="bento-btn brand-btn {isNavDropdownOpen ? 'is-active' : ''}"
-        onclick={(e) => {
-          e.stopPropagation();
-          isNavDropdownOpen = !isNavDropdownOpen;
-          isLangOpen = false;
-        }}
-      >
-        <Sparkles size={16} class="text-orange" />
-        <span class="brand-text">CSAC Studio</span>
-        <ChevronDown size={14} style="transform: {isNavDropdownOpen ? 'rotate(180deg)' : 'none'}; transition: transform 0.2s;" />
-      </button>
-
-      {#if isNavDropdownOpen}
-        <div class="dropdown-menu-bento nav-dropdown" onclick={(e) => e.stopPropagation()} role="presentation">
-          <div class="dropdown-header-bento">{$tStore('nav.apps_header')}</div>
-          <a href="/studio" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <Music size={16} class="text-orange" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('studio.nav_title')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('studio.subheading')}</div>
-            </div>
-          </a>
-          <a href="/" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <LayoutGrid size={16} class="text-orange" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.hub')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.hub_desc')}</div>
-            </div>
-          </a>
-          <a href="/utils/timetable" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <Calendar size={16} class="text-orange" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.timetable')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.timetable_desc')}</div>
-            </div>
-          </a>
-          <a href="/utils/inspector" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <FileSpreadsheet size={16} class="text-blue" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.inspector')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.inspector_desc')}</div>
-            </div>
-          </a>
-
-          <div class="dropdown-header-bento" style="margin-top: 4px;">{$tStore('nav.admin_header')}</div>
-          <a href="/admin/users" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <Users size={16} class="text-purple" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.users')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.users_desc')}</div>
-            </div>
-          </a>
-          <a href="/admin/events" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <Calendar size={16} class="text-green" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.events')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.events_desc')}</div>
-            </div>
-          </a>
-          <a href="/admin/approve" class="dropdown-item-bento" onclick={() => isNavDropdownOpen = false}>
-            <ShieldAlert size={16} class="text-red" />
-            <div>
-              <div style="font-weight: 700;">{$tStore('nav.approve')}</div>
-              <div style="font-size: 11px; color: var(--text-muted);">{$tStore('nav.approve_desc')}</div>
-            </div>
-          </a>
-        </div>
-      {/if}
-    </div>
+    <!-- Brand Logo / Emblem (Static Link to /studio) -->
+    <a href="/studio" class="brand-logo-btn" title="CSAC Studio">
+      <img src="/csac.svg" alt="CSAC Studio Logo" class="brand-logo-img" />
+    </a>
 
     <!-- Quick Navigation Links (Desktop) -->
     <nav class="nav-links-desktop">
-      <a href="/studio" class="nav-link {$page.url.pathname.startsWith('/studio') ? 'is-active' : ''}">
+      <a href="/studio" class="nav-link {$page.url.pathname.startsWith('/studio') && !$page.url.pathname.startsWith('/studio/gear') ? 'is-active' : ''}">
         <Music size={14} />
-        <span>{$tStore('studio.nav_title')}</span>
+        <span>{$tStore('nav.studio')}</span>
       </a>
-      <a href="/admin/events" class="nav-link {$page.url.pathname.startsWith('/admin/events') ? 'is-active' : ''}">
+      <a href="/studio/gear" class="nav-link {$page.url.pathname.startsWith('/studio/gear') ? 'is-active' : ''}">
+        <FileSpreadsheet size={14} />
+        <span>{$tStore('nav.gear')}</span>
+      </a>
+      <a href="/admin/shows" class="nav-link {$page.url.pathname.startsWith('/admin/shows') ? 'is-active' : ''}">
         <Calendar size={14} />
-        <span>{$tStore('nav.events')}</span>
+        <span>{$tStore('nav.admin_shows')}</span>
       </a>
       <a href="/admin/users" class="nav-link {$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'is-active' : ''}">
         <Users size={14} />
@@ -394,23 +329,19 @@
           <div class="dropdown-header-bento">{$tStore('nav.nav_header')}</div>
           <a href="/studio" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
             <Music size={16} class="text-orange" />
-            <span>{$tStore('studio.nav_title')}</span>
+            <span>{$tStore('nav.studio')}</span>
           </a>
-          <a href="/" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
-            <LayoutGrid size={16} class="text-orange" />
-            <span>{$tStore('nav.hub')}</span>
+          <a href="/studio/gear" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
+            <FileSpreadsheet size={16} class="text-blue" />
+            <span>{$tStore('nav.gear')}</span>
           </a>
-          <a href="/utils/timetable" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
-            <Calendar size={16} class="text-orange" />
-            <span>{$tStore('nav.timetable')}</span>
+          <a href="/admin/shows" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
+            <Calendar size={16} class="text-green" />
+            <span>{$tStore('nav.admin_shows')}</span>
           </a>
           <a href="/admin/users" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
             <Users size={16} class="text-purple" />
             <span>{$tStore('nav.users')}</span>
-          </a>
-          <a href="/admin/events" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
-            <Calendar size={16} class="text-green" />
-            <span>{$tStore('nav.events')}</span>
           </a>
           <a href="/admin/approve" class="dropdown-item-bento" onclick={() => isMobileMenuOpen = false}>
             <ShieldAlert size={16} class="text-red" />
@@ -550,15 +481,26 @@
     font-weight: 600;
   }
 
-  .brand-btn {
-    display: flex;
+  .brand-logo-btn {
+    display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    font-weight: 700;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 10px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    text-decoration: none;
   }
 
-  .brand-text {
-    color: #0f172a;
+  .brand-logo-btn:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+
+  .brand-logo-img {
+    height: 32px;
+    width: 32px;
+    object-fit: contain;
+    border-radius: 8px;
   }
 
   .nav-dropdown {
