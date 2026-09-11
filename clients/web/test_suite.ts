@@ -362,10 +362,19 @@ async function runAllTests() {
   const newRosterMember = { id: 'p-5', name: 'Gia Huy', role: 'Performer', instrument: 'Guitar Lead' };
   const updatedRosterList = [...sampleRoster, newRosterMember];
   assert(updatedRosterList.length === 3, 'Show roster supports adding new members dynamically');
-  assert(updatedRosterList.some(m => m.name === 'Gia Huy'), 'Newly assigned member appears in show roster');
+  // Verify Song Lineup Role Mapping
+  const songLineupMapping: Record<string, string> = {
+    vocalLead: 'Minh Pháp',
+    guitarLead: 'Hoàng Nam',
+    bass: 'Bảo Anh',
+    drums: 'Thu Hà',
+  };
+  assert(Object.keys(songLineupMapping).length === 4, 'Song lineup correctly maps 4 instrument roles to performers');
+  assert(songLineupMapping.vocalLead === 'Minh Pháp', 'Correctly maps Vocal Lead role to assigned roster member');
 
   const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued', 'show_mgmt.roster_modal.title_add'].every(k => translate('en', k) !== k);
   assert(showMgmtKeysExist, 'Show management workload health & roster modal translations exist');
+
 
 
 

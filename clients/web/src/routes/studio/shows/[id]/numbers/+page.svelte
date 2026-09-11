@@ -6,10 +6,12 @@
     Clock,
     AlertCircle,
     UserCheck,
+    Users,
     MessageSquare,
     Plus,
     X,
   } from '@lucide/svelte';
+
 
   interface SongNumber {
     id: string;
@@ -18,6 +20,12 @@
     stage: 'draft' | 'in_practice' | 'ready_for_qc' | 'qc_approved' | 'stage_ready';
     qcReviewer: string;
     qcNotes?: string;
+    lineup?: {
+      vocalLead?: string;
+      guitarLead?: string;
+      bass?: string;
+      drums?: string;
+    };
   }
 
   let numbers = $state<SongNumber[]>([
@@ -28,6 +36,7 @@
       stage: 'stage_ready',
       qcReviewer: 'Hoàng Nam',
       qcNotes: 'Flawless vocal harmonies and drum fills. Stage ready.',
+      lineup: { vocalLead: 'Minh Pháp', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh', drums: 'Thu Hà' },
     },
     {
       id: 'num-2',
@@ -36,6 +45,7 @@
       stage: 'qc_approved',
       qcReviewer: 'Thu Hà',
       qcNotes: 'Lead guitar solo approved.',
+      lineup: { vocalLead: 'Gia Huy', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh' },
     },
     {
       id: 'num-3',
@@ -43,6 +53,7 @@
       pmName: 'Bảo Anh',
       stage: 'ready_for_qc',
       qcReviewer: 'Minh Pháp',
+      lineup: { vocalLead: 'Minh Pháp', bass: 'Bảo Anh' },
     },
     {
       id: 'num-4',
@@ -50,18 +61,64 @@
       pmName: 'Thu Hà',
       stage: 'in_practice',
       qcReviewer: 'Bảo Anh',
+      lineup: { vocalLead: 'Anh Pha', drums: 'Thu Hà' },
     },
   ]);
+
+  let availableRoster = [
+    'Minh Pháp',
+    'Hoàng Nam',
+    'Bảo Anh',
+    'Thu Hà',
+    'Gia Huy',
+    'Anh Pha',
+  ];
 
   let isQcDrawerOpen = $state(false);
   let activeSongForQc = $state<SongNumber | null>(null);
   let qcVerdict = $state<'pass' | 'revision'>('pass');
   let qcNotesInput = $state('');
 
+  let isLineupDrawerOpen = $state(false);
+  let activeSongForLineup = $state<SongNumber | null>(null);
+  let formVocalLead = $state('');
+  let formGuitarLead = $state('');
+  let formBass = $state('');
+  let formDrums = $state('');
+
   function openQcDrawer(song: SongNumber) {
     activeSongForQc = song;
     qcNotesInput = song.qcNotes || '';
     isQcDrawerOpen = true;
+  }
+
+  function openLineupDrawer(song: SongNumber) {
+    activeSongForLineup = song;
+    formVocalLead = song.lineup?.vocalLead || '';
+    formGuitarLead = song.lineup?.guitarLead || '';
+    formBass = song.lineup?.bass || '';
+    formDrums = song.lineup?.drums || '';
+    isLineupDrawerOpen = true;
+  }
+
+  function handleLineupSubmit(e: Event) {
+    e.preventDefault();
+    if (!activeSongForLineup) return;
+
+    numbers = numbers.map((n) =>
+      n.id === activeSongForLineup?.id
+        ? {
+            ...n,
+            lineup: {
+              vocalLead: formVocalLead || undefined,
+              guitarLead: formGuitarLead || undefined,
+              bass: formBass || undefined,
+              drums: formDrums || undefined,
+            },
+          }
+        : n
+    );
+    isLineupDrawerOpen = false;
   }
 
   function handleQcSubmit(e: Event) {
@@ -86,6 +143,7 @@
     numbers = numbers.map((n) => (n.id === song.id ? { ...n, stage: nextStage } : n));
   }
 </script>
+
 
 <div class="numbers-subpage">
   <div class="header-actions">
@@ -133,18 +191,40 @@
             <h4 class="song-title">{song.title}</h4>
             <div class="song-pm">Leader (PM): {song.pmName}</div>
             <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
+
+            {#if song.lineup}
+              <div class="lineup-tags">
+                {#if song.lineup.vocalLead}<span class="lineup-tag vocal">Vocal: {song.lineup.vocalLead}</span>{/if}
+                {#if song.lineup.guitarLead}<span class="lineup-tag guitar">Guitar: {song.lineup.guitarLead}</span>{/if}
+                {#if song.lineup.bass}<span class="lineup-tag bass">Bass: {song.lineup.bass}</span>{/if}
+                {#if song.lineup.drums}<span class="lineup-tag drums">Drums: {song.lineup.drums}</span>{/if}
+              </div>
+            {/if}
+
             {#if song.qcNotes}
               <div class="qc-notes-box warning"><MessageSquare size={12} /> {song.qcNotes}</div>
             {/if}
-            <button
-              type="button"
-              class="bento-btn bento-btn-sm action-btn-orange"
-              onclick={() => advanceStatus(song, 'ready_for_qc')}
-            >
-              <span>Submit for QC</span>
-            </button>
+            
+            <div class="card-btn-row">
+              <button
+                type="button"
+                class="bento-btn bento-btn-sm lineup-btn"
+                onclick={() => openLineupDrawer(song)}
+              >
+                <Users size={12} />
+                <span>Assign Lineup</span>
+              </button>
+              <button
+                type="button"
+                class="bento-btn bento-btn-sm action-btn-orange"
+                onclick={() => advanceStatus(song, 'ready_for_qc')}
+              >
+                <span>Submit for QC</span>
+              </button>
+            </div>
           </div>
         {/each}
+
       </div>
     </div>
 
@@ -271,6 +351,70 @@
     </div>
   </div>
 {/if}
+
+<!-- Modal: Lineup Role Assignment Drawer -->
+{#if isLineupDrawerOpen && activeSongForLineup}
+  <div class="modal-backdrop" onclick={() => (isLineupDrawerOpen = false)} role="presentation">
+    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
+      <div class="drawer-header">
+        <h2>Assign Song Band Lineup</h2>
+        <button class="icon-close" onclick={() => (isLineupDrawerOpen = false)}><X size={18} /></button>
+      </div>
+
+      <p class="song-ref">Song: <strong>{activeSongForLineup.title}</strong></p>
+
+      <form onsubmit={handleLineupSubmit} class="modal-form">
+        <div class="form-group">
+          <label for="role-vocal">Vocal Lead</label>
+          <select id="role-vocal" bind:value={formVocalLead} class="form-input">
+            <option value="">-- Unassigned --</option>
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="role-guitar">Guitar Lead</label>
+          <select id="role-guitar" bind:value={formGuitarLead} class="form-input">
+            <option value="">-- Unassigned --</option>
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="role-bass">Bass Guitar</label>
+          <select id="role-bass" bind:value={formBass} class="form-input">
+            <option value="">-- Unassigned --</option>
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="role-drums">Drums</label>
+          <select id="role-drums" bind:value={formDrums} class="form-input">
+            <option value="">-- Unassigned --</option>
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="bento-btn" onclick={() => (isLineupDrawerOpen = false)}>Cancel</button>
+          <button type="submit" class="bento-btn bento-btn-primary">
+            Save Lineup Allocation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 
 <style>
   .numbers-subpage {
@@ -485,10 +629,45 @@
     gap: 10px;
   }
 
+  .lineup-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .lineup-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .lineup-tag.vocal { background: rgba(255, 107, 0, 0.1); color: #ff6b00; }
+  .lineup-tag.guitar { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+  .lineup-tag.bass { background: rgba(147, 51, 234, 0.1); color: #9333ea; }
+  .lineup-tag.drums { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+
+  .card-btn-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .lineup-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: #f1f5f9;
+    color: #334155;
+  }
+
   @media (max-width: 1100px) {
     .kanban-board {
       grid-template-columns: repeat(2, 1fr);
     }
   }
 </style>
+
 
