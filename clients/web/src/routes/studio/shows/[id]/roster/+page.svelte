@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tStore } from '$lib/i18n';
-  import { Users, UserCheck, Shield, Music, Mail } from '@lucide/svelte';
+  import { Users, UserCheck, Shield, Music, Mail, AlertTriangle } from '@lucide/svelte';
 
   interface Performer {
     id: string;
@@ -9,6 +9,7 @@
     role: 'DM' | 'PM' | 'Performer';
     instrument: string;
     assignedSongsCount: number;
+    totalPracticeHours: number;
   }
 
   let roster = $state<Performer[]>([
@@ -18,7 +19,8 @@
       email: 'minhphap@csac.local',
       role: 'DM',
       instrument: 'Lead Vocal / Acoustic Guitar',
-      assignedSongsCount: 4,
+      assignedSongsCount: 5,
+      totalPracticeHours: 20,
     },
     {
       id: 'p-2',
@@ -27,6 +29,7 @@
       role: 'PM',
       instrument: 'Electric Guitar',
       assignedSongsCount: 3,
+      totalPracticeHours: 12,
     },
     {
       id: 'p-3',
@@ -35,6 +38,7 @@
       role: 'PM',
       instrument: 'Bass Guitar',
       assignedSongsCount: 2,
+      totalPracticeHours: 8,
     },
     {
       id: 'p-4',
@@ -42,9 +46,16 @@
       email: 'thuha@csac.local',
       role: 'Performer',
       instrument: 'Drum Kit & Percussion',
-      assignedSongsCount: 3,
+      assignedSongsCount: 1,
+      totalPracticeHours: 4,
     },
   ]);
+
+  function getWorkloadStatus(songCount: number): { key: string; level: 'optimal' | 'moderate' | 'fatigued'; colorClass: string } {
+    if (songCount >= 5) return { key: 'show_mgmt.workload_fatigued', level: 'fatigued', colorClass: 'workload-red' };
+    if (songCount >= 3) return { key: 'show_mgmt.workload_moderate', level: 'moderate', colorClass: 'workload-yellow' };
+    return { key: 'show_mgmt.workload_optimal', level: 'optimal', colorClass: 'workload-green' };
+  }
 </script>
 
 <div class="roster-subpage">
@@ -55,8 +66,25 @@
     </div>
   </div>
 
+  <!-- Resource Allocation Workload Summary -->
+  <div class="workload-summary bento-card">
+    <div class="summary-item">
+      <span class="summary-count">{roster.filter(p => p.assignedSongsCount >= 5).length}</span>
+      <span class="summary-label text-red">Fatigue Alerts (5+ Songs)</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-count">{roster.filter(p => p.assignedSongsCount >= 3 && p.assignedSongsCount < 5).length}</span>
+      <span class="summary-label text-yellow">Moderate Workload (3-4 Songs)</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-count">{roster.filter(p => p.assignedSongsCount < 3).length}</span>
+      <span class="summary-label text-green">Optimal Workload (1-2 Songs)</span>
+    </div>
+  </div>
+
   <div class="roster-grid">
     {#each roster as person (person.id)}
+      {@const workload = getWorkloadStatus(person.assignedSongsCount)}
       <div class="person-card bento-card">
         <div class="person-header">
           <div class="person-avatar">{person.name[0]}</div>
@@ -80,7 +108,13 @@
           </div>
           <div class="detail-item">
             <UserCheck size={13} class="text-green" />
-            <span>Assigned to {person.assignedSongsCount} Music Numbers</span>
+            <span>Assigned to {person.assignedSongsCount} Music Numbers ({person.totalPracticeHours}h practice)</span>
+          </div>
+          <div class="workload-badge {workload.colorClass}">
+            {#if workload.level === 'fatigued'}
+              <AlertTriangle size={13} />
+            {/if}
+            <span>{$tStore(workload.key)}</span>
           </div>
         </div>
       </div>
@@ -113,6 +147,34 @@
     color: #64748b;
     margin: 0;
   }
+
+  .workload-summary {
+    display: flex;
+    justify-content: space-around;
+    padding: 14px 20px;
+    background: #f8fafc;
+  }
+
+  .summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .summary-count {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .summary-label.text-red { color: #ef4444; }
+  .summary-label.text-yellow { color: #d97706; }
+  .summary-label.text-green { color: #16a34a; }
 
   .roster-grid {
     display: grid;
@@ -175,7 +237,7 @@
   .person-details {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     background: #f8fafc;
     padding: 10px;
     border-radius: 8px;
@@ -188,4 +250,20 @@
     gap: 6px;
     color: #334155;
   }
+
+  .workload-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    width: fit-content;
+  }
+
+  .workload-green { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+  .workload-yellow { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+  .workload-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 </style>
+

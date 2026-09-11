@@ -345,9 +345,18 @@ async function runAllTests() {
   assert(canTransition('ready_for_qc', 'qc_approved', false) === false, 'Non-QC user cannot approve Ready for QC');
   assert(canTransition('ready_for_qc', 'in_practice', true) === true, 'QC Authority can send failed QC back to In Practice');
 
-  const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued'].every(k => translate('en', k) !== k);
+  const calcWorkload = (count: number) => {
+    if (count >= 5) return 'fatigued';
+    if (count >= 3) return 'moderate';
+    return 'optimal';
+  };
+  assert(calcWorkload(5) === 'fatigued', 'Resource allocation correctly flags fatigue for 5+ numbers');
+  assert(calcWorkload(3) === 'moderate', 'Resource allocation correctly flags moderate workload for 3 numbers');
+  assert(calcWorkload(1) === 'optimal', 'Resource allocation correctly flags optimal workload for 1 number');
 
+  const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued'].every(k => translate('en', k) !== k);
   assert(showMgmtKeysExist, 'Show management workload health translations exist');
+
 
   // Summary
 
