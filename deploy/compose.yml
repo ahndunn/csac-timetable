@@ -1,7 +1,7 @@
 services:
   # Database Layer
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: csac-postgres
     restart: unless-stopped
     environment:
@@ -12,8 +12,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U csac_admin -d csac_timetable"]
+      test: [ "CMD-SHELL", "pg_isready -U csac_admin -d csac_timetable" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,7 +23,7 @@ services:
 
   # Cache & Rate Limiter Store
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: csac-redis
     restart: unless-stopped
     ports:
@@ -30,7 +31,7 @@ services:
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -39,7 +40,7 @@ services:
 
   # Asynchronous Event Bus (Apache Kafka in KRaft mode)
   kafka:
-    image: apache/kafka:3.8.0
+    image: apache/kafka:3.9.0
     container_name: csac-kafka
     restart: unless-stopped
     ports:
@@ -63,6 +64,36 @@ services:
     networks:
       - csac-network
 
+  # Unified Observability Platform (OpenObserve)
+  openobserve:
+    image: openobserve/openobserve:v0.14.7
+    container_name: csac-openobserve
+    restart: unless-stopped
+    ports:
+      - "5080:5080"
+    environment:
+      ZO_ROOT_USER_EMAIL: admin@csac.local
+      ZO_ROOT_USER_PASSWORD: csac_observe_password
+      ZO_DATA_DIR: /data
+    volumes:
+      - oodata:/data
+    networks:
+      - csac-network
+
+  # Local SMTP Mail Inspector (Mailpit)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: csac-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+    networks:
+      - csac-network
+
   # Unified Reverse Proxy / API Gateway
   gateway:
     build:
@@ -74,15 +105,27 @@ services:
       - "8080:8080"
     environment:
       RUST_LOG: info
+      DATABASE_URL: postgres://csac_admin:csac_password@postgres:5432/csac_timetable
       REDIS_URL: redis://redis:6379
       KAFKA_BROKERS: kafka:9092
       SCHEDULER_GRPC_URL: http://scheduler-service:50051
+      OPENOBSERVE_URL: http://openobserve:5080/api/default/default/_json
+      OPENOBSERVE_AUTH: Basic YWRtaW5AY3NhYy5sb2NhbDpjc2FjX29ic2VydmVfcGFzc3dvcmQ=
+      JWT_SECRET: csac_timetable_super_secure_jwt_secret_key_2026
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
         condition: service_started
       scheduler-service:
+        condition: service_started
+      openobserve:
+        condition: service_started
+      mailpit:
         condition: service_started
     networks:
       - csac-network
@@ -101,6 +144,8 @@ services:
     environment:
       RUST_LOG: info
       REDIS_URL: redis://redis:6379
+      OPENOBSERVE_URL: http://openobserve:5080/api/default/default/_json
+      OPENOBSERVE_AUTH: Basic YWRtaW5AY3NhYy5sb2NhbDpjc2FjX29ic2VydmVfcGFzc3dvcmQ=
     depends_on:
       redis:
         condition: service_healthy
@@ -128,6 +173,7 @@ volumes:
   pgdata:
   redisdata:
   kafkadata:
+  oodata:
 
 networks:
   csac-network:

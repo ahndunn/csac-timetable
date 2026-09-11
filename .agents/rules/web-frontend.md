@@ -32,3 +32,11 @@ These rules apply exclusively to web client code under `clients/web/`. They MUST
 - **Consistent Radius**: Uniform `16px`–`20px` border-radius across all Bento cells and modules.
 - **Micro-Animations**: Stagger entrance animations and spring-easing hover lifts (`cubic-bezier(0.34, 1.56, 0.64, 1)`).
 - **Skill Reference**: Consult `bento-design` (`.agents/skills/bento-design/SKILL.md`) for complete component patterns.
+
+### 4. Strict Internationalization (i18n) Mandate
+- **Zero Hardcoded Display Strings**: Every single user-visible text element in `clients/web/`—including page titles, headings, descriptions, button labels, form labels, input placeholders, badges, status indicators, modal dialogs, error/success banners, and accessibility attributes (`aria-label`, `title`)—MUST be internationalized using `$tStore('path.to.key')` or `translate(locale, 'path.to.key')`.
+- **Key Parity**: For every key created, both `clients/web/src/lib/i18n/locales/vi.ts` and `clients/web/src/lib/i18n/locales/en.ts` MUST have matching keys and translations. Key asymmetry will fail automated test suite checks (`pnpm run test`).
+- **ISO 639-1 Standard**: Strictly adhere to ISO 639-1 language codes (`vi` for Vietnamese, `en` for English).
+- **Parameter Interpolation**: Use `{variable}` notation for dynamic strings (e.g., `{count} sessions/wk`).
+- **Reactive UI**: Components must subscribe to the reactive `$tStore` derived store so that switching language via the navbar dropdown updates the entire interface immediately without full page reloads.
+
