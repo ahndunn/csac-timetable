@@ -1,18 +1,36 @@
-FROM node:22-alpine AS builder
-WORKDIR /app
+# syntax=docker/dockerfile:1.7
+FROM docker.io/library/node:22-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# 1. Builder Stage: install dependencies with BuildKit cache mount and compile SvelteKit bundle
+FROM base AS builder
+WORKDIR /app
+
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm config set minimum-release-age 0 && pnpm install
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store && \
+    pnpm config set minimum-release-age 0 && \
+    pnpm install
+
 COPY . .
 RUN pnpm run build
 
-FROM node:22-alpine AS runner
+# Prune devDependencies to keep only production node_modules
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm prune --prod
+
+# 2. Lean Production Runner Stage
+FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm config set minimum-release-age 0 && pnpm install --prod
+ENV PORT=3000
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/build ./build
+
 USER node
 EXPOSE 3000
 CMD ["node", "build"]

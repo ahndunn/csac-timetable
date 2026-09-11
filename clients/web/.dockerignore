@@ -2,3 +2,11 @@ node_modules/
 .svelte-kit/
 build/
 .git/
+.gitignore
+.dockerignore
+test_suite.ts
+*.md
+**/*.log
+.vscode/
+.idea/
+.agents/

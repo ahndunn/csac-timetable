@@ -37,7 +37,7 @@ flowchart TB
         PG[("PostgreSQL 17<br/>users, events, event_time_slots, votes, admin_downgrade_proposals, admin_downgrade_votes, audit_logs")]
     end
 
-    Web -->|HTTP / REST| GW
+    Web -->|HTTP / REST Proxy (:3000 -> :8080)| GW
     GW <-->|Check / Consume OTP & Rate Limits| Redis
     GW <-->|CRUD & Relational Integrity| PG
     GW -->|Produce Events| Kafka
@@ -49,6 +49,14 @@ flowchart TB
     NotifyWorker -->|JSON Telemetry Logs| OpenObserve
     SchedSvc -->|JSON Telemetry Logs| OpenObserve
 ```
+
+### 1.2 Web Client Reverse Proxy Architecture
+* **SvelteKit SSR Proxy Hook (`clients/web/src/hooks.server.ts`)**:
+  * Intercepts all incoming client requests matching `/api/*`.
+  * Forwards requests seamlessly to the Rust API Gateway backend at `PUBLIC_GATEWAY_URL` or `GATEWAY_URL` (defaulting to `http://gateway:8080` in containerized environments, and `http://localhost:8080` in local development).
+  * Forwards HTTP method, request headers, query parameters, and streaming request body, while returning the Gateway's response and status code.
+* **Vite Dev Server Proxy (`clients/web/vite.config.ts`)**:
+  * Configures development server proxy for `/api` pointing to `http://localhost:8080`.
 
 ---
 
@@ -267,3 +275,22 @@ CREATE TABLE audit_logs (
   * `nav`: Studio app switcher dropdown, auth badges, profile indicators, mobile navigation.
   * `navbar`, `days`, `sidebar`, `calendar`, `upload_modal`, `sheet_modal`, `conflict_modal`, `event_detail_modal`, `slot_add_modal`, `raw_vote_modal`, `messages`: Core timetable scheduler engine and solver dialogs.
 
+---
+
+## 8. Containerization & Docker Build Optimization Standards
+
+### 8.1 Rust Microservices Build Pipeline (`deploy/docker/Dockerfile.service` & `deploy/docker/Dockerfile.gateway`)
+* **`cargo-chef` Recipe Dependency Caching**:
+  * **Planner Stage**: Utilizes `lukemathwalker/cargo-chef:latest-rust-1-bookworm` to inspect `Cargo.lock` and workspace manifests, producing an isolated `recipe.json`.
+  * **Dependency Cook Stage**: Runs `cargo chef cook --release --recipe-path recipe.json --bin ${SERVICE_NAME}`. All 300+ external crates (e.g. `axum`, `sqlx`, `tonic`, `tokio`, `rdkafka`, `argon2`) are compiled in a discrete cache layer that is preserved across application code modifications.
+  * **Application Build Stage**: Copies service sources and executes `cargo build --release --bin ${SERVICE_NAME}`. Debug symbols are stripped (`strip`) to minimize output binary size (~70% reduction).
+  * **BuildKit Cache Mounts**: Mounts `/usr/local/cargo/registry` and `/usr/local/cargo/git` across compilation steps to prevent redundant network downloads of crate sources.
+* **Minimal Non-Root Runtime Layer**:
+  * Base: `debian:bookworm-slim` with minimal runtime libraries (`ca-certificates`, `libssl3`, `tzdata`).
+  * Security Context: Dedicated non-root user `USER 10001:10001`.
+
+### 8.2 Web Frontend Build Pipeline (`deploy/docker/Dockerfile.web`)
+* **Multi-Stage Node / SvelteKit Build**:
+  * **Builder Stage (`node:22-alpine`)**: Uses Corepack-managed `pnpm` with persistent cache mount (`--mount=type=cache,id=pnpm,target=/pnpm/store`) for frozen-lockfile dependency resolution. Executes `pnpm run build` followed by `pnpm prune --prod` to discard development-only tooling (`vite`, `svelte-check`, `typescript`, `@sveltejs/kit`).
+  * **Runner Stage (`node:22-alpine`)**: Copies only the compiled `@sveltejs/adapter-node` standalone server (`build/`), pruned production dependencies (`node_modules/`), and `package.json`.
+  * Security Context: Non-root user `USER node`.
