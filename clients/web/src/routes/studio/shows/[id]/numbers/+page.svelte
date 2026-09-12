@@ -4,7 +4,6 @@
     Music,
     CheckCircle2,
     Clock,
-    AlertCircle,
     UserCheck,
     Users,
     MessageSquare,
@@ -12,32 +11,49 @@
     X,
     LayoutGrid,
     Kanban,
-    Table,
+    Table as TableIcon,
     Search,
     Filter,
-    Sparkles,
-    ChevronRight,
-    SlidersHorizontal,
     Activity,
-    Layers,
     Mic2,
     Guitar,
     Disc3,
+    ShieldCheck,
+    ThumbsUp,
+    AlertCircle,
+    RefreshCw,
+    Sparkles,
   } from '@lucide/svelte';
 
   import { page } from '$app/stores';
   import {
     canManageNumbers,
-    canReviewQC,
-    canManageShowScoped,
     canManageSongScoped,
     canAuditSongScoped,
-    getEffectiveRole,
-    hasRole,
   } from '$lib/auth';
   import type { UserRole } from '$lib/types/timetable';
-
   import { api } from '$lib/api/client';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+  } from '$lib/components/ui/dialog';
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '$lib/components/ui/table';
 
   interface SongNumber {
     id: string;
@@ -62,7 +78,6 @@
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
   const currentUserName = $derived($page.data?.user?.fullName || 'Administrator');
 
-  // Realistic CSAC Annual Concert production dataset loaded from load function / backend
   let numbers = $state<SongNumber[]>(data?.numbers || []);
 
   $effect(() => {
@@ -81,17 +96,15 @@
     'Phương Nhi',
     'Tùng Dương',
   ];
-  // View Mode: 'grid' | 'kanban' | 'table'
+
   let currentView = $state<'grid' | 'kanban' | 'table'>(
     ($page.url.searchParams.get('view') as 'grid' | 'kanban' | 'table') || 'grid'
   );
 
-  // Search & Filter State
   let searchQuery = $state($page.url.searchParams.get('q') || '');
   let selectedStageFilter = $state<string>($page.url.searchParams.get('stage') || 'all');
   let selectedPmFilter = $state<string>('all');
 
-  // Modal States
   let isQcDrawerOpen = $state(false);
   let activeSongForQc = $state<SongNumber | null>(null);
   let qcVerdict = $state<'pass' | 'revision'>('pass');
@@ -111,7 +124,6 @@
   let newPm = $state('Minh Pháp');
   let newQcReviewer = $state('Hoàng Nam');
 
-  // Derived Pipeline Funnel Metrics
   const stageStats = $derived({
     total: numbers.length,
     draft: numbers.filter((n) => n.stage === 'draft').length,
@@ -125,7 +137,6 @@
     Array.from(new Set(numbers.map((n) => n.pmName))).sort()
   );
 
-  // Filtered Numbers based on query and dropdowns
   const filteredNumbers = $derived(
     numbers.filter((song) => {
       const matchesStage =
@@ -270,18 +281,18 @@
     }
   }
 
-  function getStageBadgeClass(stage: SongNumber['stage']) {
+  function getStageBadgeVariant(stage: SongNumber['stage']) {
     switch (stage) {
       case 'draft':
-        return 'badge-draft';
+        return 'bg-slate-100 text-slate-700 border-slate-200';
       case 'in_practice':
-        return 'badge-practice';
+        return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
       case 'ready_for_qc':
-        return 'badge-ready-qc';
+        return 'bg-primary/10 text-primary border-primary/20';
       case 'qc_approved':
-        return 'badge-qc-approved';
+        return 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
       case 'stage_ready':
-        return 'badge-stage-ready';
+        return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
     }
   }
 
@@ -301,113 +312,113 @@
   }
 </script>
 
-<div class="numbers-subpage">
+<div class="flex flex-col gap-4">
   <!-- Pipeline Funnel Summary Banner (1-Click Stage Filter) -->
-  <div class="pipeline-summary bento-card">
-    <div class="funnel-header">
-      <div class="funnel-title-row">
-        <Activity size={18} class="text-orange" />
-        <span class="funnel-heading">{$tStore('studio_shows.pipeline_heading')}</span>
-        <span class="funnel-sub">{$tStore('studio_shows.pipeline_sub').replace('{count}', numbers.length.toString())}</span>
+  <Card class="p-4 flex flex-col gap-3.5 shadow-sm">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center gap-2 flex-wrap">
+        <Activity class="w-4 h-4 text-primary" />
+        <span class="text-sm font-bold text-foreground">{$tStore('studio_shows.pipeline_heading')}</span>
+        <span class="text-xs text-muted-foreground ml-1">{$tStore('studio_shows.pipeline_sub').replace('{count}', numbers.length.toString())}</span>
       </div>
 
       {#if canManageNumbers(userRole)}
-        <button
-          type="button"
-          class="bento-btn bento-btn-primary"
+        <Button
+          size="sm"
           onclick={openAddModal}
           id="btn-add-music-number"
+          class="gap-1.5"
         >
-          <Plus size={16} />
+          <Plus class="w-4 h-4" />
           <span>{$tStore('studio_shows.btn_add_number')}</span>
-        </button>
+        </Button>
       {/if}
     </div>
 
-    <div class="funnel-tiles">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'all' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'all' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'all')}
       >
-        <span class="tile-count">{stageStats.total}</span>
-        <span class="tile-label">{$tStore('studio_shows.pipeline_all')}</span>
+        <span class="text-lg font-extrabold leading-none text-foreground">{stageStats.total}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.pipeline_all')}</span>
       </button>
 
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'draft' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'draft' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'draft')}
       >
-        <span class="tile-count text-slate">{stageStats.draft}</span>
-        <span class="tile-label">{$tStore('studio_shows.kanban_draft')}</span>
+        <span class="text-lg font-extrabold leading-none text-muted-foreground">{stageStats.draft}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.kanban_draft')}</span>
       </button>
 
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'in_practice' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'in_practice' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'in_practice')}
       >
-        <span class="tile-count text-blue">{stageStats.in_practice}</span>
-        <span class="tile-label">{$tStore('studio_shows.kanban_practice')}</span>
+        <span class="text-lg font-extrabold leading-none text-primary">{stageStats.in_practice}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.kanban_practice')}</span>
       </button>
 
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'ready_for_qc' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'ready_for_qc' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'ready_for_qc')}
       >
-        <span class="tile-count text-orange">{stageStats.ready_for_qc}</span>
-        <span class="tile-label">{$tStore('studio_shows.kanban_ready_qc')}</span>
+        <span class="text-lg font-extrabold leading-none text-primary">{stageStats.ready_for_qc}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.kanban_ready_qc')}</span>
       </button>
 
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'qc_approved' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'qc_approved' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'qc_approved')}
       >
-        <span class="tile-count text-indigo">{stageStats.qc_approved}</span>
-        <span class="tile-label">{$tStore('studio_shows.kanban_qc_approved')}</span>
+        <span class="text-lg font-extrabold leading-none text-primary">{stageStats.qc_approved}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.kanban_qc_approved')}</span>
       </button>
 
       <button
         type="button"
-        class="funnel-tile {selectedStageFilter === 'stage_ready' ? 'is-active' : ''}"
+        class="bg-card border border-border/80 rounded-xl p-2.5 flex flex-col items-start gap-1 cursor-pointer transition-all hover:bg-muted/40 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-xs text-left {selectedStageFilter === 'stage_ready' ? 'bg-primary/10 border-primary shadow-xs' : ''}"
         onclick={() => (selectedStageFilter = 'stage_ready')}
       >
-        <span class="tile-count text-green">{stageStats.stage_ready}</span>
-        <span class="tile-label">{$tStore('studio_shows.kanban_stage_ready')}</span>
+        <span class="text-lg font-extrabold leading-none text-emerald-600">{stageStats.stage_ready}</span>
+        <span class="text-[11px] font-semibold text-muted-foreground">{$tStore('studio_shows.kanban_stage_ready')}</span>
       </button>
     </div>
-  </div>
+  </Card>
 
   <!-- Search, Filter & View Controls Toolbar -->
-  <div class="toolbar-card bento-card">
-    <div class="search-box">
-      <Search size={16} class="search-icon" />
-      <input
+  <Card class="p-3 flex items-center justify-between flex-wrap gap-3 shadow-sm">
+    <div class="relative flex-1 min-w-[240px] max-w-sm">
+      <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+      <Input
         type="text"
         placeholder={$tStore('studio_shows.search_placeholder')}
         bind:value={searchQuery}
-        class="search-input"
+        class="pl-9 pr-8 h-9 text-xs"
         id="input-search-numbers"
       />
       {#if searchQuery}
         <button
           type="button"
-          class="clear-search-btn"
+          class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
           onclick={() => (searchQuery = '')}
           aria-label="Clear Search"
         >
-          <X size={14} />
+          <X class="w-3.5 h-3.5" />
         </button>
       {/if}
     </div>
 
-    <div class="filters-row">
-      <div class="select-wrapper">
-        <Filter size={14} class="select-icon" />
-        <select bind:value={selectedStageFilter} class="filter-select" id="select-stage-filter">
+    <div class="flex items-center flex-wrap gap-2.5">
+      <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+        <Filter class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <select bind:value={selectedStageFilter} class="bg-transparent border-0 text-xs font-semibold text-slate-700 outline-none cursor-pointer" id="select-stage-filter">
           <option value="all">{$tStore('studio_shows.filter_all_stages')} ({numbers.length})</option>
           <option value="draft">{$tStore('studio_shows.kanban_draft')} ({stageStats.draft})</option>
           <option value="in_practice">{$tStore('studio_shows.kanban_practice')} ({stageStats.in_practice})</option>
@@ -417,9 +428,9 @@
         </select>
       </div>
 
-      <div class="select-wrapper">
-        <Users size={14} class="select-icon" />
-        <select bind:value={selectedPmFilter} class="filter-select" id="select-pm-filter">
+      <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+        <Users class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <select bind:value={selectedPmFilter} class="bg-transparent border-0 text-xs font-semibold text-slate-700 outline-none cursor-pointer" id="select-pm-filter">
           <option value="all">{$tStore('studio_shows.filter_all_pms')}</option>
           {#each uniquePms as pm}
             <option value={pm}>{pm}</option>
@@ -428,52 +439,52 @@
       </div>
 
       <!-- View Switcher -->
-      <div class="view-switcher" role="group" aria-label="View Switcher">
+      <div class="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5" role="group" aria-label="View Switcher">
         <button
           type="button"
-          class="view-btn {currentView === 'grid' ? 'is-active' : ''}"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all {currentView === 'grid' ? 'bg-white text-primary shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'}"
           onclick={() => (currentView = 'grid')}
           id="btn-view-grid"
           title={$tStore('studio_shows.view_grid')}
         >
-          <LayoutGrid size={15} />
-          <span class="view-btn-text">{$tStore('studio_shows.view_grid')}</span>
+          <LayoutGrid class="w-3.5 h-3.5" />
+          <span>{$tStore('studio_shows.view_grid')}</span>
         </button>
 
         <button
           type="button"
-          class="view-btn {currentView === 'kanban' ? 'is-active' : ''}"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all {currentView === 'kanban' ? 'bg-white text-primary shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'}"
           onclick={() => (currentView = 'kanban')}
           id="btn-view-kanban"
           title={$tStore('studio_shows.view_kanban')}
         >
-          <Kanban size={15} />
-          <span class="view-btn-text">{$tStore('studio_shows.view_kanban')}</span>
+          <Kanban class="w-3.5 h-3.5" />
+          <span>{$tStore('studio_shows.view_kanban')}</span>
         </button>
 
         <button
           type="button"
-          class="view-btn {currentView === 'table' ? 'is-active' : ''}"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all {currentView === 'table' ? 'bg-white text-primary shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'}"
           onclick={() => (currentView = 'table')}
           id="btn-view-table"
           title={$tStore('studio_shows.view_table')}
         >
-          <Table size={15} />
-          <span class="view-btn-text">{$tStore('studio_shows.view_table')}</span>
+          <TableIcon class="w-3.5 h-3.5" />
+          <span>{$tStore('studio_shows.view_table')}</span>
         </button>
       </div>
     </div>
-  </div>
+  </Card>
 
   <!-- Empty State when filters produce zero matches -->
   {#if filteredNumbers.length === 0}
-    <div class="empty-state bento-card">
-      <Music size={42} class="empty-icon text-muted" />
-      <h3 class="empty-title">{$tStore('studio_shows.empty_title')}</h3>
-      <p class="empty-desc">{$tStore('studio_shows.empty_desc')}</p>
-      <button
-        type="button"
-        class="bento-btn bento-btn-sm"
+    <Card class="flex flex-col items-center justify-center p-12 text-center gap-3">
+      <Music class="w-10 h-10 text-muted-foreground" />
+      <h3 class="text-base font-bold text-foreground m-0">{$tStore('studio_shows.empty_title')}</h3>
+      <p class="text-xs text-muted-foreground max-w-sm m-0">{$tStore('studio_shows.empty_desc')}</p>
+      <Button
+        variant="outline"
+        size="sm"
         onclick={() => {
           searchQuery = '';
           selectedStageFilter = 'all';
@@ -481,569 +492,631 @@
         }}
       >
         {$tStore('studio_shows.btn_reset_filters')}
-      </button>
-    </div>
+      </Button>
+    </Card>
   {:else if currentView === 'grid'}
     <!-- VIEW 1: SCALABLE BENTO GRID (DEFAULT) -->
-    <div class="numbers-bento-grid">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {#each filteredNumbers as song, index (song.id)}
-        <div class="song-bento-card bento-card {song.stage === 'stage_ready' ? 'highlight-stage-ready' : ''}">
-          <div class="card-top-row">
-            <div class="order-badge">#{index + 1}</div>
-            <span class="stage-pill {getStageBadgeClass(song.stage)}">
-              {getStageLabel(song.stage)}
-            </span>
-          </div>
-
-          <div class="card-main-info">
-            <h3 class="song-title">{song.title}</h3>
-            <div class="genre-tag">{song.genre}</div>
-            <div class="personnel-row">
-              <span class="pm-badge"><strong>PM:</strong> {song.pmName}</span>
-              <span class="reviewer-badge"><strong>QC:</strong> {song.qcReviewer}</span>
+        <Card class="p-4 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md {song.stage === 'stage_ready' ? 'border-l-4 border-l-emerald-500' : ''}">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-mono text-[11px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">#{index + 1}</span>
+              <Badge variant="outline" class="font-bold text-[11px] {getStageBadgeVariant(song.stage)}">
+                {getStageLabel(song.stage)}
+              </Badge>
             </div>
-          </div>
 
-          <!-- Lineup Section -->
-          <div class="lineup-section">
-            <div class="lineup-label">Band Allocation:</div>
-            <div class="lineup-tags">
-              {#if song.lineup?.vocalLead}
-                <span class="lineup-tag vocal">
-                  <Mic2 size={10} /> {song.lineup.vocalLead}
-                </span>
-              {/if}
-              {#if song.lineup?.guitarLead}
-                <span class="lineup-tag guitar">
-                  <Guitar size={10} /> {song.lineup.guitarLead}
-                </span>
-              {/if}
-              {#if song.lineup?.bass}
-                <span class="lineup-tag bass">
-                  <Disc3 size={10} /> {song.lineup.bass}
-                </span>
-              {/if}
-              {#if song.lineup?.drums}
-                <span class="lineup-tag drums">
-                  🥁 {song.lineup.drums}
-                </span>
-              {/if}
-              {#if song.lineup?.keys}
-                <span class="lineup-tag keys">
-                  🎹 {song.lineup.keys}
-                </span>
-              {/if}
-              {#if !song.lineup?.vocalLead && !song.lineup?.guitarLead && !song.lineup?.bass && !song.lineup?.drums && !song.lineup?.keys}
-                <span class="lineup-tag unassigned">Lineup Unassigned</span>
-              {/if}
+            <h3 class="text-base font-bold text-foreground leading-snug m-0">{song.title}</h3>
+            <div class="text-xs text-muted-foreground font-medium mt-0.5">{song.genre}</div>
+            <div class="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+              <span class="bg-muted/50 px-1.5 py-0.5 rounded border border-border"><strong>PM:</strong> {song.pmName}</span>
+              <span class="bg-muted/50 px-1.5 py-0.5 rounded border border-border"><strong>QC:</strong> {song.qcReviewer}</span>
             </div>
-          </div>
 
-          <!-- QC Notes Box -->
-          {#if song.qcNotes}
-            <div class="qc-notes-box {song.stage === 'ready_for_qc' ? 'warning' : ''}">
-              <MessageSquare size={12} class="qc-note-icon" />
-              <span class="qc-note-text">{song.qcNotes}</span>
+            <!-- Lineup Section -->
+            <div class="mt-3 flex flex-col gap-1.5">
+              <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Band Allocation:</div>
+              <div class="flex flex-wrap gap-1.5">
+                {#if song.lineup?.vocalLead}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary">
+                    <Mic2 class="w-2.5 h-2.5" /> {song.lineup.vocalLead}
+                  </span>
+                {/if}
+                {#if song.lineup?.guitarLead}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-600">
+                    <Guitar class="w-2.5 h-2.5" /> {song.lineup.guitarLead}
+                  </span>
+                {/if}
+                {#if song.lineup?.bass}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-purple-500/10 text-purple-600">
+                    <Disc3 class="w-2.5 h-2.5" /> {song.lineup.bass}
+                  </span>
+                {/if}
+                {#if song.lineup?.drums}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600">
+                    🥁 {song.lineup.drums}
+                  </span>
+                {/if}
+                {#if song.lineup?.keys}
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-500/10 text-teal-600">
+                    🎹 {song.lineup.keys}
+                  </span>
+                {/if}
+                {#if !song.lineup?.vocalLead && !song.lineup?.guitarLead && !song.lineup?.bass && !song.lineup?.drums && !song.lineup?.keys}
+                  <span class="text-[11px] text-muted-foreground italic bg-muted/40 px-2 py-0.5 rounded">Lineup Unassigned</span>
+                {/if}
+              </div>
             </div>
-          {/if}
+
+            <!-- QC Notes Box -->
+            {#if song.qcNotes}
+              <div class="mt-2.5 flex items-start gap-1.5 text-xs p-2 rounded-lg border {song.stage === 'ready_for_qc' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/40 text-foreground border-border'}">
+                <MessageSquare class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{song.qcNotes}</span>
+              </div>
+            {/if}
+          </div>
 
           <!-- Responsive Action Buttons Row (Key-Scoped Roles) -->
-          <div class="card-btn-row">
-            <!-- Cross-Screen Link to Sprint Timetable -->
-            <a
-              href="/studio/shows/{showId}/sprints?song={encodeURIComponent(song.title)}"
-              class="bento-btn bento-btn-sm sprint-link-btn"
-              title="View all scheduled rehearsal sessions in Sprint Calendar"
-            >
-              <Clock size={12} />
-              <span>Sprint Schedule</span>
-            </a>
-
-            {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
-              <button
-                type="button"
-                class="bento-btn bento-btn-sm lineup-btn"
-                onclick={() => openLineupDrawer(song)}
+          <div class="flex flex-col gap-2 pt-2 border-t border-border">
+            <div class="flex flex-wrap gap-1.5 w-full">
+              <!-- Cross-Screen Link to Sprint Timetable -->
+              <a
+                href="/studio/shows/{showId}/sprints?song={encodeURIComponent(song.title)}"
+                class="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                title="View all scheduled rehearsal sessions in Sprint Calendar"
               >
-                <Users size={12} />
-                <span>Assign Lineup</span>
-              </button>
+                <Clock class="w-3 h-3" />
+                <span>Sprint</span>
+              </a>
 
-              {#if song.stage === 'draft'}
-                <button
-                  type="button"
-                  class="bento-btn bento-btn-sm action-btn-blue"
-                  onclick={() => advanceStatus(song, 'in_practice')}
+              {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="flex-1 gap-1 text-xs h-8"
+                  onclick={() => openLineupDrawer(song)}
                 >
-                  <span>Start Practice</span>
-                </button>
-              {:else if song.stage === 'in_practice'}
-                <button
-                  type="button"
-                  class="bento-btn bento-btn-sm action-btn-orange"
-                  onclick={() => advanceStatus(song, 'ready_for_qc')}
-                >
-                  <span>Submit for QC</span>
-                </button>
+                  <Users class="w-3 h-3" />
+                  <span>Lineup</span>
+                </Button>
+
+                {#if song.stage === 'draft'}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    class="flex-1 text-xs h-8 border border-border/70 font-semibold"
+                    onclick={() => advanceStatus(song, 'in_practice')}
+                  >
+                    <span>Start Practice</span>
+                  </Button>
+                {:else if song.stage === 'in_practice'}
+                  <Button
+                    size="sm"
+                    class="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                    onclick={() => advanceStatus(song, 'ready_for_qc')}
+                  >
+                    <span>Submit QC</span>
+                  </Button>
+                {/if}
               {/if}
-            {/if}
 
-            {#if song.stage === 'ready_for_qc' && canAuditSongScoped(userRole, false, song.qcReviewer === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
-              <button
-                type="button"
-                class="bento-btn bento-btn-sm qc-btn"
-                onclick={() => openQcDrawer(song)}
-              >
-                <UserCheck size={13} />
-                <span>Audit & Submit QC</span>
-              </button>
-            {/if}
+              {#if song.stage === 'ready_for_qc' && canAuditSongScoped(userRole, false, song.qcReviewer === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                <Button
+                  size="sm"
+                  class="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground gap-1 font-semibold"
+                  onclick={() => openQcDrawer(song)}
+                >
+                  <UserCheck class="w-3 h-3" />
+                  <span>Audit QC</span>
+                </Button>
+              {/if}
 
-            {#if song.stage === 'qc_approved' && canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
-              <button
-                type="button"
-                class="bento-btn bento-btn-sm action-btn-green"
-                onclick={() => advanceStatus(song, 'stage_ready')}
-              >
-                <CheckCircle2 size={12} />
-                <span>Promote to Stage Ready</span>
-              </button>
+              {#if song.stage === 'qc_approved' && canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                <Button
+                  size="sm"
+                  class="flex-1 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                  onclick={() => advanceStatus(song, 'stage_ready')}
+                >
+                  <CheckCircle2 class="w-3 h-3" />
+                  <span>Promote</span>
+                </Button>
+              {/if}
+            </div>
+
+            {#if song.stage === 'stage_ready'}
+              <div class="inline-flex items-center justify-center gap-1.5 w-full py-1.5 text-xs font-bold text-emerald-600 bg-emerald-500/10 rounded-lg">
+                <CheckCircle2 class="w-3.5 h-3.5 text-emerald-600" />
+                <span>100% Stage Ready</span>
+              </div>
             {/if}
           </div>
-
-          {#if song.stage === 'stage_ready'}
-            <div class="stage-ready-indicator">
-              <CheckCircle2 size={14} class="text-green" />
-              <span>100% Stage Ready</span>
-            </div>
-          {/if}
-        </div>
+        </Card>
       {/each}
     </div>
 
   {:else if currentView === 'kanban'}
     <!-- VIEW 2: REFINED KANBAN BOARD -->
-    <div class="kanban-scroll-wrapper">
-      <div class="kanban-board">
+    <div class="overflow-x-auto pb-2">
+      <div class="grid grid-cols-5 gap-3 min-w-[1100px]">
         <!-- Column 1: Draft -->
-        <div class="kanban-col bento-card">
-          <div class="col-header">
-            <span class="col-title" style="color: #64748b">{$tStore('show_mgmt.status.draft')}</span>
-            <span class="col-count">{filteredNumbers.filter((n) => n.stage === 'draft').length}</span>
+        <Card class="p-3 bg-slate-50 flex flex-col gap-3 min-h-[480px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-600">{$tStore('show_mgmt.status.draft')}</span>
+            <span class="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">{filteredNumbers.filter((n) => n.stage === 'draft').length}</span>
           </div>
-          <div class="col-cards">
+          <div class="flex flex-col gap-2.5">
             {#each filteredNumbers.filter((n) => n.stage === 'draft') as song (song.id)}
-              <div class="song-card bento-card">
-                <h4 class="song-title">{song.title}</h4>
-                <div class="song-pm">Leader (PM): {song.pmName}</div>
-                <div class="genre-micro">{song.genre}</div>
+              <Card class="p-3 bg-white flex flex-col gap-1.5 shadow-sm">
+                <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
+                <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
+                <div class="text-[11px] text-muted-foreground">{song.genre}</div>
                 {#if canManageNumbers(userRole)}
-                  <div class="card-btn-row">
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm lineup-btn"
-                      onclick={() => openLineupDrawer(song)}
-                    >
-                      <Users size={12} />
-                      <span>Assign Lineup</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm action-btn-blue"
-                      onclick={() => advanceStatus(song, 'in_practice')}
-                    >
-                      <span>Start Practice</span>
-                    </button>
+                  <div class="flex gap-1.5 mt-2">
+                    <Button variant="outline" size="sm" class="flex-1 text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
+                      <Users class="w-3 h-3 mr-1" /> Lineup
+                    </Button>
+                    <Button size="sm" class="flex-1 text-[11px] h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white" onclick={() => advanceStatus(song, 'in_practice')}>
+                      Start
+                    </Button>
                   </div>
                 {/if}
-              </div>
+              </Card>
             {/each}
           </div>
-        </div>
+        </Card>
 
         <!-- Column 2: In Practice -->
-        <div class="kanban-col bento-card">
-          <div class="col-header">
-            <span class="col-title text-blue">{$tStore('studio_shows.kanban_practice')}</span>
-            <span class="col-count">{filteredNumbers.filter((n) => n.stage === 'in_practice').length}</span>
+        <Card class="p-3 bg-slate-50 flex flex-col gap-3 min-h-[480px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-600">{$tStore('studio_shows.kanban_practice')}</span>
+            <span class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{filteredNumbers.filter((n) => n.stage === 'in_practice').length}</span>
           </div>
-          <div class="col-cards">
+          <div class="flex flex-col gap-2.5">
             {#each filteredNumbers.filter((n) => n.stage === 'in_practice') as song (song.id)}
-              <div class="song-card bento-card">
-                <h4 class="song-title">{song.title}</h4>
-                <div class="song-pm">Leader (PM): {song.pmName}</div>
-                <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
-
-                {#if song.lineup}
-                  <div class="lineup-tags">
-                    {#if song.lineup.vocalLead}<span class="lineup-tag vocal">Vocal: {song.lineup.vocalLead}</span>{/if}
-                    {#if song.lineup.guitarLead}<span class="lineup-tag guitar">Guitar: {song.lineup.guitarLead}</span>{/if}
-                    {#if song.lineup.bass}<span class="lineup-tag bass">Bass: {song.lineup.bass}</span>{/if}
-                    {#if song.lineup.drums}<span class="lineup-tag drums">Drums: {song.lineup.drums}</span>{/if}
-                  </div>
-                {/if}
+              <Card class="p-3 bg-white flex flex-col gap-1.5 shadow-sm">
+                <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
+                <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
+                <div class="text-[11px] text-muted-foreground">QC: {song.qcReviewer}</div>
 
                 {#if song.qcNotes}
-                  <div class="qc-notes-box warning"><MessageSquare size={12} /> {song.qcNotes}</div>
+                  <div class="text-[11px] p-1.5 bg-orange-50 text-orange-800 rounded border border-orange-200 flex items-start gap-1">
+                    <MessageSquare class="w-3 h-3 shrink-0 mt-0.5" /> {song.qcNotes}
+                  </div>
                 {/if}
 
                 {#if canManageNumbers(userRole)}
-                  <div class="card-btn-row">
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm lineup-btn"
-                      onclick={() => openLineupDrawer(song)}
-                    >
-                      <Users size={12} />
-                      <span>Assign Lineup</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm action-btn-orange"
-                      onclick={() => advanceStatus(song, 'ready_for_qc')}
-                    >
-                      <span>Submit for QC</span>
-                    </button>
+                  <div class="flex gap-1.5 mt-2">
+                    <Button variant="outline" size="sm" class="flex-1 text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
+                      Lineup
+                    </Button>
+                    <Button size="sm" class="flex-1 text-[11px] h-7 px-2 bg-primary text-primary-foreground" onclick={() => advanceStatus(song, 'ready_for_qc')}>
+                      Submit QC
+                    </Button>
                   </div>
                 {/if}
-              </div>
+              </Card>
             {/each}
           </div>
-        </div>
+        </Card>
 
         <!-- Column 3: Ready for QC -->
-        <div class="kanban-col bento-card">
-          <div class="col-header">
-            <span class="col-title text-orange">{$tStore('studio_shows.kanban_ready_qc')}</span>
-            <span class="col-count">{filteredNumbers.filter((n) => n.stage === 'ready_for_qc').length}</span>
+        <Card class="p-3 bg-slate-50 flex flex-col gap-3 min-h-[480px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-primary">{$tStore('studio_shows.kanban_ready_qc')}</span>
+            <span class="text-xs font-bold bg-orange-100 text-primary px-2 py-0.5 rounded-full">{filteredNumbers.filter((n) => n.stage === 'ready_for_qc').length}</span>
           </div>
-          <div class="col-cards">
+          <div class="flex flex-col gap-2.5">
             {#each filteredNumbers.filter((n) => n.stage === 'ready_for_qc') as song (song.id)}
-              <div class="song-card bento-card">
-                <h4 class="song-title">{song.title}</h4>
-                <div class="song-pm">Leader (PM): {song.pmName}</div>
-                <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
-                <div class="card-btn-row">
-                  <button
-                    type="button"
-                    class="bento-btn bento-btn-sm qc-btn"
-                    onclick={() => openQcDrawer(song)}
-                  >
-                    <UserCheck size={13} />
-                    <span>Audit & Submit QC</span>
-                  </button>
+              <Card class="p-3 bg-white flex flex-col gap-1.5 shadow-sm">
+                <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
+                <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
+                <div class="text-[11px] text-muted-foreground">QC: {song.qcReviewer}</div>
+                <div class="mt-2">
+                  <Button size="sm" class="w-full text-[11px] h-7 bg-orange-600 hover:bg-orange-700 text-white gap-1" onclick={() => openQcDrawer(song)}>
+                    <UserCheck class="w-3 h-3" /> Audit & Submit QC
+                  </Button>
                 </div>
-              </div>
+              </Card>
             {/each}
           </div>
-        </div>
+        </Card>
 
         <!-- Column 4: QC Approved -->
-        <div class="kanban-col bento-card">
-          <div class="col-header">
-            <span class="col-title text-indigo">{$tStore('studio_shows.kanban_qc_approved')}</span>
-            <span class="col-count">{filteredNumbers.filter((n) => n.stage === 'qc_approved').length}</span>
+        <Card class="p-3 bg-slate-50 flex flex-col gap-3 min-h-[480px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-600">{$tStore('studio_shows.kanban_qc_approved')}</span>
+            <span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{filteredNumbers.filter((n) => n.stage === 'qc_approved').length}</span>
           </div>
-          <div class="col-cards">
+          <div class="flex flex-col gap-2.5">
             {#each filteredNumbers.filter((n) => n.stage === 'qc_approved') as song (song.id)}
-              <div class="song-card bento-card">
-                <h4 class="song-title">{song.title}</h4>
-                <div class="song-pm">Leader (PM): {song.pmName}</div>
-                <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
+              <Card class="p-3 bg-white flex flex-col gap-1.5 shadow-sm">
+                <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
+                <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
                 {#if song.qcNotes}
-                  <div class="qc-notes-box"><MessageSquare size={12} /> {song.qcNotes}</div>
+                  <div class="text-[11px] p-1.5 bg-slate-50 text-slate-700 rounded border border-slate-200">{song.qcNotes}</div>
                 {/if}
-                <div class="card-btn-row">
-                  <button
-                    type="button"
-                    class="bento-btn bento-btn-sm action-btn-green"
-                    onclick={() => advanceStatus(song, 'stage_ready')}
-                  >
-                    <span>Promote to Stage Ready</span>
-                  </button>
+                <div class="mt-2">
+                  <Button size="sm" class="w-full text-[11px] h-7 bg-emerald-600 hover:bg-emerald-700 text-white" onclick={() => advanceStatus(song, 'stage_ready')}>
+                    Promote to Ready
+                  </Button>
                 </div>
-              </div>
+              </Card>
             {/each}
           </div>
-        </div>
+        </Card>
 
         <!-- Column 5: Stage Ready -->
-        <div class="kanban-col bento-card">
-          <div class="col-header">
-            <span class="col-title text-green">{$tStore('studio_shows.kanban_stage_ready')}</span>
-            <span class="col-count">{filteredNumbers.filter((n) => n.stage === 'stage_ready').length}</span>
+        <Card class="p-3 bg-slate-50 flex flex-col gap-3 min-h-[480px]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-600">{$tStore('studio_shows.kanban_stage_ready')}</span>
+            <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{filteredNumbers.filter((n) => n.stage === 'stage_ready').length}</span>
           </div>
-          <div class="col-cards">
+          <div class="flex flex-col gap-2.5">
             {#each filteredNumbers.filter((n) => n.stage === 'stage_ready') as song (song.id)}
-              <div class="song-card bento-card highlight-green">
-                <h4 class="song-title">{song.title}</h4>
-                <div class="song-pm">Leader (PM): {song.pmName}</div>
-                <div class="song-qc-meta">QC Reviewer: {song.qcReviewer}</div>
-                {#if song.qcNotes}
-                  <div class="qc-notes-box"><MessageSquare size={12} /> {song.qcNotes}</div>
-                {/if}
-                <div class="card-btn-row">
-                  <button
-                    type="button"
-                    class="bento-btn bento-btn-sm lineup-btn"
-                    onclick={() => openLineupDrawer(song)}
-                  >
-                    <Users size={12} />
-                    <span>Assign Lineup</span>
-                  </button>
-                  <div class="stage-ready-indicator">
-                    <CheckCircle2 size={13} class="text-green" />
-                    <span>Stage Ready</span>
+              <Card class="p-3 bg-white flex flex-col gap-1.5 shadow-sm border-l-4 border-l-emerald-500">
+                <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
+                <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
+                <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                  <Button variant="outline" size="sm" class="text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
+                    Lineup
+                  </Button>
+                  <div class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                    <CheckCircle2 class="w-3.5 h-3.5" /> Ready
                   </div>
                 </div>
-              </div>
+              </Card>
             {/each}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
 
   {:else if currentView === 'table'}
     <!-- VIEW 3: COMPACT PRODUCTION TABLE -->
-    <div class="table-container bento-card">
-      <table class="production-table">
-        <thead>
-          <tr>
-            <th class="col-th-order">{$tStore('studio_shows.th_order')}</th>
-            <th>{$tStore('studio_shows.th_song')}</th>
-            <th>{$tStore('studio_shows.th_genre')}</th>
-            <th>{$tStore('studio_shows.th_pm')}</th>
-            <th>{$tStore('studio_shows.th_lineup')}</th>
-            <th>{$tStore('studio_shows.th_stage')}</th>
-            <th>{$tStore('studio_shows.th_actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each filteredNumbers as song, idx (song.id)}
-            <tr class="table-row {song.stage === 'stage_ready' ? 'row-stage-ready' : ''}">
-              <td class="col-td-order">#{idx + 1}</td>
-              <td class="col-td-song">
-                <span class="row-song-title">{song.title}</span>
-                {#if song.qcNotes}
-                  <span class="row-qc-note" title={song.qcNotes}>
-                    <MessageSquare size={11} /> {song.qcNotes}
-                  </span>
-                {/if}
-              </td>
-              <td class="col-td-genre"><span class="genre-pill">{song.genre}</span></td>
-              <td class="col-td-pm">
-                <span class="pm-name">{song.pmName}</span>
-                <span class="reviewer-sub">QC: {song.qcReviewer}</span>
-              </td>
-              <td class="col-td-lineup">
-                <div class="table-lineup-chips">
-                  {#if song.lineup?.vocalLead}<span class="lineup-tag vocal">Vo: {song.lineup.vocalLead}</span>{/if}
-                  {#if song.lineup?.guitarLead}<span class="lineup-tag guitar">Gu: {song.lineup.guitarLead}</span>{/if}
-                  {#if song.lineup?.bass}<span class="lineup-tag bass">Ba: {song.lineup.bass}</span>{/if}
-                  {#if song.lineup?.drums}<span class="lineup-tag drums">Dr: {song.lineup.drums}</span>{/if}
-                  {#if song.lineup?.keys}<span class="lineup-tag keys">Ke: {song.lineup.keys}</span>{/if}
-                  {#if !song.lineup?.vocalLead && !song.lineup?.guitarLead && !song.lineup?.bass && !song.lineup?.drums && !song.lineup?.keys}
-                    <span class="lineup-tag unassigned">None</span>
-                  {/if}
-                </div>
-              </td>
-              <td class="col-td-stage">
-                <span class="stage-pill {getStageBadgeClass(song.stage)}">
-                  {getStageLabel(song.stage)}
-                </span>
-              </td>
-              <td class="col-td-actions">
-                <div class="table-action-group">
-                  <button
-                    type="button"
-                    class="table-btn-icon"
-                    onclick={() => openLineupDrawer(song)}
-                    title="Assign Band Lineup"
-                  >
-                    <Users size={14} />
-                  </button>
+    <Card class="p-0 overflow-hidden shadow-xs border border-border/80 rounded-2xl">
+      <div class="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead class="w-12 text-center text-xs">#</TableHead>
+              <TableHead class="text-xs">Song Title</TableHead>
+              <TableHead class="text-xs">Genre</TableHead>
+              <TableHead class="text-xs">PM / Leader</TableHead>
+              <TableHead class="text-xs">QC Reviewer</TableHead>
+              <TableHead class="text-xs">Lineup Status</TableHead>
+              <TableHead class="text-xs">Current Stage</TableHead>
+              <TableHead class="text-right text-xs">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {#each filteredNumbers as song, index (song.id)}
+              <TableRow>
+                <TableCell class="text-center font-bold text-xs text-muted-foreground">
+                  #{index + 1}
+                </TableCell>
+                <TableCell>
+                  <div class="font-bold text-sm text-foreground">{song.title}</div>
+                  <div class="text-xs text-muted-foreground">{song.genre}</div>
+                </TableCell>
+                <TableCell class="text-xs text-muted-foreground">{song.genre}</TableCell>
+                <TableCell class="text-xs font-semibold text-foreground">{song.pmName}</TableCell>
+                <TableCell class="text-xs text-muted-foreground">{song.qcReviewer || '—'}</TableCell>
+                <TableCell>
+                  <div class="flex flex-wrap gap-1">
+                    {#if song.lineup?.vocalLead}<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600">Vo: {song.lineup.vocalLead}</span>{/if}
+                    {#if song.lineup?.guitarLead}<span class="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Gu: {song.lineup.guitarLead}</span>{/if}
+                    {#if song.lineup?.bass}<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600">Ba: {song.lineup.bass}</span>{/if}
+                    {#if song.lineup?.drums}<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600">Dr: {song.lineup.drums}</span>{/if}
+                    {#if song.lineup?.keys}<span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600">Kb: {song.lineup.keys}</span>{/if}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" class="{getStageBadgeVariant(song.stage)} text-[11px] font-semibold">
+                    {getStageLabel(song.stage)}
+                  </Badge>
+                </TableCell>
+                <TableCell class="text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <a
+                      href="/studio/shows/{showId}/sprints?song={encodeURIComponent(song.title)}"
+                      class="h-7 px-2.5 inline-flex items-center justify-center text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors"
+                      title="View Rehearsals in Sprint Calendar"
+                    >
+                      <Clock class="w-3.5 h-3.5 mr-1" />
+                      <span>Sprint</span>
+                    </a>
 
-                  {#if song.stage === 'draft'}
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm action-btn-blue table-btn"
-                      onclick={() => advanceStatus(song, 'in_practice')}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="h-7 px-2"
+                      onclick={() => openLineupDrawer(song)}
+                      title="Assign Band Lineup"
                     >
-                      Start
-                    </button>
-                  {:else if song.stage === 'in_practice'}
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm action-btn-orange table-btn"
-                      onclick={() => advanceStatus(song, 'ready_for_qc')}
-                    >
-                      Submit QC
-                    </button>
-                  {:else if song.stage === 'ready_for_qc'}
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm qc-btn table-btn"
-                      onclick={() => openQcDrawer(song)}
-                    >
-                      Audit
-                    </button>
-                  {:else if song.stage === 'qc_approved'}
-                    <button
-                      type="button"
-                      class="bento-btn bento-btn-sm action-btn-green table-btn"
-                      onclick={() => advanceStatus(song, 'stage_ready')}
-                    >
-                      Promote
-                    </button>
-                  {:else}
-                    <CheckCircle2 size={16} class="text-green table-done-icon" />
-                  {/if}
-                </div>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
+                      <Users class="w-3.5 h-3.5" />
+                    </Button>
+
+                    {#if song.stage === 'draft'}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        class="h-7 px-2.5 text-xs border border-border/70 font-semibold"
+                        onclick={() => advanceStatus(song, 'in_practice')}
+                      >
+                        Start
+                      </Button>
+                    {:else if song.stage === 'in_practice'}
+                      <Button
+                        size="sm"
+                        class="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                        onclick={() => advanceStatus(song, 'ready_for_qc')}
+                      >
+                        Submit QC
+                      </Button>
+                    {:else if song.stage === 'ready_for_qc'}
+                      <Button
+                        size="sm"
+                        class="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                        onclick={() => openQcDrawer(song)}
+                      >
+                        Audit
+                      </Button>
+                    {:else if song.stage === 'qc_approved'}
+                      <Button
+                        size="sm"
+                        class="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onclick={() => advanceStatus(song, 'stage_ready')}
+                      >
+                        Promote
+                      </Button>
+                    {:else}
+                      <CheckCircle2 class="w-4 h-4 text-emerald-600 inline-block ml-2" />
+                    {/if}
+                  </div>
+                </TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
   {/if}
 </div>
 
 <!-- Modal: Add New Music Number -->
-{#if isAddModalOpen}
-  <div class="modal-backdrop" onclick={() => (isAddModalOpen = false)} role="presentation">
-    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
-      <div class="drawer-header">
-        <div>
-          <h2>{$tStore('studio_shows.modal_add_title')}</h2>
-          <p class="modal-subtitle">{$tStore('studio_shows.modal_add_desc')}</p>
-        </div>
-        <button class="icon-close" onclick={() => (isAddModalOpen = false)} aria-label="Close">
-          <X size={18} />
-        </button>
+<Dialog bind:open={isAddModalOpen}>
+  <DialogContent class="max-w-md">
+    <DialogHeader>
+      <DialogTitle>{$tStore('studio_shows.modal_add_title')}</DialogTitle>
+      <DialogDescription>{$tStore('studio_shows.modal_add_desc')}</DialogDescription>
+    </DialogHeader>
+
+    <form onsubmit={handleCreateNumber} class="flex flex-col gap-4 mt-2">
+      <div class="flex flex-col gap-1.5">
+        <Label for="new-song-title">{$tStore('studio_shows.label_song_title')}</Label>
+        <Input
+          id="new-song-title"
+          type="text"
+          bind:value={newTitle}
+          placeholder="e.g. Diễm Xưa, Đi Về Nhà..."
+          required
+        />
       </div>
 
-      <form onsubmit={handleCreateNumber} class="modal-form">
-        <div class="form-group">
-          <label for="new-song-title">{$tStore('studio_shows.label_song_title')}</label>
-          <input
-            id="new-song-title"
-            type="text"
-            bind:value={newTitle}
-            placeholder="e.g. Diễm Xưa, Đi Về Nhà..."
-            required
-            class="form-input"
-          />
+      <div class="flex flex-col gap-1.5">
+        <Label for="new-song-genre">{$tStore('studio_shows.label_genre')}</Label>
+        <Input
+          id="new-song-genre"
+          type="text"
+          bind:value={newGenre}
+          placeholder="e.g. Pop Rock, Acoustic Ballad, Jazz Fusion..."
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1.5">
+          <Label for="new-song-pm">{$tStore('studio_shows.label_pm')}</Label>
+          <select id="new-song-pm" bind:value={newPm} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
         </div>
 
-        <div class="form-group">
-          <label for="new-song-genre">{$tStore('studio_shows.label_genre')}</label>
-          <input
-            id="new-song-genre"
-            type="text"
-            bind:value={newGenre}
-            placeholder="e.g. Pop Rock, Acoustic Ballad, Jazz Fusion..."
-            class="form-input"
-          />
+        <div class="flex flex-col gap-1.5">
+          <Label for="new-song-qc">{$tStore('studio_shows.label_qc_reviewer')}</Label>
+          <select id="new-song-qc" bind:value={newQcReviewer} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
+            {#each availableRoster as member}
+              <option value={member}>{member}</option>
+            {/each}
+          </select>
         </div>
+      </div>
 
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="new-song-pm">{$tStore('studio_shows.label_pm')}</label>
-            <select id="new-song-pm" bind:value={newPm} class="form-input">
-              {#each availableRoster as member}
-                <option value={member}>{member}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="form-group flex-1">
-            <label for="new-song-qc">{$tStore('studio_shows.label_qc_reviewer')}</label>
-            <select id="new-song-qc" bind:value={newQcReviewer} class="form-input">
-              {#each availableRoster as member}
-                <option value={member}>{member}</option>
-              {/each}
-            </select>
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="bento-btn" onclick={() => (isAddModalOpen = false)}>
-            Cancel
-          </button>
-          <button type="submit" class="bento-btn bento-btn-primary">
-            {$tStore('studio_shows.btn_create_number')}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-{/if}
+      <DialogFooter class="mt-4">
+        <Button variant="outline" type="button" onclick={() => (isAddModalOpen = false)}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          {$tStore('studio_shows.btn_create_number')}
+        </Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
 
 <!-- Modal: QC Verdict Drawer -->
-{#if isQcDrawerOpen && activeSongForQc}
-  <div class="modal-backdrop" onclick={() => (isQcDrawerOpen = false)} role="presentation">
-    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
-      <div class="drawer-header">
-        <h2>{$tStore('studio_shows.qc_drawer_title')}</h2>
-        <button class="icon-close" onclick={() => (isQcDrawerOpen = false)} aria-label="Close"><X size={18} /></button>
+<Dialog bind:open={isQcDrawerOpen}>
+  <DialogContent class="sm:max-w-xl w-full p-0 overflow-hidden border border-border/80 shadow-2xl rounded-2xl bg-card">
+    <!-- Header with Accent Gradient Pill -->
+    <div class="p-5 sm:p-6 pb-4 border-b border-border/60 bg-gradient-to-b from-muted/40 to-card">
+      <div class="flex items-center gap-2.5 mb-1.5">
+        <div class="flex items-center justify-center w-8 h-8 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs shrink-0">
+          <ShieldCheck class="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <DialogTitle class="text-base font-bold text-foreground tracking-tight">
+            {$tStore('studio_shows.qc_drawer_title')}
+          </DialogTitle>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            Stage Quality Assurance & Rehearsal Assessment
+          </p>
+        </div>
       </div>
 
-      <p class="song-ref">Song: <strong>{activeSongForQc.title}</strong></p>
-      <p class="reviewer-ref">Assigned QC Reviewer: <strong>{activeSongForQc.qcReviewer}</strong></p>
+      {#if activeSongForQc}
+        <!-- Song & Reviewer Metadata Bento Strip -->
+        <div class="mt-3.5 p-2.5 sm:p-3 rounded-xl bg-background/80 border border-border/70 flex items-center justify-between gap-3 text-xs shadow-xs">
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <div class="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse"></div>
+            <div class="truncate">
+              <span class="text-muted-foreground font-medium">Song:</span>
+              <span class="font-bold text-foreground ml-1">{activeSongForQc.title}</span>
+              {#if activeSongForQc.genre}
+                <span class="text-[11px] text-muted-foreground ml-1.5 px-1.5 py-0.5 rounded-md bg-muted font-normal inline-block">
+                  {activeSongForQc.genre}
+                </span>
+              {/if}
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center gap-1.5 text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg border border-border/50 text-[11px] sm:text-xs">
+            <UserCheck class="w-3.5 h-3.5 text-primary" />
+            <span class="font-semibold text-foreground">{activeSongForQc.qcReviewer}</span>
+          </div>
+        </div>
+      {/if}
+    </div>
 
-      <form onsubmit={handleQcSubmit} class="modal-form">
-        <div class="form-group">
-          <label for="verdict">{$tStore('studio_shows.qc_verdict')}</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" bind:group={qcVerdict} value="pass" />
-              <span>{$tStore('studio_shows.qc_pass')}</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" bind:group={qcVerdict} value="revision" />
-              <span>{$tStore('studio_shows.qc_revision')}</span>
-            </label>
+    {#if activeSongForQc}
+      <form onsubmit={handleQcSubmit} class="p-5 sm:p-6 pt-4 sm:pt-5 flex flex-col gap-4 sm:gap-5">
+        <!-- Interactive Verdict Card Picker -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <Label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {$tStore('studio_shows.qc_verdict')}
+            </Label>
+            <span class="text-[11px] font-medium text-muted-foreground">Select decision</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Pass Option Card -->
+            <button
+              type="button"
+              onclick={() => (qcVerdict = 'pass')}
+              class="relative flex flex-col gap-2 p-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer {qcVerdict === 'pass'
+                ? 'border-emerald-500/80 bg-emerald-500/10 shadow-sm ring-2 ring-emerald-500/20'
+                : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border'}"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center justify-center w-7 h-7 rounded-lg {qcVerdict === 'pass' ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'} transition-colors">
+                  <ThumbsUp class="w-3.5 h-3.5" />
+                </div>
+                {#if qcVerdict === 'pass'}
+                  <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                {/if}
+              </div>
+              <div>
+                <div class="text-xs font-bold {qcVerdict === 'pass' ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}">
+                  {$tStore('studio_shows.qc_pass')}
+                </div>
+                <div class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                  Ready to advance to Stage Ready pipeline.
+                </div>
+              </div>
+            </button>
+
+            <!-- Revision Option Card -->
+            <button
+              type="button"
+              onclick={() => (qcVerdict = 'revision')}
+              class="relative flex flex-col gap-2 p-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer {qcVerdict === 'revision'
+                ? 'border-amber-500/80 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20'
+                : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border'}"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center justify-center w-7 h-7 rounded-lg {qcVerdict === 'revision' ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground'} transition-colors">
+                  <RefreshCw class="w-3.5 h-3.5" />
+                </div>
+                {#if qcVerdict === 'revision'}
+                  <span class="flex h-2 w-2 rounded-full bg-amber-500"></span>
+                {/if}
+              </div>
+              <div>
+                <div class="text-xs font-bold {qcVerdict === 'revision' ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}">
+                  {$tStore('studio_shows.qc_revision')}
+                </div>
+                <div class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                  Return to practice band with audit feedback.
+                </div>
+              </div>
+            </button>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="qc-notes">{$tStore('studio_shows.qc_notes')}</label>
+        <!-- Notes / Feedback Field -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <Label for="qc-notes" class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {$tStore('studio_shows.qc_notes')}
+            </Label>
+            <span class="text-[11px] text-muted-foreground">Required</span>
+          </div>
           <textarea
             id="qc-notes"
             bind:value={qcNotesInput}
             rows="3"
-            placeholder="Feedback notes on vocal intonation, rhythm tightness, instrument volume balance..."
+            placeholder="Provide specific notes on vocal intonation, rhythm tightness, instrument balance..."
             required
-            class="form-input"
+            class="w-full p-3 text-xs leading-relaxed bg-background border border-input rounded-xl outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs resize-none placeholder:text-muted-foreground/60"
           ></textarea>
         </div>
 
-        <div class="modal-actions">
-          <button type="button" class="bento-btn" onclick={() => (isQcDrawerOpen = false)}>Cancel</button>
-          <button type="submit" class="bento-btn bento-btn-primary">
+        <!-- Dialog Footer Actions -->
+        <DialogFooter class="flex items-center justify-end gap-2.5 pt-2 border-t border-border/50 mt-1">
+          <Button
+            variant="ghost"
+            type="button"
+            class="h-9 px-4 text-xs font-semibold rounded-xl text-muted-foreground hover:text-foreground"
+            onclick={() => (isQcDrawerOpen = false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            class="h-9 px-5 text-xs font-bold rounded-xl gap-1.5 shadow-sm transition-all {qcVerdict === 'pass' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}"
+          >
+            {#if qcVerdict === 'pass'}
+              <CheckCircle2 class="w-3.5 h-3.5" />
+            {:else}
+              <RefreshCw class="w-3.5 h-3.5" />
+            {/if}
             {$tStore('studio_shows.btn_submit_qc')}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
-    </div>
-  </div>
-{/if}
+    {/if}
+  </DialogContent>
+</Dialog>
 
 <!-- Modal: Lineup Role Assignment Drawer -->
-{#if isLineupDrawerOpen && activeSongForLineup}
-  <div class="modal-backdrop" onclick={() => (isLineupDrawerOpen = false)} role="presentation">
-    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
-      <div class="drawer-header">
-        <h2>Assign Band Lineup</h2>
-        <button class="icon-close" onclick={() => (isLineupDrawerOpen = false)} aria-label="Close"><X size={18} /></button>
-      </div>
+<Dialog bind:open={isLineupDrawerOpen}>
+  <DialogContent class="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Assign Band Lineup</DialogTitle>
+      {#if activeSongForLineup}
+        <DialogDescription>
+          Song: <strong class="text-foreground">{activeSongForLineup.title}</strong> ({activeSongForLineup.genre})
+        </DialogDescription>
+      {/if}
+    </DialogHeader>
 
-      <p class="song-ref">Song: <strong>{activeSongForLineup.title}</strong> ({activeSongForLineup.genre})</p>
-
-      <form onsubmit={handleLineupSubmit} class="modal-form">
-        <div class="form-group">
-          <label for="role-vocal">Vocal Lead</label>
-          <select id="role-vocal" bind:value={formVocalLead} class="form-input">
+    {#if activeSongForLineup}
+      <form onsubmit={handleLineupSubmit} class="flex flex-col gap-3.5 mt-2">
+        <div class="flex flex-col gap-1.5">
+          <Label for="role-vocal">Vocal Lead</Label>
+          <select id="role-vocal" bind:value={formVocalLead} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
             <option value="">-- Unassigned --</option>
             {#each availableRoster as member}
               <option value={member}>{member}</option>
@@ -1051,9 +1124,9 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="role-guitar">Guitar Lead / Solo</label>
-          <select id="role-guitar" bind:value={formGuitarLead} class="form-input">
+        <div class="flex flex-col gap-1.5">
+          <Label for="role-guitar">Guitar Lead / Solo</Label>
+          <select id="role-guitar" bind:value={formGuitarLead} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
             <option value="">-- Unassigned --</option>
             {#each availableRoster as member}
               <option value={member}>{member}</option>
@@ -1061,9 +1134,9 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="role-bass">Bass Guitar</label>
-          <select id="role-bass" bind:value={formBass} class="form-input">
+        <div class="flex flex-col gap-1.5">
+          <Label for="role-bass">Bass Guitar</Label>
+          <select id="role-bass" bind:value={formBass} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
             <option value="">-- Unassigned --</option>
             {#each availableRoster as member}
               <option value={member}>{member}</option>
@@ -1071,9 +1144,9 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="role-drums">Drum Kit</label>
-          <select id="role-drums" bind:value={formDrums} class="form-input">
+        <div class="flex flex-col gap-1.5">
+          <Label for="role-drums">Drum Kit</Label>
+          <select id="role-drums" bind:value={formDrums} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
             <option value="">-- Unassigned --</option>
             {#each availableRoster as member}
               <option value={member}>{member}</option>
@@ -1081,9 +1154,9 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="role-keys">Keyboard / Synthesizer</label>
-          <select id="role-keys" bind:value={formKeys} class="form-input">
+        <div class="flex flex-col gap-1.5">
+          <Label for="role-keys">Keyboard / Synthesizer</Label>
+          <select id="role-keys" bind:value={formKeys} class="h-9 px-3 text-xs bg-background border border-input rounded-md outline-none">
             <option value="">-- Unassigned --</option>
             {#each availableRoster as member}
               <option value={member}>{member}</option>
@@ -1091,879 +1164,13 @@
           </select>
         </div>
 
-        <div class="modal-actions">
-          <button type="button" class="bento-btn" onclick={() => (isLineupDrawerOpen = false)}>Cancel</button>
-          <button type="submit" class="bento-btn bento-btn-primary">
+        <DialogFooter class="mt-4">
+          <Button variant="outline" type="button" onclick={() => (isLineupDrawerOpen = false)}>Cancel</Button>
+          <Button type="submit">
             Save Lineup Allocation
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </form>
-    </div>
-  </div>
-{/if}
-
-<style>
-  .numbers-subpage {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .bento-card {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 18px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
-  }
-
-  /* --------------------------------------------------------------------------
-     1. Pipeline Funnel Summary
-     -------------------------------------------------------------------------- */
-  .pipeline-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    background: #ffffff;
-  }
-
-  .funnel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .funnel-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .funnel-heading {
-    font-family: 'Outfit', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: #0f172a;
-  }
-
-  .funnel-sub {
-    font-size: 13px;
-    color: #64748b;
-    margin-left: 4px;
-  }
-
-  .funnel-tiles {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 10px;
-  }
-
-  .funnel-tile {
-    background: #f8fafc;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 12px;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    text-align: left;
-  }
-
-  .funnel-tile:hover {
-    background: #ffffff;
-    border-color: rgba(255, 107, 0, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-
-  .funnel-tile.is-active {
-    background: #fff7ed;
-    border-color: #ff6b00;
-    box-shadow: 0 2px 8px rgba(255, 107, 0, 0.15);
-  }
-
-  .tile-count {
-    font-family: 'Outfit', sans-serif;
-    font-size: 20px;
-    font-weight: 800;
-    line-height: 1;
-    color: #0f172a;
-  }
-
-  .tile-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
-  }
-
-  .text-slate { color: #64748b; }
-  .text-blue { color: #2563eb; }
-  .text-orange { color: #ff6b00; }
-  .text-indigo { color: #4f46e5; }
-  .text-green { color: #16a34a; }
-
-  /* --------------------------------------------------------------------------
-     2. Toolbar & View Controls
-     -------------------------------------------------------------------------- */
-  .toolbar-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px 16px;
-  }
-
-  .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #f8fafc;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 10px;
-    padding: 6px 12px;
-    flex: 1 1 280px;
-    max-width: 440px;
-  }
-
-  .search-input {
-    border: none;
-    background: transparent;
-    font-size: 13px;
-    color: #0f172a;
-    width: 100%;
-    outline: none;
-  }
-
-  .clear-search-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-  }
-
-  .filters-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .select-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #f8fafc;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 10px;
-    padding: 6px 10px;
-  }
-
-  .filter-select {
-    border: none;
-    background: transparent;
-    font-size: 12px;
-    font-weight: 600;
-    color: #334155;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .view-switcher {
-    display: flex;
-    align-items: center;
-    background: #f1f5f9;
-    border-radius: 10px;
-    padding: 3px;
-    gap: 2px;
-  }
-
-  .view-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .view-btn:hover {
-    color: #0f172a;
-  }
-
-  .view-btn.is-active {
-    background: #ffffff;
-    color: #ff6b00;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    font-weight: 700;
-  }
-
-  /* --------------------------------------------------------------------------
-     3. Scalable Bento Grid View
-     -------------------------------------------------------------------------- */
-  .numbers-bento-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 16px;
-  }
-
-  .song-bento-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 18px;
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-  }
-
-  .song-bento-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 107, 0, 0.3);
-    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
-  }
-
-  .song-bento-card.highlight-stage-ready {
-    border-left: 4px solid #16a34a;
-  }
-
-  .card-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .order-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    background: #f1f5f9;
-    padding: 2px 8px;
-    border-radius: 6px;
-  }
-
-  .card-main-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .song-title {
-    font-family: 'Outfit', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-    line-height: 1.3;
-  }
-
-  .genre-tag {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 500;
-  }
-
-  .personnel-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
-    font-size: 12px;
-    color: #475569;
-  }
-
-  .pm-badge, .reviewer-badge {
-    background: #f8fafc;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  .lineup-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .lineup-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .lineup-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-
-  .lineup-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: #f1f5f9;
-    color: #334155;
-  }
-
-  .lineup-tag.vocal { background: rgba(255, 107, 0, 0.1); color: #ff6b00; }
-  .lineup-tag.guitar { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
-  .lineup-tag.bass { background: rgba(147, 51, 234, 0.1); color: #9333ea; }
-  .lineup-tag.drums { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
-  .lineup-tag.keys { background: rgba(13, 148, 136, 0.1); color: #0d9488; }
-  .lineup-tag.unassigned { color: #94a3b8; font-style: italic; background: #f8fafc; }
-
-  .qc-notes-box {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 12px;
-    background: #f8fafc;
-    padding: 8px 10px;
-    border-radius: 8px;
-    color: #334155;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  .qc-notes-box.warning {
-    background: #fff7ed;
-    color: #c2410c;
-    border-color: #ffedd5;
-  }
-
-  .qc-note-icon {
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .card-btn-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 6px;
-    width: 100%;
-  }
-
-  .lineup-btn, .action-btn-blue, .action-btn-orange, .action-btn-green, .qc-btn {
-    flex: 1 1 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 6px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .lineup-btn {
-    background: #f1f5f9;
-    color: #334155;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-  }
-
-  .lineup-btn:hover {
-    background: #e2e8f0;
-  }
-
-  .action-btn-blue {
-    background: rgba(37, 99, 235, 0.1);
-    color: #2563eb;
-    border: 1px solid rgba(37, 99, 235, 0.2);
-  }
-
-  .action-btn-blue:hover {
-    background: #2563eb;
-    color: #ffffff;
-  }
-
-  .action-btn-orange {
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-    border: 1px solid rgba(255, 107, 0, 0.2);
-  }
-
-  .action-btn-orange:hover {
-    background: #ff6b00;
-    color: #ffffff;
-  }
-
-  .qc-btn {
-    background: #fff7ed;
-    color: #ea580c;
-    border: 1px solid #fdba74;
-  }
-
-  .qc-btn:hover {
-    background: #ea580c;
-    color: #ffffff;
-  }
-
-  .action-btn-green {
-    background: rgba(22, 163, 74, 0.1);
-    color: #16a34a;
-    border: 1px solid rgba(22, 163, 74, 0.2);
-  }
-
-  .action-btn-green:hover {
-    background: #16a34a;
-    color: #ffffff;
-  }
-
-  .stage-ready-indicator {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    padding: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #16a34a;
-    background: rgba(22, 163, 74, 0.08);
-    border-radius: 8px;
-  }
-
-  /* Stage Pills */
-  .stage-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .badge-draft { background: #f1f5f9; color: #64748b; }
-  .badge-practice { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
-  .badge-ready-qc { background: rgba(255, 107, 0, 0.1); color: #ff6b00; }
-  .badge-qc-approved { background: rgba(79, 70, 229, 0.1); color: #4f46e5; }
-  .badge-stage-ready { background: rgba(22, 163, 74, 0.12); color: #16a34a; }
-
-  /* --------------------------------------------------------------------------
-     4. Refined Kanban View
-     -------------------------------------------------------------------------- */
-  .kanban-scroll-wrapper {
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-
-  .kanban-board {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(225px, 1fr));
-    gap: 12px;
-    min-width: 1140px;
-    width: 100%;
-  }
-
-  .kanban-col {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: #f8fafc;
-    min-height: 480px;
-  }
-
-  .col-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .col-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: #475569;
-  }
-
-  .col-count {
-    background: #e2e8f0;
-    color: #475569;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .col-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .song-card {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.07);
-    border-radius: 12px;
-  }
-
-  .song-card.highlight-green {
-    border-left: 3px solid #16a34a;
-  }
-
-  .genre-micro {
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .song-pm, .song-qc-meta {
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  /* --------------------------------------------------------------------------
-     5. Compact Production Table View
-     -------------------------------------------------------------------------- */
-  .table-container {
-    overflow-x: auto;
-    padding: 0;
-  }
-
-  .production-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    text-align: left;
-  }
-
-  .production-table th {
-    background: #f8fafc;
-    padding: 12px 14px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .production-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    vertical-align: middle;
-  }
-
-  .table-row:hover {
-    background: #fdfdfd;
-  }
-
-  .col-th-order, .col-td-order {
-    width: 45px;
-    text-align: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    color: #94a3b8;
-  }
-
-  .col-td-song {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .row-song-title {
-    font-weight: 700;
-    color: #0f172a;
-  }
-
-  .row-qc-note {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: #c2410c;
-  }
-
-  .genre-pill {
-    background: #f1f5f9;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    color: #475569;
-  }
-
-  .col-td-pm {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .pm-name {
-    font-weight: 600;
-    color: #1e293b;
-  }
-
-  .reviewer-sub {
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .table-lineup-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    max-width: 260px;
-  }
-
-  .table-action-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .table-btn-icon {
-    background: #f1f5f9;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 6px;
-    padding: 6px;
-    cursor: pointer;
-    color: #475569;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .table-btn-icon:hover {
-    background: #e2e8f0;
-  }
-
-  .table-btn {
-    font-size: 11px;
-    padding: 4px 10px;
-    flex: initial;
-  }
-
-  .table-done-icon {
-    margin-left: 8px;
-  }
-
-  /* --------------------------------------------------------------------------
-     6. Empty State
-     -------------------------------------------------------------------------- */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 48px 24px;
-    text-align: center;
-  }
-
-  .empty-title {
-    font-family: 'Outfit', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-  }
-
-  .empty-desc {
-    font-size: 13px;
-    color: #64748b;
-    max-width: 400px;
-    margin: 0;
-  }
-
-  /* --------------------------------------------------------------------------
-     7. Modals & Drawers
-     -------------------------------------------------------------------------- */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 16px;
-  }
-
-  .modal-card {
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.2);
-  }
-
-  .drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .drawer-header h2 {
-    font-family: 'Outfit', sans-serif;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0;
-  }
-
-  .modal-subtitle {
-    font-size: 12px;
-    color: #64748b;
-    margin-top: 4px;
-  }
-
-  .icon-close {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #94a3b8;
-    padding: 4px;
-  }
-
-  .icon-close:hover {
-    color: #0f172a;
-  }
-
-  .song-ref, .reviewer-ref {
-    font-size: 13px;
-    color: #475569;
-    margin-top: 6px;
-  }
-
-  .modal-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin-top: 14px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .form-group.flex-1 {
-    flex: 1;
-  }
-
-  .form-row {
-    display: flex;
-    gap: 12px;
-  }
-
-  .form-group label {
-    font-size: 12px;
-    font-weight: 700;
-    color: #334155;
-  }
-
-  .form-input {
-    padding: 8px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 13px;
-    outline: none;
-  }
-
-  .form-input:focus {
-    border-color: #ff6b00;
-    box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2);
-  }
-
-  .radio-group {
-    display: flex;
-    gap: 16px;
-  }
-
-  .radio-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 8px;
-  }
-
-  /* Responsive Adjustments */
-  @media (max-width: 900px) {
-    .funnel-tiles {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    .view-btn-text {
-      display: none;
-    }
-  }
-
-  @media (max-width: 600px) {
-    .funnel-tiles {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .toolbar-card {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 10px;
-    }
-
-    .search-box {
-      max-width: 100%;
-    }
-
-    .filters-row {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 8px;
-    }
-
-    .select-wrapper {
-      width: 100%;
-    }
-
-    .filter-select {
-      width: 100%;
-    }
-
-    .view-switcher {
-      justify-content: center;
-      width: 100%;
-    }
-
-    .view-btn-text {
-      display: inline !important;
-    }
-
-    .numbers-bento-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
-
-
+    {/if}
+  </DialogContent>
+</Dialog>

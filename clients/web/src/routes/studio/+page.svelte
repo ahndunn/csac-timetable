@@ -7,11 +7,11 @@
     ArrowRight,
     Sparkles,
     CheckCircle2,
-    Clock,
     FileSpreadsheet,
-    Shield,
-    Users,
   } from '@lucide/svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
 
   interface ShowSummary {
     id: string;
@@ -54,222 +54,90 @@
 
 <Navbar />
 
-<div class="studio-hub-container">
-  <!-- Studio Hero Section -->
-  <div class="hero-bento bento-card">
-    <div class="hero-content">
-      <div class="hero-tag">
-        <Sparkles size={16} class="text-orange" />
-        <span>CSAC Music Production Studio</span>
-      </div>
-      <h1 class="hero-title">Show-Driven Music Production & Rehearsals</h1>
-      <p class="hero-description">
-        Manage performance numbers, practice sprints, Quality Check (QC) audits, and independent instrument fleet custody in one unified workspace.
+<div class="mx-auto flex max-w-7xl flex-col gap-8 p-6">
+  <!-- Studio Hero Section with Vivid Orange Glow Accent -->
+  <Card class="relative overflow-hidden rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-card via-card to-primary/10 p-8 sm:p-10 shadow-lg shadow-primary/5">
+    <!-- Ambient Radial Glow Accent -->
+    <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-primary/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-primary/10 blur-2xl"></div>
+
+    <div class="relative z-10 flex flex-col gap-4 max-w-3xl">
+      <Badge variant="outline" class="w-fit bg-primary/15 text-primary border-primary/30 gap-1.5 font-bold shadow-xs py-1 px-3">
+        <Sparkles class="w-4 h-4 text-primary animate-pulse" />
+        <span>{$tStore('studio.tag')}</span>
+      </Badge>
+
+      <h1 class="text-3xl font-black tracking-tight text-foreground sm:text-5xl">
+        <span class="text-primary">CSAC</span> {$tStore('studio.hero_title').replace('CSAC ', '')}
+      </h1>
+      <p class="text-sm sm:text-base leading-relaxed text-muted-foreground font-medium max-w-2xl">
+        {$tStore('studio.hero_description')}
       </p>
-    </div>
 
-    <div class="quick-actions">
-      <a href="/studio/gear" class="bento-btn bento-btn-secondary">
-        <FileSpreadsheet size={16} class="text-blue" />
-        <span>{$tStore('nav.gear')}</span>
-      </a>
-      <a href="/admin/shows" class="bento-btn bento-btn-primary">
-        <Calendar size={16} />
-        <span>{$tStore('nav.admin_shows')}</span>
-      </a>
-    </div>
-  </div>
-
-  <!-- Active Shows Directory -->
-  <div class="section-title">
-    <h2>Active Music Shows</h2>
-    <p>Select a show workspace to manage song numbers, practice sprints, free time, and band roster.</p>
-  </div>
-
-  <div class="shows-grid">
-    {#each activeShows as show (show.id)}
-      <div class="show-card bento-card">
-        <div class="card-header">
-          <div class="show-icon"><Music size={20} class="text-orange" /></div>
-          <div>
-            <h3 class="show-title">{show.title}</h3>
-            <span class="show-venue">{show.venue} • {show.startDate}</span>
-          </div>
-        </div>
-
-        <p class="show-desc">{show.description}</p>
-
-        <div class="show-stats">
-          <div class="stat">
-            <span class="stat-num">{show.numbersCount}</span>
-            <span class="stat-tag">Numbers</span>
-          </div>
-          <div class="stat">
-            <span class="stat-num text-green">{show.qcPassRate}%</span>
-            <span class="stat-tag">QC Pass Rate</span>
-          </div>
-        </div>
-
-        <a href="/studio/shows/{show.id}/overview" class="bento-btn bento-btn-primary open-show-btn">
-          <span>Enter Show Studio Workspace</span>
-          <ArrowRight size={15} />
-        </a>
+      <div class="flex flex-wrap items-center gap-3 pt-3">
+        <Button href="/studio/shows/show-2026-annual/overview" variant="default" size="lg" class="shadow-md shadow-primary/30 font-bold gap-2 px-5 text-sm h-10">
+          <Music class="w-4 h-4" />
+          <span>Enter Annual Concert 2026</span>
+          <ArrowRight class="w-4 h-4" />
+        </Button>
+        <Button href="/studio/gear" variant="outline" size="lg" class="gap-2 px-5 text-sm h-10 hover:border-primary/40 hover:text-primary transition-all">
+          <FileSpreadsheet class="w-4 h-4 text-primary" />
+          <span>Instrument Fleet</span>
+        </Button>
       </div>
-    {/each}
+    </div>
+  </Card>
+
+  <!-- Active Shows Grid -->
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary">
+          <Calendar class="w-4 h-4 text-primary" />
+        </div>
+        <h2 class="text-xl font-extrabold text-foreground tracking-tight">{$tStore('studio.active_shows_title')}</h2>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {#each activeShows as show}
+        <Card class="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/50">
+          <!-- Subtle top color strip -->
+          <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/80 via-primary to-primary/40 rounded-t-2xl opacity-80 group-hover:opacity-100 transition-opacity"></div>
+
+          <div class="flex flex-col gap-3.5">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{show.title}</h3>
+              <Badge variant="outline" class="bg-primary/10 text-primary border-primary/20 text-xs font-bold">
+                {show.numbersCount} Numbers
+              </Badge>
+            </div>
+
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              {show.description}
+            </p>
+
+            <div class="grid grid-cols-2 gap-3 rounded-xl border border-border/80 bg-muted/40 p-3 text-xs text-muted-foreground">
+              <div class="flex items-center gap-2">
+                <Calendar class="w-4 h-4 text-primary" />
+                <span class="font-medium">{show.startDate} &rarr; {show.endDate}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+                <span>QC Pass: <strong class="text-foreground">{show.qcPassRate}%</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-border pt-4 mt-6">
+            <span class="text-xs font-semibold text-muted-foreground">{show.venue}</span>
+            <Button href="/studio/shows/{show.id}/overview" variant="default" size="sm" class="gap-1.5 font-bold shadow-xs">
+              <span>Open Studio</span>
+              <ArrowRight class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Button>
+          </div>
+        </Card>
+      {/each}
+    </div>
   </div>
 </div>
-
-<style>
-  .studio-hub-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .bento-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-
-  .hero-bento {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: linear-gradient(135deg, #ffffff 0%, #fffbf7 100%);
-    border: 1px solid rgba(255, 107, 0, 0.2);
-  }
-
-  .hero-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 12px;
-  }
-
-  .hero-title {
-    font-size: 26px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 8px 0;
-  }
-
-  .hero-description {
-    font-size: 14px;
-    color: #64748b;
-    margin: 0;
-    max-width: 640px;
-  }
-
-  .quick-actions {
-    display: flex;
-    gap: 12px;
-  }
-
-  .section-title h2 {
-    font-size: 20px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 4px 0;
-  }
-
-  .section-title p {
-    font-size: 13px;
-    color: #64748b;
-    margin: 0;
-  }
-
-  .shows-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 20px;
-  }
-
-  .show-card {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .show-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    background: rgba(255, 107, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .show-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 2px 0;
-  }
-
-  .show-venue {
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  .show-desc {
-    font-size: 13px;
-    color: #475569;
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .show-stats {
-    display: flex;
-    gap: 16px;
-    background: #f8fafc;
-    padding: 10px 16px;
-    border-radius: 10px;
-  }
-
-  .stat {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .stat-num {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  .stat-num.text-green { color: #16a34a; }
-
-  .stat-tag {
-    font-size: 11px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-
-  .open-show-btn {
-    width: 100%;
-    justify-content: center;
-    text-decoration: none;
-  }
-</style>

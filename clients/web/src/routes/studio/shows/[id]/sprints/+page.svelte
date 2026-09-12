@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { tStore } from '$lib/i18n';
   import { page } from '$app/stores';
-  import { canTriggerScheduler, canViewHistory, hasRole } from '$lib/auth';
+  import { canTriggerScheduler, canViewHistory } from '$lib/auth';
   import TaskStatusSignal from '$lib/components/TaskStatusSignal.svelte';
   import type { UserRole, ScheduleRunHistoryItem, AvailabilityHistoryItem } from '$lib/types/timetable';
   import {
@@ -10,14 +10,12 @@
     Clock,
     Wand2,
     Check,
-    AlertCircle,
     CheckCircle2,
     Filter,
     Sparkles,
     Music,
     MapPin,
     Users,
-    ChevronDown,
     Trash2,
     Zap,
     History as HistoryIcon,
@@ -25,10 +23,28 @@
     X,
     Activity,
     LayoutGrid,
-    Table,
+    Table as TableIcon,
   } from '@lucide/svelte';
 
   import { api } from '$lib/api/client';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
+  import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+  } from '$lib/components/ui/dialog';
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '$lib/components/ui/table';
 
   let { data } = $props();
 
@@ -78,7 +94,6 @@
   // Auto-scheduled sprint rehearsals state & SSE Real-time streaming
   let isAutoScheduled = $state(true);
   let isScheduling = $state(false);
-  let sseStatus = $state<'connected' | 'syncing' | 'idle'>('connected');
   let filterSong = $state($page.url.searchParams.get('song') || 'all');
   let filterRoom = $state('all');
 
@@ -234,15 +249,14 @@
     try {
       const res = await fetch('/api/v1/sprints/sprint-1/schedule', { method: 'POST' });
       if (res.ok) {
-        // Subscribe to real-time SSE stream
         const eventSource = new EventSource('/api/v1/sprints/sprint-1/schedule/stream');
         eventSource.addEventListener('schedule_status', (e: MessageEvent) => {
-          const data = JSON.parse(e.data);
-          if (data.status === 'processing') {
+          const sseData = JSON.parse(e.data);
+          if (sseData.status === 'processing') {
             taskStatus = 'processing';
           }
         });
-        eventSource.addEventListener('schedule_updated', (e: MessageEvent) => {
+        eventSource.addEventListener('schedule_updated', () => {
           taskStatus = 'completed';
           isScheduling = false;
           isAutoScheduled = true;
@@ -251,7 +265,6 @@
           setTimeout(() => { activeToast = null; }, 4000);
         });
       } else {
-        // Fallback simulation
         setTimeout(() => {
           taskStatus = 'processing';
           setTimeout(() => {
@@ -294,7 +307,6 @@
     };
   });
 
-  // Filtered scheduled sessions
   let filteredSessions = $derived(
     scheduledSessions.filter((s) => {
       const matchSong = filterSong === 'all' || s.songTitle === filterSong;
@@ -308,119 +320,120 @@
   const uniqueRooms = Array.from(new Set(scheduledSessions.map((s) => s.room)));
 </script>
 
-<div class="sprints-subpage">
+<div class="flex flex-col gap-5">
   <!-- Active Sprint Banner -->
-  <div class="sprint-header bento-card">
-    <div class="header-info">
-      <div class="sprint-tag-row">
-        <div class="sprint-tag">
-          <CalendarIcon size={14} class="text-orange" />
-          <span>{$tStore('studio_shows.active_sprint')}: Sprint 3 (Stage QC & 15m Rehearsal Optimization)</span>
-        </div>
+  <Card class="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+    <div class="flex flex-col gap-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <Badge variant="outline" class="bg-primary/10 text-primary border-primary/20 gap-1.5 font-bold">
+          <CalendarIcon class="w-3.5 h-3.5 text-primary" />
+          <span>{$tStore('studio_shows.active_sprint')}: Sprint 3 (Stage QC & 15m Optimization)</span>
+        </Badge>
         <TaskStatusSignal status={taskStatus} />
-        <div class="sse-live-indicator" title="Real-Time Server-Sent Events (SSE) Stream Active">
-          <Radio size={12} class="animate-pulse text-green" />
+        <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full" title="Real-Time Server-Sent Events (SSE) Stream Active">
+          <Radio class="w-3 h-3 animate-pulse text-emerald-600" />
           <span>Real-time SSE Sync</span>
         </div>
       </div>
-      <h2>Practice Sprint Management & 15-Minute Free-Time Registration</h2>
-      <p>{$tStore('studio.freetime_desc_drag')}</p>
+      <h2 class="text-xl font-extrabold text-foreground tracking-tight m-0">Practice Sprint Management & 15-Minute Free-Time Registration</h2>
+      <p class="text-xs text-muted-foreground m-0">{$tStore('studio.freetime_desc_drag')}</p>
     </div>
 
-    <div class="sprint-header-actions">
+    <div class="flex items-center gap-2 shrink-0">
       {#if canViewHistory(userRole)}
-        <button
-          type="button"
-          class="bento-btn bento-btn-subtle"
+        <Button
+          variant="outline"
+          size="sm"
+          class="gap-1.5"
           onclick={() => (isHistoryOpen = true)}
           title="Inspect Audit Logs & Compute History"
         >
-          <HistoryIcon size={16} />
+          <HistoryIcon class="w-4 h-4" />
           <span>Audit History</span>
-        </button>
+        </Button>
       {/if}
 
       {#if canTriggerScheduler(userRole)}
-        <button
-          type="button"
-          class="bento-btn bento-btn-primary"
+        <Button
+          size="sm"
+          class="gap-1.5"
           onclick={handleAutoSchedule}
           disabled={isScheduling}
         >
-          <Wand2 size={16} class={isScheduling ? 'animate-spin' : ''} />
+          <Wand2 class="w-4 h-4 {isScheduling ? 'animate-spin' : ''}" />
           <span>{isScheduling ? 'Optimizing Kafka Task...' : $tStore('studio.btn_auto_schedule')}</span>
-        </button>
+        </Button>
       {/if}
     </div>
-  </div>
+  </Card>
 
   {#if activeToast}
-    <div class="toast-success">
-      <CheckCircle2 size={16} />
+    <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold animate-in fade-in">
+      <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
       <span>{activeToast}</span>
     </div>
   {/if}
 
   <!-- 15-Minute Fine-Grained Click-and-Drag Registration Grid -->
-  <div class="grid-card bento-card">
-    <div class="grid-header-row">
+  <Card class="p-5 flex flex-col gap-4 shadow-sm">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div>
-        <h3>{$tStore('studio.freetime_title_15m')}</h3>
-        <p class="grid-subtext">
-          Selected 15-min slots: <strong>{selectedCount}</strong> ({totalHoursFormatted} total practice hours available)
+        <h3 class="text-base font-bold text-foreground m-0">{$tStore('studio.freetime_title_15m')}</h3>
+        <p class="text-xs text-muted-foreground m-0 mt-0.5">
+          Selected 15-min slots: <strong class="text-foreground">{selectedCount}</strong> ({totalHoursFormatted} total practice hours available)
         </p>
       </div>
 
-      <div class="grid-actions">
-        <div class="preset-group">
-          <button type="button" class="preset-btn" onclick={selectPresetEvenings}>
-            <Zap size={13} />
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
+          <Button variant="ghost" size="sm" class="h-7 px-2 text-xs gap-1" onclick={selectPresetEvenings}>
+            <Zap class="w-3 h-3 text-primary" />
             <span>{$tStore('studio.preset_evenings')}</span>
-          </button>
-          <button type="button" class="preset-btn" onclick={selectPresetAfternoons}>
-            <Clock size={13} />
+          </Button>
+          <Button variant="ghost" size="sm" class="h-7 px-2 text-xs gap-1" onclick={selectPresetAfternoons}>
+            <Clock class="w-3 h-3 text-blue-600" />
             <span>{$tStore('studio.preset_afternoons')}</span>
-          </button>
-          <button type="button" class="preset-btn btn-clear" onclick={clearAllSlots}>
-            <Trash2 size={13} />
+          </Button>
+          <Button variant="ghost" size="sm" class="h-7 px-2 text-xs gap-1 text-red-600 hover:text-red-700" onclick={clearAllSlots}>
+            <Trash2 class="w-3 h-3" />
             <span>{$tStore('studio.preset_clear')}</span>
-          </button>
+          </Button>
         </div>
 
-        <button type="button" class="bento-btn bento-btn-sm" onclick={handleSaveFreetime}>
-          <Check size={14} />
+        <Button size="sm" class="h-8 gap-1.5" onclick={handleSaveFreetime}>
+          <Check class="w-3.5 h-3.5" />
           <span>{$tStore('studio.btn_save_freetime')}</span>
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- 15-Minute Drag Matrix Table -->
-    <div class="freetime-table-wrapper select-none">
-      <table class="freetime-table">
-        <thead>
+    <div class="overflow-x-auto select-none border border-slate-200 rounded-xl max-h-[420px]">
+      <table class="w-full border-collapse text-xs">
+        <thead class="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
           <tr>
-            <th class="time-col-header">15m Slot</th>
+            <th class="p-2 text-center font-bold text-muted-foreground w-20 border-r border-slate-200">15m Slot</th>
             {#each days as day}
-              <th>{day}</th>
+              <th class="p-2 text-center font-bold text-slate-700 border-r border-slate-200 last:border-r-0">{day}</th>
             {/each}
           </tr>
         </thead>
         <tbody>
           {#each timeSlots as slot}
-            <tr class={slot.isHourStart ? 'hour-divider-row' : ''}>
-              <td class="slot-time-td {slot.isHourStart ? 'is-hour-start' : ''}">
-                <span class="time-label">{slot.label}</span>
+            <tr class="hover:bg-slate-50/50 {slot.isHourStart ? 'border-t-2 border-t-slate-200' : 'border-t border-t-slate-100'}">
+              <td class="p-1.5 text-center font-mono text-[11px] font-semibold border-r border-slate-200 {slot.isHourStart ? 'bg-slate-100/80 text-foreground font-bold' : 'text-muted-foreground'}">
+                <span>{slot.label}</span>
               </td>
               {#each days as day, dIdx}
                 {@const isSelected = selectedSlots[`${dIdx}_${slot.label}`]}
                 <td
-                  class="slot-cell-td"
+                  class="p-0.5 border-r border-slate-200 last:border-r-0 text-center cursor-pointer"
                   onmousedown={(e) => handleCellMouseDown(dIdx, slot.label, e)}
                   onmouseenter={() => handleCellMouseEnter(dIdx, slot.label)}
                 >
-                  <div class="cell-block {isSelected ? 'is-selected' : ''}">
+                  <div class="w-full h-5 rounded-sm transition-colors flex items-center justify-center {isSelected ? 'bg-primary text-primary-foreground shadow-xs' : 'hover:bg-slate-100'}">
                     {#if isSelected}
-                      <span class="active-dot"></span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
                     {/if}
                   </div>
                 </td>
@@ -430,72 +443,72 @@
         </tbody>
       </table>
     </div>
-  </div>
+  </Card>
 
   <!-- Auto-Scheduled Sprint Rehearsals Calendar Display -->
   {#if isAutoScheduled}
-    <div class="calendar-card bento-card">
+    <Card class="p-5 flex flex-col gap-4 shadow-sm">
       <!-- Quota Metrics Summary Bar -->
-      <div class="quota-summary-bar">
-        <div class="quota-pill">
-          <Sparkles size={14} class="text-orange" />
-          <span><strong>{quotaMetrics.totalSessions}</strong> Rehearsals Scheduled</span>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/10">
+          <Sparkles class="w-4 h-4 text-primary" />
+          <span class="text-xs text-foreground"><strong>{quotaMetrics.totalSessions}</strong> Rehearsals Scheduled</span>
         </div>
-        <div class="quota-pill">
-          <Music size={14} class="text-blue" />
-          <span><strong>{quotaMetrics.uniqueSongsCount}</strong> Active Songs</span>
+        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
+          <Music class="w-4 h-4 text-blue-600" />
+          <span class="text-xs text-foreground"><strong>{quotaMetrics.uniqueSongsCount}</strong> Active Songs</span>
         </div>
-        <div class="quota-pill">
-          <Zap size={14} class="text-purple" />
-          <span><strong>{quotaMetrics.multiSessionSongs}</strong> Multi-Rehearsal Songs</span>
+        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-purple-500/5 border border-purple-500/10">
+          <Zap class="w-4 h-4 text-purple-600" />
+          <span class="text-xs text-foreground"><strong>{quotaMetrics.multiSessionSongs}</strong> Multi-Rehearsal Songs</span>
         </div>
-        <div class="quota-pill">
-          <MapPin size={14} class="text-green" />
-          <span><strong>{quotaMetrics.roomsUsed}</strong> Rooms Utilized</span>
+        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+          <MapPin class="w-4 h-4 text-emerald-600" />
+          <span class="text-xs text-foreground"><strong>{quotaMetrics.roomsUsed}</strong> Rooms Utilized</span>
         </div>
       </div>
 
-      <div class="calendar-header-row">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-3">
-            <div class="badge-scheduled">
-              <Sparkles size={13} />
+            <Badge class="bg-emerald-500/10 text-emerald-600 border-0 font-bold gap-1">
+              <Sparkles class="w-3 h-3" />
               <span>Zero-Conflict Schedule Generated</span>
-            </div>
+            </Badge>
             <TaskStatusSignal status={taskStatus} />
           </div>
-          <h3>{$tStore('studio.calendar_title')}</h3>
-          <p class="grid-subtext">{$tStore('studio.calendar_desc')}</p>
+          <h3 class="text-base font-bold text-foreground m-0 mt-1">{$tStore('studio.calendar_title')}</h3>
+          <p class="text-xs text-muted-foreground m-0">{$tStore('studio.calendar_desc')}</p>
         </div>
 
-        <div class="filters-row">
+        <div class="flex items-center flex-wrap gap-2.5">
           <!-- View Switcher Toggle Buttons -->
-          <div class="view-toggle-group">
+          <div class="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
             <button
               type="button"
-              class="view-toggle-btn {scheduleView === 'grid' ? 'is-active' : ''}"
+              class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all {scheduleView === 'grid' ? 'bg-white text-primary shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'}"
               onclick={() => (scheduleView = 'grid')}
               title="Bento Grid View"
             >
-              <LayoutGrid size={14} />
+              <LayoutGrid class="w-3.5 h-3.5" />
               <span>Grid</span>
             </button>
             <button
               type="button"
-              class="view-toggle-btn {scheduleView === 'timeline' ? 'is-active' : ''}"
+              class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all {scheduleView === 'timeline' ? 'bg-white text-primary shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'}"
               onclick={() => (scheduleView = 'timeline')}
               title="Compact Timeline Table View"
             >
-              <Table size={14} />
+              <TableIcon class="w-3.5 h-3.5" />
               <span>Timeline</span>
             </button>
           </div>
 
           <!-- Day Filter -->
-          <div class="filter-item">
-            <CalendarIcon size={13} class="text-muted" />
-            <span class="filter-label">Day</span>
-            <select bind:value={filterDay} class="bento-select">
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+            <CalendarIcon class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span class="text-xs font-semibold text-slate-500">Day</span>
+            <select bind:value={filterDay} class="bg-transparent border-0 text-xs font-semibold text-slate-700 outline-none cursor-pointer">
               <option value="all">All Days</option>
               {#each days as day}
                 <option value={day}>{day}</option>
@@ -504,10 +517,10 @@
           </div>
 
           <!-- Song Filter -->
-          <div class="filter-item">
-            <Filter size={13} class="text-muted" />
-            <span class="filter-label">{$tStore('studio.filter_number')}</span>
-            <select bind:value={filterSong} class="bento-select">
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+            <Filter class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span class="text-xs font-semibold text-slate-500">{$tStore('studio.filter_number')}</span>
+            <select bind:value={filterSong} class="bg-transparent border-0 text-xs font-semibold text-slate-700 outline-none cursor-pointer">
               <option value="all">{$tStore('studio.all_numbers')}</option>
               {#each uniqueSongs as song}
                 <option value={song}>{song}</option>
@@ -516,10 +529,10 @@
           </div>
 
           <!-- Room Filter -->
-          <div class="filter-item">
-            <MapPin size={13} class="text-muted" />
-            <span class="filter-label">{$tStore('studio.filter_room')}</span>
-            <select bind:value={filterRoom} class="bento-select">
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+            <MapPin class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span class="text-xs font-semibold text-slate-500">{$tStore('studio.filter_room')}</span>
+            <select bind:value={filterRoom} class="bg-transparent border-0 text-xs font-semibold text-slate-700 outline-none cursor-pointer">
               <option value="all">{$tStore('studio.all_rooms')}</option>
               {#each uniqueRooms as rm}
                 <option value={rm}>{rm}</option>
@@ -531,63 +544,49 @@
 
       {#if scheduleView === 'grid'}
         <!-- Sprint Calendar Timetable Grid -->
-        <div class="calendar-grid">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
           {#each days as day, dIdx}
             {@const daySessions = filteredSessions.filter((s) => s.dayIdx === dIdx)}
-            <div class="day-column">
-              <div class="day-column-header">
-                <span class="day-name">{day}</span>
-                <span class="session-badge">{daySessions.length} sessions</span>
+            <div class="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+              <div class="flex items-center justify-between pb-1 border-b border-slate-200">
+                <span class="text-xs font-bold text-foreground">{day}</span>
+                <span class="text-[10px] font-semibold text-muted-foreground bg-slate-200/80 px-1.5 py-0.5 rounded">{daySessions.length} sessions</span>
               </div>
 
-              <div class="day-sessions-container">
+              <div class="flex flex-col gap-2 min-h-[140px]">
                 {#if daySessions.length === 0}
-                  <div class="empty-day-state">No rehearsals</div>
+                  <div class="text-[11px] text-muted-foreground italic text-center py-6">No rehearsals</div>
                 {:else}
                   {#each daySessions as session}
-                    <div class="rehearsal-card" style="border-left-color: {session.color}">
-                      <div class="rehearsal-top">
-                        <div class="song-title-group">
-                          <h4 class="song-name">{session.songTitle}</h4>
-                          <span class="session-index-tag">#{session.sessionIndex} of {session.totalTargetRehearsals}</span>
+                    <Card class="p-2.5 flex flex-col gap-1.5 bg-white border-l-4 shadow-xs" style="border-left-color: {session.color}">
+                      <div class="flex items-start justify-between gap-1">
+                        <div>
+                          <h4 class="text-xs font-bold text-foreground leading-tight m-0">{session.songTitle}</h4>
+                          <span class="text-[10px] text-muted-foreground">#{session.sessionIndex} of {session.totalTargetRehearsals}</span>
                         </div>
-                        <span
-                          class="status-chip {session.status === 'stage_ready'
-                            ? 'chip-success'
-                            : session.status === 'qc_approved'
-                              ? 'chip-approved'
-                              : session.status === 'ready_for_qc'
-                                ? 'chip-qc'
-                                : 'chip-practice'}"
-                        >
-                          {session.status === 'stage_ready'
-                            ? 'Stage Ready'
-                            : session.status === 'qc_approved'
-                              ? 'QC Approved'
-                              : session.status === 'ready_for_qc'
-                                ? 'Ready QC'
-                                : 'In Practice'}
-                        </span>
+                        <Badge variant="outline" class="text-[9px] px-1 py-0 font-bold {session.status === 'stage_ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : session.status === 'qc_approved' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : session.status === 'ready_for_qc' ? 'bg-orange-50 text-primary border-orange-200' : 'bg-slate-50 text-slate-600 border-slate-200'}">
+                          {session.status === 'stage_ready' ? 'Ready' : session.status === 'qc_approved' ? 'QC OK' : session.status === 'ready_for_qc' ? 'Ready QC' : 'Practice'}
+                        </Badge>
                       </div>
 
-                      <div class="rehearsal-meta">
-                        <div class="meta-row">
-                          <Clock size={12} />
-                          <span class="time-range">{session.startTime} – {session.endTime}</span>
-                          <span class="duration-pill">({session.durationMinutes}m)</span>
+                      <div class="flex flex-col gap-0.5 text-[11px] text-slate-600">
+                        <div class="flex items-center gap-1">
+                          <Clock class="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span class="font-semibold text-foreground">{session.startTime}–{session.endTime}</span>
+                          <span class="text-muted-foreground text-[10px]">({session.durationMinutes}m)</span>
                         </div>
 
-                        <div class="meta-row">
-                          <MapPin size={12} />
-                          <span>{session.room}</span>
+                        <div class="flex items-center gap-1">
+                          <MapPin class="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span class="truncate">{session.room}</span>
                         </div>
 
-                        <div class="performers-list">
-                          <Users size={12} class="text-muted" />
-                          <span>{session.performers.join(', ')}</span>
+                        <div class="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Users class="w-3 h-3 shrink-0" />
+                          <span class="truncate">{session.performers.join(', ')}</span>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   {/each}
                 {/if}
               </div>
@@ -596,968 +595,149 @@
         </div>
       {:else}
         <!-- Compact Timeline Table View -->
-        <div class="timeline-table-wrapper">
-          <table class="timeline-table">
-            <thead>
-              <tr>
-                <th>Day & Time</th>
-                <th>Song & Session</th>
-                <th>PM Leader</th>
-                <th>Studio Room</th>
-                <th>Lineup Performers</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Card class="p-0 overflow-hidden shadow-xs">
+          <Table>
+            <TableHeader>
+              <TableRow class="bg-slate-50">
+                <TableHead>Day & Time</TableHead>
+                <TableHead>Song & Session</TableHead>
+                <TableHead>PM Leader</TableHead>
+                <TableHead>Studio Room</TableHead>
+                <TableHead>Lineup Performers</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {#if filteredSessions.length === 0}
-                <tr>
-                  <td colspan="6" class="empty-timeline-td">No rehearsals match the selected filters.</td>
-                </tr>
+                <TableRow>
+                  <TableCell colspan={6} class="text-center py-6 text-xs text-muted-foreground">No rehearsals match the selected filters.</TableCell>
+                </TableRow>
               {:else}
                 {#each filteredSessions as session}
-                  <tr>
-                    <td class="td-daytime">
-                      <div class="daytime-pill">
-                        <strong>{session.dayName}</strong>
-                        <span>{session.startTime} – {session.endTime} ({session.durationMinutes}m)</span>
-                      </div>
-                    </td>
-                    <td class="td-song">
-                      <div class="song-timeline-info">
-                        <strong class="timeline-song-title">{session.songTitle}</strong>
-                        <span class="session-index-tag">Session #{session.sessionIndex} of {session.totalTargetRehearsals}</span>
-                      </div>
-                    </td>
-                    <td class="td-pm">{session.pmName}</td>
-                    <td class="td-room">
-                      <span class="room-pill">{session.room}</span>
-                    </td>
-                    <td class="td-lineup">
-                      <span class="lineup-text">{session.performers.join(', ')}</span>
-                    </td>
-                    <td class="td-status">
-                      <span
-                        class="status-chip {session.status === 'stage_ready'
-                          ? 'chip-success'
-                          : session.status === 'qc_approved'
-                            ? 'chip-approved'
-                            : session.status === 'ready_for_qc'
-                              ? 'chip-qc'
-                              : 'chip-practice'}"
-                      >
-                        {session.status === 'stage_ready'
-                          ? 'Stage Ready'
-                          : session.status === 'qc_approved'
-                            ? 'QC Approved'
-                            : session.status === 'ready_for_qc'
-                              ? 'Ready QC'
-                              : 'In Practice'}
-                      </span>
-                    </td>
-                  </tr>
+                  <TableRow>
+                    <TableCell>
+                      <div class="font-bold text-xs text-foreground">{session.dayName}</div>
+                      <div class="text-[11px] text-muted-foreground">{session.startTime} – {session.endTime} ({session.durationMinutes}m)</div>
+                    </TableCell>
+                    <TableCell>
+                      <div class="font-bold text-xs text-foreground">{session.songTitle}</div>
+                      <div class="text-[10px] text-muted-foreground">Session #{session.sessionIndex} of {session.totalTargetRehearsals}</div>
+                    </TableCell>
+                    <TableCell class="text-xs font-semibold">{session.pmName}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" class="text-xs">{session.room}</Badge>
+                    </TableCell>
+                    <TableCell class="text-xs text-slate-600 max-w-[220px] truncate">{session.performers.join(', ')}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" class="text-xs font-bold {session.status === 'stage_ready' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : session.status === 'qc_approved' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : session.status === 'ready_for_qc' ? 'bg-orange-50 text-primary border-orange-200' : 'bg-slate-50 text-slate-600 border-slate-200'}">
+                        {session.status === 'stage_ready' ? 'Stage Ready' : session.status === 'qc_approved' ? 'QC Approved' : session.status === 'ready_for_qc' ? 'Ready QC' : 'In Practice'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 {/each}
               {/if}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       {/if}
-    </div>
-  {/if}
-
-  <!-- Audit History Drawer Modal (PM, DM, Moderator, Admin) -->
-  {#if isHistoryOpen}
-    <div class="modal-backdrop" onclick={() => (isHistoryOpen = false)} role="presentation">
-      <div class="modal-card bento-card history-modal" onclick={(e) => e.stopPropagation()} role="presentation">
-        <div class="modal-header">
-          <div class="modal-title-row">
-            <HistoryIcon size={18} class="text-orange" />
-            <h3>Audit History & Run Logs</h3>
-          </div>
-          <button type="button" class="close-btn" onclick={() => (isHistoryOpen = false)} aria-label="Close">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div class="history-tab-bar">
-          <button
-            type="button"
-            class="tab-btn {activeHistoryTab === 'compute' ? 'is-active' : ''}"
-            onclick={() => (activeHistoryTab = 'compute')}
-          >
-            <Activity size={14} />
-            <span>Schedule Compute History ({computeHistory.length})</span>
-          </button>
-          <button
-            type="button"
-            class="tab-btn {activeHistoryTab === 'registration' ? 'is-active' : ''}"
-            onclick={() => (activeHistoryTab = 'registration')}
-          >
-            <Clock size={14} />
-            <span>User Free-Time Registration History ({registrationHistory.length})</span>
-          </button>
-        </div>
-
-        <div class="history-tab-content">
-          {#if activeHistoryTab === 'compute'}
-            <div class="history-table-wrapper">
-              <table class="history-table">
-                <thead>
-                  <tr>
-                    <th>Run ID</th>
-                    <th>Triggered By</th>
-                    <th>Status</th>
-                    <th>Duration</th>
-                    <th>CSP Score</th>
-                    <th>Conflicts</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each computeHistory as item}
-                    <tr>
-                      <td class="font-mono text-bold">{item.id}</td>
-                      <td>{item.triggeredByName}</td>
-                      <td>
-                        <span class="status-pill status-{item.status}">{item.status.toUpperCase()}</span>
-                      </td>
-                      <td>{item.durationMs}ms</td>
-                      <td class="text-green font-bold">{item.score}%</td>
-                      <td>{item.conflictCount} conflicts</td>
-                      <td class="text-muted">{item.createdAt}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          {:else}
-            <div class="history-table-wrapper">
-              <table class="history-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Day</th>
-                    <th>Slot</th>
-                    <th>Status</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each registrationHistory as reg}
-                    <tr>
-                      <td class="font-bold">{reg.userName}</td>
-                      <td>{reg.actorName}</td>
-                      <td>
-                        <span class="action-pill action-{reg.action}">{reg.action}</span>
-                      </td>
-                      <td>{reg.dayOfWeek}</td>
-                      <td class="font-mono">{reg.slotLabel}</td>
-                      <td>
-                        <span class={reg.isAvailable ? 'text-green' : 'text-red'}>
-                          {reg.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
-                      </td>
-                      <td class="text-muted">{reg.createdAt}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
+    </Card>
   {/if}
 </div>
 
-<style>
-  .sprints-subpage {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .select-none {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .bento-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  }
-
-  .sprint-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .sprint-tag-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-
-  .sprint-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .sse-live-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    color: #16a34a;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .sprint-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .bento-btn-subtle {
-    background: #f1f5f9;
-    color: #334155;
-    border: 1px solid #cbd5e1;
-  }
-
-  .bento-btn-subtle:hover {
-    background: #e2e8f0;
-    color: #0f172a;
-  }
-
-  .modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-    padding: 20px;
-  }
-
-  .history-modal {
-    width: 100%;
-    max-width: 820px;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow: hidden;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .modal-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .modal-title-row h3 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  .close-btn {
-    background: none;
-    border: none;
-    color: #64748b;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
-  }
-
-  .close-btn:hover {
-    background: #f1f5f9;
-    color: #0f172a;
-  }
-
-  .history-tab-bar {
-    display: flex;
-    gap: 8px;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 8px;
-  }
-
-  .tab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
-    background: none;
-    border: none;
-    cursor: pointer;
-  }
-
-  .tab-btn.is-active {
-    background: #ff6b00;
-    color: #ffffff;
-  }
-
-  .history-table-wrapper {
-    overflow-x: auto;
-    max-height: 450px;
-  }
-
-  .history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  .history-table th {
-    background: #f8fafc;
-    padding: 8px 12px;
-    text-align: left;
-    border-bottom: 1px solid #e2e8f0;
-    color: #475569;
-    font-weight: 700;
-  }
-
-  .history-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .status-pill {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 800;
-  }
-
-  .status-completed { background: #dcfce7; color: #15803d; }
-  .status-failed { background: #fee2e2; color: #dc2626; }
-  .status-queued { background: #fef9c3; color: #a16207; }
-
-  .action-pill {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 800;
-  }
-
-  .action-ADD { background: #dcfce7; color: #15803d; }
-  .action-UPDATE { background: #e0f2fe; color: #0369a1; }
-  .action-DELETE { background: #fee2e2; color: #dc2626; }
-
-  .bento-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .bento-btn-primary {
-    background: #ff6b00;
-    color: #ffffff;
-  }
-
-  .bento-btn-primary:hover:not(:disabled) {
-    background: #e66000;
-    transform: translateY(-1px);
-  }
-
-  .bento-btn-primary:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  .bento-btn-sm {
-    padding: 6px 12px;
-    font-size: 12px;
-    background: #0f172a;
-    color: #ffffff;
-  }
-
-  .bento-btn-sm:hover {
-    background: #1e293b;
-  }
-
-  .toast-success {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(22, 163, 74, 0.1);
-    color: #16a34a;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 13px;
-  }
-
-  .grid-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 16px;
-
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .grid-header-row h3 {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 2px 0;
-  }
-
-  .grid-subtext {
-    font-size: 13px;
-    color: #64748b;
-    margin: 0;
-  }
-
-  .grid-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .preset-group {
-    display: flex;
-    gap: 6px;
-  }
-
-  .preset-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 10px;
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.12s ease;
-  }
-
-  .preset-btn:hover {
-    background: #e2e8f0;
-    color: #0f172a;
-  }
-
-  .preset-btn.btn-clear:hover {
-    background: #fee2e2;
-    color: #dc2626;
-    border-color: #fca5a5;
-  }
-
-  .freetime-table-wrapper {
-    overflow-x: auto;
-    max-height: 480px;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-  }
-
-  .freetime-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  .freetime-table th {
-    position: sticky;
-    top: 0;
-    background: #f8fafc;
-    z-index: 2;
-    padding: 8px 10px;
-    text-align: center;
-    border-bottom: 1px solid #cbd5e1;
-    font-weight: 700;
-    color: #334155;
-  }
-
-  .time-col-header {
-    width: 80px;
-  }
-
-  .hour-divider-row {
-    border-top: 2px solid #cbd5e1;
-  }
-
-  .slot-time-td {
-    padding: 3px 8px;
-    background: #f8fafc;
-    text-align: center;
-    border-right: 1px solid #e2e8f0;
-    font-weight: 600;
-    color: #64748b;
-    font-size: 11px;
-
-    white-space: nowrap;
-  }
-
-  .slot-time-td.is-hour-start {
-    font-weight: 800;
-    color: #0f172a;
-    background: #f1f5f9;
-  }
-
-  .slot-cell-td {
-    padding: 2px 4px;
-    border-right: 1px solid #f1f5f9;
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    text-align: center;
-  }
-
-  .slot-cell-td:hover {
-    background: rgba(255, 107, 0, 0.05);
-  }
-
-  .cell-block {
-    height: 18px;
-    width: 100%;
-    border-radius: 4px;
-    background: #f8fafc;
-    border: 1px dashed #e2e8f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.1s ease;
-  }
-
-  .cell-block.is-selected {
-    background: rgba(22, 163, 74, 0.2);
-    border: 1px solid #16a34a;
-  }
-
-  .active-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #16a34a;
-  }
-
-  /* Calendar Section */
-  .calendar-card {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .calendar-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .badge-scheduled {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 8px;
-    background: rgba(37, 99, 235, 0.1);
-    color: #2563eb;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .calendar-header-row h3 {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 2px 0;
-  }
-
-  .filters-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .filter-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #f8fafc;
-    padding: 4px 10px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-  }
-
-  .filter-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
-  }
-
-  /* Quota Metrics Summary Bar */
-  .quota-summary-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 10px 14px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-  }
-
-  .quota-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #475569;
-    background: #ffffff;
-    padding: 4px 10px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-  }
-
-  .quota-pill strong {
-    color: #0f172a;
-    font-weight: 800;
-  }
-
-  /* View Toggle Switcher */
-  .view-toggle-group {
-    display: flex;
-    background: #e2e8f0;
-    padding: 2px;
-    border-radius: 8px;
-  }
-
-  .view-toggle-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    border: none;
-    background: transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .view-toggle-btn.is-active {
-    background: #ffffff;
-    color: #ff6b00;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  .session-index-tag {
-    font-size: 9px;
-    font-weight: 700;
-    color: #64748b;
-    background: #f1f5f9;
-    padding: 1px 5px;
-    border-radius: 4px;
-    border: 1px solid #cbd5e1;
-  }
-
-  .song-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .chip-approved {
-    background: rgba(16, 185, 129, 0.1);
-    color: #059669;
-  }
-
-  .chip-success {
-    background: rgba(34, 197, 94, 0.15);
-    color: #16a34a;
-  }
-
-  /* Timeline Table */
-  .timeline-table-wrapper {
-    overflow-x: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #ffffff;
-  }
-
-  .timeline-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  .timeline-table th {
-    background: #f8fafc;
-    color: #475569;
-    font-weight: 700;
-    text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid #e2e8f0;
-    white-space: nowrap;
-  }
-
-  .timeline-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #334155;
-    vertical-align: middle;
-  }
-
-  .timeline-table tr:hover {
-    background: #f8fafc;
-  }
-
-  .td-daytime .daytime-pill {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .td-daytime strong {
-    color: #0f172a;
-    font-size: 12px;
-  }
-
-  .td-daytime span {
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .song-timeline-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .timeline-song-title {
-    color: #0f172a;
-    font-weight: 800;
-  }
-
-  .room-pill {
-    display: inline-block;
-    padding: 2px 8px;
-    background: #f1f5f9;
-    border-radius: 6px;
-    font-weight: 700;
-    color: #475569;
-    font-size: 11px;
-  }
-
-  .lineup-text {
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .empty-timeline-td {
-    text-align: center;
-    padding: 24px;
-    color: #94a3b8;
-    font-style: italic;
-  }
-
-  .bento-select {
-    border: none;
-    background: transparent;
-    font-size: 12px;
-    font-weight: 700;
-    color: #0f172a;
-    cursor: pointer;
-    outline: none;
-  }
-
-  /* Calendar Days Grid */
-  .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px;
-  }
-
-  @media (max-width: 1024px) {
-    .calendar-grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-  }
-
-  @media (max-width: 640px) {
-    .calendar-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .day-column {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 220px;
-  }
-
-  .day-column-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 8px;
-  }
-
-  .day-name {
-    font-size: 12px;
-    font-weight: 800;
-    color: #334155;
-  }
-
-  .session-badge {
-    font-size: 10px;
-    font-weight: 600;
-    color: #64748b;
-    background: #e2e8f0;
-    padding: 2px 6px;
-    border-radius: 10px;
-  }
-
-  .day-sessions-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .empty-day-state {
-    font-size: 11px;
-    color: #94a3b8;
-    text-align: center;
-    padding: 20px 0;
-    font-style: italic;
-  }
-
-  .rehearsal-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-left-width: 4px;
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    transition: transform 0.15s ease;
-  }
-
-  .rehearsal-card:hover {
-    transform: translateY(-2px);
-  }
-
-  .rehearsal-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .song-name {
-    font-size: 12px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0;
-    line-height: 1.3;
-  }
-
-  .status-chip {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 8px;
-    white-space: nowrap;
-  }
-
-  .chip-practice {
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-  }
-
-  .chip-qc {
-    background: rgba(37, 99, 235, 0.1);
-    color: #2563eb;
-  }
-
-  .rehearsal-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 10px;
-    color: #475569;
-  }
-
-  .meta-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .time-range {
-    font-weight: 700;
-    color: #0f172a;
-  }
-
-  .duration-pill {
-    color: #64748b;
-  }
-
-  .performers-list {
-    display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    margin-top: 2px;
-    font-size: 10px;
-    color: #64748b;
-    line-height: 1.2;
-  }
-</style>
+<!-- Audit History Drawer Modal (PM, DM, Moderator, Admin) -->
+<Dialog bind:open={isHistoryOpen}>
+  <DialogContent class="max-w-3xl">
+    <DialogHeader>
+      <DialogTitle class="flex items-center gap-2">
+        <HistoryIcon class="w-5 h-5 text-primary" />
+        <span>Audit History & Run Logs</span>
+      </DialogTitle>
+      <DialogDescription>
+        Inspect async scheduling compute execution results and member free-time updates.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div class="flex items-center gap-2 border-b border-slate-200 pb-2 mt-2">
+      <Button
+        variant={activeHistoryTab === 'compute' ? 'default' : 'ghost'}
+        size="sm"
+        class="gap-1.5 text-xs"
+        onclick={() => (activeHistoryTab = 'compute')}
+      >
+        <Activity class="w-3.5 h-3.5" />
+        <span>Schedule Compute History ({computeHistory.length})</span>
+      </Button>
+      <Button
+        variant={activeHistoryTab === 'registration' ? 'default' : 'ghost'}
+        size="sm"
+        class="gap-1.5 text-xs"
+        onclick={() => (activeHistoryTab = 'registration')}
+      >
+        <Clock class="w-3.5 h-3.5" />
+        <span>Free-Time Registration Logs ({registrationHistory.length})</span>
+      </Button>
+    </div>
+
+    <div class="max-h-[360px] overflow-y-auto mt-2">
+      {#if activeHistoryTab === 'compute'}
+        <Table>
+          <TableHeader>
+            <TableRow class="bg-slate-50">
+              <TableHead>Run ID</TableHead>
+              <TableHead>Triggered By</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Score</TableHead>
+              <TableHead>Conflicts</TableHead>
+              <TableHead>Timestamp</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {#each computeHistory as item}
+              <TableRow>
+                <TableCell class="font-mono text-xs font-bold">{item.id}</TableCell>
+                <TableCell class="text-xs">{item.triggeredByName}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" class="text-[10px] uppercase font-bold">{item.status}</Badge>
+                </TableCell>
+                <TableCell class="text-xs">{item.durationMs}ms</TableCell>
+                <TableCell class="text-xs font-bold text-emerald-600">{item.score}%</TableCell>
+                <TableCell class="text-xs">{item.conflictCount} conflicts</TableCell>
+                <TableCell class="text-xs text-muted-foreground">{item.createdAt}</TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
+      {:else}
+        <Table>
+          <TableHeader>
+            <TableRow class="bg-slate-50">
+              <TableHead>User</TableHead>
+              <TableHead>Actor</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Day</TableHead>
+              <TableHead>Slot</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Timestamp</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {#each registrationHistory as reg}
+              <TableRow>
+                <TableCell class="text-xs font-bold">{reg.userName}</TableCell>
+                <TableCell class="text-xs">{reg.actorName}</TableCell>
+                <TableCell><Badge variant="secondary" class="text-[10px]">{reg.action}</Badge></TableCell>
+                <TableCell class="text-xs">{reg.dayOfWeek}</TableCell>
+                <TableCell class="font-mono text-xs">{reg.slotLabel}</TableCell>
+                <TableCell class="text-xs font-semibold {reg.isAvailable ? 'text-emerald-600' : 'text-red-600'}">
+                  {reg.isAvailable ? 'Available' : 'Unavailable'}
+                </TableCell>
+                <TableCell class="text-xs text-muted-foreground">{reg.createdAt}</TableCell>
+              </TableRow>
+            {/each}
+          </TableBody>
+        </Table>
+      {/if}
+    </div>
+  </DialogContent>
+</Dialog>
