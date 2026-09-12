@@ -170,6 +170,32 @@ To prevent showstopper rehearsal clashes and equipment loss, the organization ma
 * **BR-INS-04 (Zero Double-Booking Conflict Invariant)**:
   - A physical instrument **shall never** be concurrently reserved for two different music numbers in the same day and time slot, whether during practice rehearsals or live stage performances. Any conflicting reservation attempt is rejected with a conflict error.
 
+### 6.4 Show Roster Management, Dynamic Role Delegation & Performance Effort Matrix (`/studio/shows/[id]/roster`)
+To ensure optimal human resource distribution, prevent performer burnout, and maintain transparent chain-of-command across music productions:
+* **BR-ROS-01 (Show Roster & Profile Lifecycle)**:
+  - Authorized leadership can add existing club members or onboard new performers directly to a Show's cast.
+  - Each performer profile maintains contact details (email, phone), primary band capability (`BandRole`), secondary/doubling instruments, target rehearsal participation, and active song assignments.
+  - Performers can be safely removed with safeguard alerts if they have active song dependencies.
+* **BR-ROS-02 (Show Leadership & Hierarchical Role Delegation)**:
+  - **Show Role Hierarchy**: `DM` (Delivery Manager) $\rightarrow$ `PM` (Performance Manager) $\rightarrow$ `QC` (Quality Reviewer) $\rightarrow$ `Performer`.
+  - **Delegation Authority**:
+    - `Admin` / `Moderator` / `DM` can assign or reassign any member to `DM`, `PM`, `QC`, or `Performer`.
+    - `PM` can update performer profiles and instrument capability tags.
+    - `QC` and `Performer` hold read/inspect access.
+* **BR-ROS-03 (Performance Role Distribution Coverage Matrix)**:
+  - Real-time section breakdown monitor:
+    1. **Vocals** (Lead Vocal, Backing Harmony)
+    2. **Strings** (Lead Guitar, Rhythm Guitar, Bass Guitar)
+    3. **Rhythm & Percussion** (Drum Kit, Auxiliary Percussion)
+    4. **Keys & Tech** (Synthesizer/Piano, Stage Sound Tech)
+  - Compares assigned performers against production requirements to detect missing musical sections.
+* **BR-ROS-04 (Effort, Rehearsal Hours & Fatigue Risk Monitoring)**:
+  - **Workload Status Calibration**:
+    - **Optimal Workload (1–2 Songs)**: Safe rehearsal cadence.
+    - **Moderate Workload (3–4 Songs)**: Balanced load; requires close schedule distribution.
+    - **Fatigue Alert (5+ Songs)**: High risk of vocal fatigue or scheduling clash; flagged with visual alert indicators.
+  - **Show Effort Heatmap**: Tracks cumulative practice hours, rehearsal attendance rates, and music numbers count across the entire show setlist.
+
 ---
 
 ## 7. Internationalization (i18n) & Dual-Language Policy

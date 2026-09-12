@@ -39,6 +39,14 @@ export function canViewHistory(role: UserRole | undefined | null): boolean {
   return hasRole(role, 'pm');
 }
 
+export function canManageShowRoster(role: UserRole | undefined | null): boolean {
+  return hasRole(role, 'dm');
+}
+
+export function canEditPerformerProfile(role: UserRole | undefined | null): boolean {
+  return hasRole(role, 'pm');
+}
+
 export const DEFAULT_USER: UserSession = {
   id: 'user-001',
   email: 'admin@csac.local',

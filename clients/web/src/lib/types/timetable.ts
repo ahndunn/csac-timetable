@@ -134,6 +134,25 @@ export interface QCVerdict {
   actionItems?: string[];
 }
 
+export type ShowRole = 'DM' | 'PM' | 'QC' | 'Performer';
+
+export interface ShowRosterMember {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  showRole: ShowRole;
+  primaryInstrument: BandRole;
+  secondaryInstruments: BandRole[];
+  assignedSongCount: number;
+  assignedSongTitles: string[];
+  totalPracticeHours: number;
+  workloadStatus: 'optimal' | 'moderate' | 'fatigued';
+  attendanceRate: number; // e.g. 95
+  joinedAt: string;
+}
+
 export interface RosterMember {
   userId: string;
   fullName: string;

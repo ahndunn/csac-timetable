@@ -437,7 +437,46 @@ CREATE TABLE sprint_schedule_runs (
 
 ## 7. Internationalization (i18n) Architecture & Standards
 
-### 7.1 ISO 639-1 Compliance & Zero-Dependency Svelte 5 Runes Engine
+### 6.5 Show Roster Technical Model & RBAC Contract (`/studio/shows/[id]/roster`)
+
+#### TypeScript Data Contract
+```typescript
+export type ShowRole = 'DM' | 'PM' | 'QC' | 'Performer';
+
+export interface ShowRosterMember {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  showRole: ShowRole;
+  primaryInstrument: BandRole;
+  secondaryInstruments: BandRole[];
+  assignedSongCount: number;
+  assignedSongTitles: string[];
+  totalPracticeHours: number;
+  workloadStatus: 'optimal' | 'moderate' | 'fatigued';
+  attendanceRate: number; // Percentage e.g. 95%
+  joinedAt: string;
+}
+
+export interface RoleDistributionSection {
+  category: 'vocals' | 'strings' | 'rhythm' | 'keys_tech';
+  label: string;
+  headcount: number;
+  roles: { role: BandRole; count: number; members: string[] }[];
+}
+```
+
+#### Client RBAC Authorization Enforcement
+- `canManageShowRoster(role)`: Requires `hasRole(role, 'dm')` (Admin, Moderator, DM).
+- `canEditPerformerProfile(role)`: Requires `hasRole(role, 'pm')` (Admin, Moderator, DM, PM).
+- `canViewRoster(role)`: Available to all authenticated roles (`member` and above).
+
+---
+
+## 7. Internationalization (i18n) & Dual-Language Policy
+
 * **Supported Locales**: Strictly standardized on ISO 639-1 two-letter codes:
   * `vi`: Vietnamese (Tiếng Việt 🇻🇳)
   * `en`: English (English 🇺🇸)
