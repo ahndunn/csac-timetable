@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { tStore } from '$lib/i18n';
+  import { page } from '$app/stores';
+  import { canTriggerScheduler, canViewHistory, hasRole } from '$lib/auth';
+  import type { UserRole, ScheduleRunHistoryItem, AvailabilityHistoryItem } from '$lib/types/timetable';
   import {
     Calendar as CalendarIcon,
     Clock,
@@ -16,7 +19,13 @@
     ChevronDown,
     Trash2,
     Zap,
+    History as HistoryIcon,
+    Radio,
+    X,
+    Activity,
   } from '@lucide/svelte';
+
+  const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -88,11 +97,87 @@
   let isSaved = $state(false);
   let activeToast = $state<string | null>(null);
 
-  // Auto-scheduled sprint rehearsals state
+  // Auto-scheduled sprint rehearsals state & SSE Real-time streaming
   let isAutoScheduled = $state(true);
   let isScheduling = $state(false);
+  let sseStatus = $state<'connected' | 'syncing' | 'idle'>('connected');
   let filterSong = $state('all');
   let filterRoom = $state('all');
+
+  // History Drawer State (PM, DM, Moderator, Admin)
+  let isHistoryOpen = $state(false);
+  let activeHistoryTab = $state<'compute' | 'registration'>('compute');
+
+  // Mock / Fetched Compute Run History
+  let computeHistory = $state<ScheduleRunHistoryItem[]>([
+    {
+      id: 'run-101',
+      sprintId: 'sprint-3',
+      triggeredBy: 'user-001',
+      triggeredByName: 'Minh Pháp (DM)',
+      status: 'completed',
+      durationMs: 420,
+      score: 98.5,
+      conflictCount: 0,
+      createdAt: '2026-09-12 09:30:15',
+      completedAt: '2026-09-12 09:30:16',
+    },
+    {
+      id: 'run-100',
+      sprintId: 'sprint-3',
+      triggeredBy: 'user-002',
+      triggeredByName: 'Hoàng Nam (Admin)',
+      status: 'completed',
+      durationMs: 650,
+      score: 92.0,
+      conflictCount: 1,
+      createdAt: '2026-09-11 14:15:00',
+      completedAt: '2026-09-11 14:15:01',
+    },
+  ]);
+
+  // Mock / Fetched Free-Time Registration History
+  let registrationHistory = $state<AvailabilityHistoryItem[]>([
+    {
+      id: 'reg-501',
+      sprintId: 'sprint-3',
+      userId: 'user-003',
+      userName: 'Thu Hà (Member)',
+      actorId: 'user-003',
+      actorName: 'Thu Hà (Self)',
+      action: 'ADD',
+      dayOfWeek: 'Monday',
+      slotLabel: '18:15',
+      isAvailable: true,
+      createdAt: '2026-09-12 10:12:00',
+    },
+    {
+      id: 'reg-502',
+      sprintId: 'sprint-3',
+      userId: 'user-004',
+      userName: 'Tuấn Kiệt (PM)',
+      actorId: 'user-001',
+      actorName: 'Minh Pháp (DM)',
+      action: 'UPDATE',
+      dayOfWeek: 'Friday',
+      slotLabel: '19:00',
+      isAvailable: true,
+      createdAt: '2026-09-12 08:45:10',
+    },
+    {
+      id: 'reg-503',
+      sprintId: 'sprint-3',
+      userId: 'user-005',
+      userName: 'Bảo Anh (Member)',
+      actorId: 'user-005',
+      actorName: 'Bảo Anh (Self)',
+      action: 'DELETE',
+      dayOfWeek: 'Wednesday',
+      slotLabel: '21:00',
+      isAvailable: false,
+      createdAt: '2026-09-11 19:30:22',
+    },
+  ]);
 
   interface ScheduledRehearsal {
     id: string;
@@ -284,23 +369,45 @@
   <!-- Active Sprint Banner -->
   <div class="sprint-header bento-card">
     <div class="header-info">
-      <div class="sprint-tag">
-        <CalendarIcon size={14} class="text-orange" />
-        <span>{$tStore('studio_shows.active_sprint')}: Sprint 3 (Stage QC & 15m Rehearsal Optimization)</span>
+      <div class="sprint-tag-row">
+        <div class="sprint-tag">
+          <CalendarIcon size={14} class="text-orange" />
+          <span>{$tStore('studio_shows.active_sprint')}: Sprint 3 (Stage QC & 15m Rehearsal Optimization)</span>
+        </div>
+        <div class="sse-live-indicator" title="Real-Time Server-Sent Events (SSE) Stream Active">
+          <Radio size={12} class="animate-pulse text-green" />
+          <span>Real-time SSE Sync</span>
+        </div>
       </div>
       <h2>Practice Sprint Management & 15-Minute Free-Time Registration</h2>
       <p>{$tStore('studio.freetime_desc_drag')}</p>
     </div>
 
-    <button
-      type="button"
-      class="bento-btn bento-btn-primary"
-      onclick={handleAutoSchedule}
-      disabled={isScheduling}
-    >
-      <Wand2 size={16} class={isScheduling ? 'animate-spin' : ''} />
-      <span>{isScheduling ? 'Optimizing...' : $tStore('studio.btn_auto_schedule')}</span>
-    </button>
+    <div class="sprint-header-actions">
+      {#if canViewHistory(userRole)}
+        <button
+          type="button"
+          class="bento-btn bento-btn-subtle"
+          onclick={() => (isHistoryOpen = true)}
+          title="Inspect Audit Logs & Compute History"
+        >
+          <HistoryIcon size={16} />
+          <span>Audit History</span>
+        </button>
+      {/if}
+
+      {#if canTriggerScheduler(userRole)}
+        <button
+          type="button"
+          class="bento-btn bento-btn-primary"
+          onclick={handleAutoSchedule}
+          disabled={isScheduling}
+        >
+          <Wand2 size={16} class={isScheduling ? 'animate-spin' : ''} />
+          <span>{isScheduling ? 'Optimizing Kafka Task...' : $tStore('studio.btn_auto_schedule')}</span>
+        </button>
+      {/if}
+    </div>
   </div>
 
   {#if activeToast}
@@ -472,6 +579,112 @@
       </div>
     </div>
   {/if}
+
+  <!-- Audit History Drawer Modal (PM, DM, Moderator, Admin) -->
+  {#if isHistoryOpen}
+    <div class="modal-backdrop" onclick={() => (isHistoryOpen = false)} role="presentation">
+      <div class="modal-card bento-card history-modal" onclick={(e) => e.stopPropagation()} role="presentation">
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <HistoryIcon size={18} class="text-orange" />
+            <h3>Audit History & Run Logs</h3>
+          </div>
+          <button type="button" class="close-btn" onclick={() => (isHistoryOpen = false)} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div class="history-tab-bar">
+          <button
+            type="button"
+            class="tab-btn {activeHistoryTab === 'compute' ? 'is-active' : ''}"
+            onclick={() => (activeHistoryTab = 'compute')}
+          >
+            <Activity size={14} />
+            <span>Schedule Compute History ({computeHistory.length})</span>
+          </button>
+          <button
+            type="button"
+            class="tab-btn {activeHistoryTab === 'registration' ? 'is-active' : ''}"
+            onclick={() => (activeHistoryTab = 'registration')}
+          >
+            <Clock size={14} />
+            <span>User Free-Time Registration History ({registrationHistory.length})</span>
+          </button>
+        </div>
+
+        <div class="history-tab-content">
+          {#if activeHistoryTab === 'compute'}
+            <div class="history-table-wrapper">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Run ID</th>
+                    <th>Triggered By</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>CSP Score</th>
+                    <th>Conflicts</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each computeHistory as item}
+                    <tr>
+                      <td class="font-mono text-bold">{item.id}</td>
+                      <td>{item.triggeredByName}</td>
+                      <td>
+                        <span class="status-pill status-{item.status}">{item.status.toUpperCase()}</span>
+                      </td>
+                      <td>{item.durationMs}ms</td>
+                      <td class="text-green font-bold">{item.score}%</td>
+                      <td>{item.conflictCount} conflicts</td>
+                      <td class="text-muted">{item.createdAt}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}
+            <div class="history-table-wrapper">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Day</th>
+                    <th>Slot</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each registrationHistory as reg}
+                    <tr>
+                      <td class="font-bold">{reg.userName}</td>
+                      <td>{reg.actorName}</td>
+                      <td>
+                        <span class="action-pill action-{reg.action}">{reg.action}</span>
+                      </td>
+                      <td>{reg.dayOfWeek}</td>
+                      <td class="font-mono">{reg.slotLabel}</td>
+                      <td>
+                        <span class={reg.isAvailable ? 'text-green' : 'text-red'}>
+                          {reg.isAvailable ? 'Available' : 'Unavailable'}
+                        </span>
+                      </td>
+                      <td class="text-muted">{reg.createdAt}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -500,6 +713,13 @@
     align-items: center;
   }
 
+  .sprint-tag-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
   .sprint-tag {
     display: inline-flex;
     align-items: center;
@@ -510,21 +730,168 @@
     border-radius: 20px;
     font-size: 12px;
     font-weight: 700;
-    margin-bottom: 6px;
   }
 
-  .sprint-header h2 {
-    font-size: 18px;
+  .sse-live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .sprint-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bento-btn-subtle {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+  }
+
+  .bento-btn-subtle:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 20px;
+  }
+
+  .history-modal {
+    width: 100%;
+    max-width: 820px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-title-row h3 {
+    margin: 0;
+    font-size: 17px;
     font-weight: 800;
     color: #0f172a;
-    margin: 0 0 4px 0;
   }
 
-  .sprint-header p {
-    font-size: 13px;
+  .close-btn {
+    background: none;
+    border: none;
     color: #64748b;
-    margin: 0;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
   }
+
+  .close-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .history-tab-bar {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+  }
+
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .tab-btn.is-active {
+    background: #ff6b00;
+    color: #ffffff;
+  }
+
+  .history-table-wrapper {
+    overflow-x: auto;
+    max-height: 450px;
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .history-table th {
+    background: #f8fafc;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    color: #475569;
+    font-weight: 700;
+  }
+
+  .history-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .status-pill {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .status-completed { background: #dcfce7; color: #15803d; }
+  .status-failed { background: #fee2e2; color: #dc2626; }
+  .status-queued { background: #fef9c3; color: #a16207; }
+
+  .action-pill {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .action-ADD { background: #dcfce7; color: #15803d; }
+  .action-UPDATE { background: #e0f2fe; color: #0369a1; }
+  .action-DELETE { background: #fee2e2; color: #dc2626; }
 
   .bento-btn {
     display: inline-flex;

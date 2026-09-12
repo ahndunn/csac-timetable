@@ -25,11 +25,16 @@ The platform provides:
 
 ### 2.1 Role Hierarchy & Capabilities
 
-| Role | Scope & Permissions | Key User Flows |
-| :--- | :--- | :--- |
-| **Admin** | Full system governance: Manage users, promote/demote roles, create & close voting events, vote on events, access `/utils/*`. | User onboarding, quorum ballot reviews, system audit inspection. |
-| **Moderator** | Event operations: Create voting events, define time slots & date ranges, close events to stop voting, vote on events, access `/utils/*`. | Event creation, schedule finalization, voting monitoring. |
-| **Member** | Performer participation: Vote in open events (`/events/[id]/vote`), view personal schedules, access `/utils/*`. | Availability submission, timetable inspection. |
+The system organizes access across 6 distinct role levels, structured as strict supersets where higher levels inherit all capabilities of lower levels:
+
+| Role | Scope & Permissions | Key User Flows & Viewable Features | SSR Action Stripping Policy |
+| :--- | :--- | :--- | :--- |
+| **Admin** | Full system governance: Manage users, promote/demote roles, quorum demotion, event creation, trigger scheduler, view full history. | User onboarding, quorum ballot reviews (`/admin/approve`), system audit inspection, event lifecycle (`/admin/events`), all Studio views. | **None**: All action controls rendered. |
+| **Moderator** | Event operations & scheduling (Superset of DM): Create/close voting events, define time slots, trigger sprint scheduler. | Event creation (`/admin/events`), schedule finalization, voting monitoring, all DM/PM/QC/Member views. | **Stripped**: User demotion quorum approval (`/admin/approve`). |
+| **Delivery Manager (DM)** | Show Lineup & Fleet Director (Superset of PM): Oversee all show music numbers, trigger sprint scheduler, manage instrument allocations. | **Trigger Sprint Scheduler**, inspect full audit history (compute & free-time registration history), manage all numbers in Bento/Kanban/Table views. | **Stripped**: User onboarding & role demotion (`/admin/users`, `/admin/approve`). |
+| **Performance Manager (PM)** | Music Number Leader (Superset of QC): Lead assigned Music Numbers, assign performers & gear, manage Study/Create/Review tasks. | Manage assigned numbers, performer lineup configuration, inspect compute & registration history, submit task reviews. | **Stripped**: Show-wide scheduler trigger, admin pages (`/admin/*`). |
+| **Quality Reviewer (QC)** | Quality Auditor (Superset of Member): Review practice tasks and submit milestone audit verdicts. | Member views + QC Audit Workstation tab in Music Numbers. | **Stripped**: Number creation, performer assignments, scheduler trigger, user administration. Enabled ONLY for QC task reviews. |
+| **Member** | Performer baseline: Register 15-minute practice sprint free-time grid, view assigned numbers & practice schedule calendar. | Show Studio overview, Music Numbers view, Practice Sprint free-time registration grid & auto-scheduled calendar, Instrument Fleet. | **Stripped**: All action buttons for create/edit/delete numbers, instruments, tasks, scheduler trigger, or admin pages. Non-actionable elements only. |
 
 ### 2.2 Business Rules for Administration
 
@@ -119,6 +124,15 @@ sequenceDiagram
 * **Delivery Manager (DM)**: Oversees the overall music event lineup, cross-number rehearsals, instrument allocation heatmap, and final stage-readiness audits across all numbers.
 * **Performance Manager (PM)**: Directly responsible for a single **Music Number** (song/performance). Assigns performers, sets song target frequencies, coordinates rehearsal objectives, and assigns Quality Check (QC) reviewers.
 * **Performers / Band Members**: Club musicians assigned to specific musical roles (e.g., Lead Vocal, Backing Vocal, Electric Guitar, Acoustic Guitar, Bass, Keyboard/Piano, Drum Kit, Percussion).
+* **Scalable Music Numbers Interface (`/studio/shows/[id]/numbers`)**:
+  - Concert productions naturally feature **10 to 20 numbers**. To eliminate cognitive overload and extreme vertical scrolling in Kanban columns, the interface provides:
+    1. **Multi-View Modes**:
+       - **Bento Grid (Default)**: Responsive multi-column layout showing rich cards with band lineups, PM assignments, QC notes, and status actions.
+       - **Kanban Board**: 5-stage workflow board with horizontal scrolling and stage headers.
+       - **Compact Table**: High-density tabular overview optimized for DMs/PMs to inspect and update all 10–20 numbers at once.
+    2. **Pipeline Stage Funnel & Metrics**: Real-time summary header displaying the distribution across all 5 stages (`draft`, `in_practice`, `ready_for_qc`, `qc_approved`, `stage_ready`) with one-click filtering.
+    3. **Live Search & Filter Toolbar**: Real-time text search (song title, PM, lineup members) and stage dropdown filtering.
+    4. **Add Music Number Modal**: Form for creating new show numbers with title, PM leader, genre, and initial QC reviewer.
 
 ### 6.2 Agile Practice SDLC (Software Development Life Cycle for Music)
 Each music event is divided into **Practice Sprints** (typically 1 to 2 weeks per sprint) mirroring the Agile SDLC:

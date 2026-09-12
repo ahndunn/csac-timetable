@@ -60,8 +60,15 @@ flowchart TB
 
 ### 1.3 Web Client Component Specifications
 * **Bento Card Surfaces (`.bento-card`)**: 18px rounded corner radius (`--radius-bento`), 1px translucent border (`rgba(0,0,0,0.08)`), multi-layer elevation shadow (`--shadow-card`).
-* **Kanban Music Numbers (`/studio/shows/[id]/numbers`)**:
-  * Action button row (`.card-btn-row`) uses responsive wrapping (`flex-wrap: wrap`) and full flex sizing (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC" and "Assign Lineup") adapt without text clipping.
+* **Scalable Music Numbers (`/studio/shows/[id]/numbers`)**:
+  * **View Modes**: Supports 3 switchable views:
+    - Bento Grid (`view = 'grid'`): Multi-column CSS grid (`repeat(auto-fill, minmax(340px, 1fr))`) with hover lift, lineup tags, status indicator, and wrapped action button rows (`.card-btn-row`).
+    - Kanban Board (`view = 'kanban'`): 5 FSM columns (`draft`, `in_practice`, `ready_for_qc`, `qc_approved`, `stage_ready`) with horizontal scroll container and column item tallies.
+    - Compact Table (`view = 'table'`): Dense tabular view with sortable columns, inline badge pills, performer count, and action controls.
+  * **Pipeline Funnel Filter**: Interactive stage stat tiles display count and allow instant single-stage filtering.
+  * **Live Search & Filter**: Real-time filtering by text query across title, PM, reviewer, and performer names.
+  * **Action Button Rows (`.card-btn-row`)**: Uses responsive wrapping (`flex-wrap: wrap`) and fluid flex basis (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC", "Audit & Submit QC", and "Assign Lineup") never clip or overflow across any viewport.
+  * **Creation & Allocation Modals**: Modals for New Music Number, Band Lineup Assignment, and QC Audit Verdict with form validation and backdrop dismissal.
 
 
 ---
@@ -266,6 +273,34 @@ CREATE TABLE member_sprint_availabilities (
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_sprint_user_slot UNIQUE (sprint_id, user_id, day_of_week, slot_label)
+);
+
+-- 16. Member Sprint Availabilities History Audit Log
+CREATE TABLE member_sprint_availabilities_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    actor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action VARCHAR(20) NOT NULL, -- 'ADD', 'UPDATE', 'DELETE'
+    day_of_week VARCHAR(50) NOT NULL,
+    slot_label VARCHAR(100) NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 17. Practice Sprint Schedule Compute Runs & Audit History
+CREATE TABLE sprint_schedule_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    triggered_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'queued', -- 'queued', 'processing', 'completed', 'failed'
+    duration_ms INT,
+    score DOUBLE PRECISION,
+    conflict_count INT DEFAULT 0,
+    assignments JSONB,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
 );
 ```
 

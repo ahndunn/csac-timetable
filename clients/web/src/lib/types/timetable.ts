@@ -156,3 +156,43 @@ export interface MusicNumber {
   notes?: string;
 }
 
+// User Roles & Hierarchy
+export type UserRole = 'admin' | 'moderator' | 'dm' | 'pm' | 'qc' | 'member';
+
+export interface UserSession {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+}
+
+// Audit & Compute History Interfaces
+export interface AvailabilityHistoryItem {
+  id: string;
+  sprintId: string;
+  userId: string;
+  userName: string;
+  actorId: string;
+  actorName: string;
+  action: 'ADD' | 'UPDATE' | 'DELETE';
+  dayOfWeek: string;
+  slotLabel: string;
+  isAvailable: boolean;
+  createdAt: string;
+}
+
+export interface ScheduleRunHistoryItem {
+  id: string;
+  sprintId: string;
+  triggeredBy: string;
+  triggeredByName: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  durationMs: number;
+  score: number;
+  conflictCount: number;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+

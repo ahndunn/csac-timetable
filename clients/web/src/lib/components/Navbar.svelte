@@ -29,6 +29,8 @@
     SUPPORTED_LANGUAGES,
     type Iso639_1Locale,
   } from '$lib/i18n';
+  import { canAccessAdmin, hasRole } from '$lib/auth';
+  import type { UserRole } from '$lib/types/timetable';
 
   interface Props {
     // Optional timetable solver props: only provided by /utils/timetable
@@ -85,6 +87,13 @@
   }
 
   const isTimetableRoute = $derived($page.url.pathname === '/utils/timetable');
+  const userRole = $derived(($page.data.user?.role || auth.user?.role || 'admin') as UserRole);
+
+  function selectDemoRole(newRole: UserRole) {
+    const url = new URL($page.url);
+    url.searchParams.set('role', newRole);
+    goto(url.toString(), { invalidateAll: true });
+  }
 </script>
 
 <svelte:window
@@ -94,7 +103,8 @@
       !target.closest('.sample-dropdown-container') &&
       !target.closest('.mobile-menu-container') &&
       !target.closest('.lang-dropdown-container') &&
-      !target.closest('.nav-menu-container')
+      !target.closest('.nav-menu-container') &&
+      !target.closest('.role-picker-container')
     ) {
       closeAll();
     }
@@ -123,7 +133,7 @@
       <img src="/csac.svg" alt="CSAC Studio Logo" class="brand-logo-img" />
     </a>
 
-    <!-- Quick Navigation Links (Desktop) -->
+    <!-- Quick Navigation Links (Desktop - Role Scoped) -->
     <nav class="nav-links-desktop">
       <a href="/studio" class="nav-link {$page.url.pathname.startsWith('/studio') && !$page.url.pathname.startsWith('/studio/gear') ? 'is-active' : ''}">
         <Music size={14} />
@@ -133,14 +143,17 @@
         <FileSpreadsheet size={14} />
         <span>{$tStore('nav.gear')}</span>
       </a>
-      <a href="/admin/shows" class="nav-link {$page.url.pathname.startsWith('/admin/shows') ? 'is-active' : ''}">
-        <Calendar size={14} />
-        <span>{$tStore('nav.admin_shows')}</span>
-      </a>
-      <a href="/admin/users" class="nav-link {$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'is-active' : ''}">
-        <Users size={14} />
-        <span>{$tStore('nav.users')}</span>
-      </a>
+
+      {#if canAccessAdmin(userRole)}
+        <a href="/admin/shows" class="nav-link {$page.url.pathname.startsWith('/admin/shows') ? 'is-active' : ''}">
+          <Calendar size={14} />
+          <span>{$tStore('nav.admin_shows')}</span>
+        </a>
+        <a href="/admin/users" class="nav-link {$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'is-active' : ''}">
+          <Users size={14} />
+          <span>{$tStore('nav.users')}</span>
+        </a>
+      {/if}
     </nav>
 
     <!-- Contextual Document / Week Title (Rendered ONLY in /utils/timetable) -->
@@ -223,20 +236,53 @@
       {/if}
     {/if}
 
-    <!-- User Profile / Auth Button -->
-    {#if auth.isAuthenticated}
-      <div class="user-badge" title={$tStore('nav.logged_in_as', { name: auth.user?.full_name ?? '', role: auth.user?.role ?? '' })}>
+    <!-- User Profile / Interactive Role Switcher Pill -->
+    <div class="user-badge-wrapper sample-dropdown-container role-picker-container">
+      <button 
+        type="button" 
+        class="user-badge-btn" 
+        onclick={(e) => {
+          e.stopPropagation();
+          isNavDropdownOpen = !isNavDropdownOpen;
+          isLangOpen = false;
+        }}
+        title="Switch Role View (Demo)"
+      >
         <UserCircle size={16} class="text-orange" />
-        <span class="user-name">{auth.user?.full_name?.split(' ')[0]}</span>
-        <button class="logout-mini-btn" onclick={() => auth.logout()} title={$tStore('nav.sign_out')}>
-          <LogOut size={13} />
-        </button>
-      </div>
-    {:else}
-      <a href="/auth/login" class="bento-btn login-btn">
-        <span>{$tStore('nav.sign_in')}</span>
-      </a>
-    {/if}
+        <span class="user-role-pill role-{userRole}">{userRole.toUpperCase()}</span>
+        <ChevronDown size={12} />
+      </button>
+
+      {#if isNavDropdownOpen}
+        <div class="dropdown-menu-bento role-dropdown-menu" onclick={(e) => e.stopPropagation()} role="presentation">
+          <div class="dropdown-header-bento">Role-Based Access Level (Demo)</div>
+          {#each (['member', 'qc', 'pm', 'dm', 'moderator', 'admin'] as const) as roleOpt}
+            <button
+              type="button"
+              class="dropdown-item-bento {userRole === roleOpt ? 'is-active' : ''}"
+              onclick={() => {
+                isNavDropdownOpen = false;
+                selectDemoRole(roleOpt);
+              }}
+            >
+              <span class="role-pill-mini role-{roleOpt}">{roleOpt.toUpperCase()}</span>
+              <div style="flex: 1; text-align: left;">
+                <div style="font-weight: 600; font-size: 13px;">
+                  {roleOpt === 'member' ? 'Member (Nhạc công)' :
+                   roleOpt === 'qc' ? 'QC Auditor (Kiểm định)' :
+                   roleOpt === 'pm' ? 'PM (Quản lý bài)' :
+                   roleOpt === 'dm' ? 'DM (Trưởng ban nhạc)' :
+                   roleOpt === 'moderator' ? 'Moderator (Điều hành)' : 'System Admin'}
+                </div>
+              </div>
+              {#if userRole === roleOpt}
+                <Check size={14} color="var(--accent)" />
+              {/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
     <!-- Language Selector Dropdown (Top Right) -->
     <div class="sample-dropdown-container lang-dropdown-container">
@@ -437,6 +483,47 @@
   .nav-link.is-active {
     color: var(--accent);
     background: var(--accent-light);
+  }
+
+  .user-badge-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .user-badge-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  .user-role-pill, .role-pill-mini {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .role-member { background: #e0f2fe; color: #0369a1; }
+  .role-qc { background: #ede9fe; color: #6d28d9; }
+  .role-pm { background: #fef9c3; color: #a16207; }
+  .role-dm { background: #dcfce7; color: #15803d; }
+  .role-moderator { background: #ffedd5; color: #c2410c; }
+  .role-admin { background: #ffe4e6; color: #be123c; }
+
+  .role-dropdown-menu {
+    min-width: 240px;
+    right: 0;
   }
 
   .user-badge {
