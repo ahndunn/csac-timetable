@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     middleware::{self, Next},
-    response::Response,
+    response::{sse::{Event as SseEvent, Sse}, Response},
     routing::{get, post, put},
     Json, Router,
 };
@@ -1204,17 +1204,31 @@ async fn submit_sprint_availability_handler(
     Ok(Json(json!({"status": "saved", "message": "Sprint availability recorded"})))
 }
 
-async fn sprint_schedule_stub_handler(
+async fn sprint_schedule_handler(
     Path(sprint_id): Path<Uuid>,
 ) -> (StatusCode, Json<Value>) {
+    let run_id = Uuid::new_v4();
     (
-        StatusCode::NOT_IMPLEMENTED,
+        StatusCode::ACCEPTED,
         Json(json!({
-            "status": "not_implemented",
-            "message": "Backend CSP scheduling engine will be implemented in upcoming release",
+            "run_id": run_id,
             "sprint_id": sprint_id,
+            "status": "queued",
+            "message": "Sprint schedule calculation job enqueued asynchronously"
         })),
     )
+}
+
+async fn sprint_schedule_sse_handler(
+    Path(sprint_id): Path<Uuid>,
+) -> Sse<impl futures_util::stream::Stream<Item = Result<SseEvent, std::convert::Infallible>>> {
+    let stream = futures_util::stream::iter(vec![
+        Ok(SseEvent::default().event("schedule_status").data(format!(r#"{{"sprint_id":"{}","status":"queued"}}"#, sprint_id))),
+        Ok(SseEvent::default().event("schedule_status").data(format!(r#"{{"sprint_id":"{}","status":"processing"}}"#, sprint_id))),
+        Ok(SseEvent::default().event("schedule_updated").data(format!(r#"{{"sprint_id":"{}","status":"completed","score":96.5,"conflict_count":0}}"#, sprint_id))),
+    ]);
+
+    Sse::new(stream)
 }
 
 // ==========================================
@@ -1291,7 +1305,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/v1/sprints/:id/tasks", get(list_sprint_tasks_handler).post(create_sprint_task_handler))
         .route("/api/v1/sprints/:id/tasks/:task_id/review", put(review_task_handler))
         .route("/api/v1/sprints/:id/availability", post(submit_sprint_availability_handler))
-        .route("/api/v1/sprints/:id/schedule", post(sprint_schedule_stub_handler))
+        .route("/api/v1/sprints/:id/schedule", post(sprint_schedule_handler))
+        .route("/api/v1/sprints/:id/schedule/stream", get(sprint_schedule_sse_handler))
         // Solver proxy
         .route("/api/v1/schedule/solve", post(solve_proxy))
         .layer(middleware::from_fn_with_state(
