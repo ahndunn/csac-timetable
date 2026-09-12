@@ -226,10 +226,71 @@ export interface ScheduleRunHistoryItem {
   status: 'queued' | 'processing' | 'completed' | 'failed';
   durationMs: number;
   score: number;
-  conflictCount: number;
   error?: string;
   createdAt: string;
   completedAt?: string;
+}
+
+// Gear & Instrument Fleet Domain Types
+export type GearCategory = 'strings' | 'keys' | 'drums' | 'amps_cabs' | 'pedals_fx' | 'audio_di' | 'cables_accessories';
+export type GearOwnershipType = 'club_property' | 'member_owned';
+export type GearLendingPolicy = 'open_to_all' | 'approval_required' | 'show_only' | 'locked_private';
+export type GearAvailabilityStatus = 'free_to_borrow' | 'in_use' | 'unavailable' | 'in_maintenance';
+
+export type GearShowStatus = 
+  | 'allocated_main'       // Assigned to a specific music number
+  | 'allocated_backup'     // Backup / spare
+  | 'checked_in_venue'     // Confirmed present at venue
+  | 'active_stage'         // On stage / plugged in
+  | 'retrieved_owner'      // Safely retrieved by owner
+  | 'retrieved_proxy'      // Retrieved by someone else on behalf
+  | 'orphan'               // Left behind / unclaimed
+  | 'adopted';             // Temporary custody adopted by peer
+
+export interface GearItem {
+  id: string;
+  name: string;
+  code?: string;
+  category: GearCategory;
+  ownership: GearOwnershipType;
+  ownerId?: string;
+  ownerName?: string;
+  custodianName: string;
+  custodianId?: string;
+  locationNote: string;
+  status: GearAvailabilityStatus;
+  lendingPolicy: GearLendingPolicy;
+  isRevoked?: boolean;
+  estimatedValueVND?: number;
+  serialNumber?: string;
+  notes?: string;
+}
+
+export interface ShowGearAllocation {
+  id: string;
+  showId: string;
+  gearId: string;
+  gearName: string;
+  category: GearCategory;
+  ownership: GearOwnershipType;
+  ownerName?: string;
+  allocatedFor: 'music_number' | 'backline_common' | 'emergency_backup' | 'sound_desk';
+  musicNumberTitle?: string;
+  primaryPerformerName?: string;
+  status: GearShowStatus;
+  checkInTimestamp?: string;
+  retrievalTimestamp?: string;
+  retrievedByName?: string;
+  isOnBehalfRetrieval: boolean;
+  retrievalNote?: string;
+  adoption?: {
+    adopterName: string;
+    adopterPhone: string;
+    adoptedAt: string;
+    targetReturnDate: string;
+    ownerNotified: boolean;
+    pickupLocationNote?: string;
+  };
 }
 
 

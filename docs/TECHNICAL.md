@@ -428,10 +428,16 @@ CREATE TABLE sprint_schedule_runs (
 ### 4.5 Music Numbers & Instrument Fleet Management (`/api/v1/music`)
 * `GET /api/v1/music/numbers`: List music numbers with PM and performers lineup.
 * `POST /api/v1/music/numbers`: Create a music number `{ title, genre, pm_user_id, target_sessions_per_week }`.
-* `GET /api/v1/music/instruments`: List instruments with ownership type, current custody ("kept by whom"), and availability.
-* `POST /api/v1/music/instruments`: Register a new instrument (CSAC club property or member personal gear) `{ name, code, category, ownership_type, owner_user_id, custody_location }`.
+* `GET /api/v1/music/instruments`: List instruments with ownership type, current custody ("kept by whom"), lending policy, and availability.
+* `POST /api/v1/music/instruments`: Register a new instrument (CSAC club property or member personal gear) `{ name, code, category, ownership_type, owner_user_id, custody_location, lending_policy }`.
 * `PUT /api/v1/music/instruments/:id/status`: Update availability (`free_to_borrow`, `unavailable`, `in_maintenance`) or transfer custody `{ custody_user_id, custody_location, availability_status }`.
+* `PUT /api/v1/music/instruments/:id/policy`: Update lending policy (`open_to_all`, `approval_required`, `show_only`, `locked_private`) or revoke gear *(Owner/Admin only)*.
 * `POST /api/v1/music/instruments/reserve`: Reserve an instrument for a rehearsal session `{ instrument_id, music_number_id, day_of_week, slot_label }`. Returns `409 Conflict` if the instrument is already booked for that slot.
+* `GET /api/v1/shows/:id/gear`: Retrieve show gear allocations and live custody checklist.
+* `POST /api/v1/shows/:id/gear/checkin`: Mark gear as checked in at venue `{ gear_id, status: 'checked_in_venue' }`.
+* `POST /api/v1/shows/:id/gear/retrieve`: Record post-show retrieval `{ gear_id, is_on_behalf: boolean, retrieved_by_name: string, note?: string }`.
+* `POST /api/v1/shows/:id/gear/adopt`: Record adoption of orphan gear `{ gear_id, adopter_name: string, adopter_phone: string, return_date: string }`.
+* `POST /api/v1/shows/:id/close`: Finalize show. Returns `422 Unprocessable Entity` if any orphan gear remains.
 
 ### 4.6 Agile Practice Sprints & Scheduling (`/api/v1/sprints`)
 * `GET /api/v1/sprints`: List practice sprints.

@@ -183,6 +183,26 @@ To prevent showstopper rehearsal clashes and equipment loss, the organization ma
   - Every piece of gear tracks `custody_user_id` ("kept by whom") or location note (e.g., "Club Studio Locker A", "Kept by Minh Pháp") to ensure total physical accountability and eliminate missing gear after late-night rehearsals.
 * **BR-INS-04 (Zero Double-Booking Conflict Invariant)**:
   - A physical instrument **shall never** be concurrently reserved for two different music numbers in the same day and time slot, whether during practice rehearsals or live stage performances. Any conflicting reservation attempt is rejected with a conflict error.
+* **BR-INS-05 (Owner Lending Policies & Revocation Rights)**:
+  - For member-owned gear, the owner maintains complete sovereignty to configure lending rules:
+    - `open_to_all`: Any club member or show PM may borrow/reserve.
+    - `approval_required`: Borrowing requires explicit owner confirmation.
+    - `show_only`: Available solely for official show rehearsals and live stages.
+    - `locked_private`: Strictly for the owner's personal performances; hidden from general reservation pools.
+  - Owners can **revoke** gear at any time. Revoking flags any pending/active reservations with a replacement warning to the Show DM.
+* **BR-INS-06 (Live Show Run Allocation & 5-Phase Custody Lifecycle)**:
+  - For live shows (`/studio/gear` $\leftrightarrow$ `/studio/shows/[id]`), all allocated gear is tracked through 5 operational phases:
+    1. `Allocated`: Assigned for a specific function (`Main Stage Music Number`, `Backline Common`, `Emergency Backup`, or `Sound Desk`).
+    2. `Present at Venue`: Physically checked in at the concert hall/stage.
+    3. `Active on Stage`: Plugged in or actively performing.
+    4. `Teardown / Retrieved`: Post-show pack-up by owner or authorized proxy.
+    5. `Returned to Safe Custody / Storage`: Final location recorded.
+* **BR-INS-07 (Proxy Retrieval on Behalf & Audit Warning)**:
+  - If a member retrieves gear on behalf of another owner (e.g. collecting a friend's pedalboard), the system mandates logging the retriever's name and note, flags the transaction with a distinct **"Proxy Retrieval"** warning badge, and notifies the owner.
+* **BR-INS-08 (Orphan Gear Lockdown & "Adopt-a-Gear" Protocol)**:
+  - Any equipment left unclaimed during post-show teardown is marked as `orphan`.
+  - **Show Finalization Hard Lock**: While any gear remains in `orphan` status, the **"Close Show / Finalize Production"** feature is strictly disabled.
+  - **Gear Adoption Workflow**: A team member can "Adopt" orphan gear (taking it home for safekeeping). The system logs the adopter's contact info, sets an expected return date, and triggers an urgent notification to the owner.
 
 ### 6.4 Show Roster Management, Dynamic Role Delegation & Performance Effort Matrix (`/studio/shows/[id]/roster`)
 To ensure optimal human resource distribution, prevent performer burnout, and maintain transparent chain-of-command across music productions:
