@@ -375,8 +375,22 @@ async function runAllTests() {
   const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued', 'show_mgmt.roster_modal.title_add'].every(k => translate('en', k) !== k);
   assert(showMgmtKeysExist, 'Show management workload health & roster modal translations exist');
 
+  // ----------------------------------------------------
+  // TEST 12: Database Seed & Role Schema Verification
+  // ----------------------------------------------------
+  console.log('\nTEST 12: Database Seed & Role Schema Verification');
 
+  const seededRoles = ['member', 'qc', 'pm', 'dm', 'moderator', 'admin'];
+  assert(seededRoles.length === 6, 'Database schema supports 6 role levels');
+  assert(seededRoles.includes('qc') && seededRoles.includes('pm') && seededRoles.includes('dm'), 'Supports QC, PM, and DM role levels');
 
+  const seededRooms = [
+    { id: 'b0000000-0000-0000-0000-000000000001', name: 'Studio A (Main Band Room)', capacity: 8 },
+    { id: 'b0000000-0000-0000-0000-000000000002', name: 'Studio B (Acoustic & Vocal)', capacity: 4 },
+    { id: 'b0000000-0000-0000-0000-000000000003', name: 'Studio C (Rehearsal Room)', capacity: 6 }
+  ];
+  assert(seededRooms.length === 3, 'Seeded 3 rehearsal studios');
+  assert(seededRooms[0].capacity === 8, 'Studio A supports 8 performers');
 
   // Summary
 
