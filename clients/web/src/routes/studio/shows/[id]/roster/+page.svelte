@@ -32,137 +32,21 @@
   import { page } from '$app/stores';
   import type { BandRole, ShowRole, ShowRosterMember, UserRole } from '$lib/types/timetable';
   import { canManageShowRoster, canEditPerformerProfile, canManageShowScoped, hasRole } from '$lib/auth';
+  import { api } from '$lib/api/client';
+
+  let { data } = $props();
 
   const showId = $derived($page.params.id || 'show-2026-annual');
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
 
-  // Roster Seed Data with Key-Scoped Leadership and Assigned Songs
-  let roster = $state<ShowRosterMember[]>([
-    {
-      id: 'mem-1',
-      userId: 'u-101',
-      fullName: 'Minh Pháp',
-      email: 'minhphap@csac.local',
-      phone: '+84 901 234 567',
-      showRole: 'DM',
-      isDM: true,
-      pmSongTitles: ['Hào Khí Việt Nam', 'Bài Ca Hy Vọng'],
-      qcSongTitles: ['Giọt Sương Trên Mí Mắt', 'Túy Âm'],
-      primaryInstrument: 'vocal_lead',
-      secondaryInstruments: ['guitar_rhythm'],
-      assignedSongCount: 5,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Đi Giữa Trời Rực Rỡ', 'Nối Vòng Tay Lớn', 'Bài Ca Hy Vọng', 'Dấu Chân Phía Trước'],
-      totalPracticeHours: 24,
-      workloadStatus: 'fatigued',
-      attendanceRate: 98,
-      joinedAt: '2026-08-15',
-    },
-    {
-      id: 'mem-2',
-      userId: 'u-102',
-      fullName: 'Hoàng Nam',
-      email: 'hoangnam@csac.local',
-      phone: '+84 912 345 678',
-      showRole: 'PM',
-      isDM: false,
-      pmSongTitles: ['Đi Giữa Trời Rực Rỡ', 'Ngẫu Hứng Sông Hồng'],
-      qcSongTitles: ['Hào Khí Việt Nam'],
-      primaryInstrument: 'guitar_lead',
-      secondaryInstruments: ['guitar_rhythm'],
-      assignedSongCount: 3,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Đi Giữa Trời Rực Rỡ', 'Khát Vọng Tuổi Trẻ'],
-      totalPracticeHours: 16,
-      workloadStatus: 'moderate',
-      attendanceRate: 94,
-      joinedAt: '2026-08-18',
-    },
-    {
-      id: 'mem-3',
-      userId: 'u-103',
-      fullName: 'Bảo Anh',
-      email: 'baoanh@csac.local',
-      phone: '+84 934 567 890',
-      showRole: 'PM',
-      isDM: false,
-      pmSongTitles: ['Giọt Sương Trên Mí Mắt', 'Góc Ban Công'],
-      qcSongTitles: ['Nối Vòng Tay Lớn'],
-      primaryInstrument: 'bass',
-      secondaryInstruments: ['guitar_lead'],
-      assignedSongCount: 4,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Đi Giữa Trời Rực Rỡ', 'Nối Vòng Tay Lớn', 'Rock Vầng Trăng'],
-      totalPracticeHours: 18,
-      workloadStatus: 'moderate',
-      attendanceRate: 92,
-      joinedAt: '2026-08-20',
-    },
-    {
-      id: 'mem-4',
-      userId: 'u-104',
-      fullName: 'Thu Hà',
-      email: 'thuha@csac.local',
-      phone: '+84 945 678 901',
-      showRole: 'QC',
-      isDM: false,
-      pmSongTitles: ['Nối Vòng Tay Lớn', 'Khoảnh Khắc'],
-      qcSongTitles: ['Đi Giữa Trời Rực Rỡ', 'Để Mị Nói Cho Mà Nghe'],
-      primaryInstrument: 'drums',
-      secondaryInstruments: ['percussion'],
-      assignedSongCount: 2,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Nối Vòng Tay Lớn'],
-      totalPracticeHours: 10,
-      workloadStatus: 'optimal',
-      attendanceRate: 100,
-      joinedAt: '2026-08-22',
-    },
-    {
-      id: 'mem-5',
-      userId: 'u-105',
-      fullName: 'Khánh Linh',
-      email: 'khanhlinh@csac.local',
-      phone: '+84 956 789 012',
-      showRole: 'Performer',
-      primaryInstrument: 'vocal_harmony',
-      secondaryInstruments: ['keys'],
-      assignedSongCount: 2,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Bài Ca Hy Vọng'],
-      totalPracticeHours: 8,
-      workloadStatus: 'optimal',
-      attendanceRate: 95,
-      joinedAt: '2026-08-25',
-    },
-    {
-      id: 'mem-6',
-      userId: 'u-106',
-      fullName: 'Quốc Bảo',
-      email: 'quocbao@csac.local',
-      phone: '+84 967 890 123',
-      showRole: 'Performer',
-      primaryInstrument: 'keys',
-      secondaryInstruments: ['sound_tech'],
-      assignedSongCount: 3,
-      assignedSongTitles: ['Hào Khí Việt Nam', 'Đi Giữa Trời Rực Rỡ', 'Bài Ca Hy Vọng'],
-      totalPracticeHours: 14,
-      workloadStatus: 'moderate',
-      attendanceRate: 90,
-      joinedAt: '2026-08-27',
-    },
-    {
-      id: 'mem-7',
-      userId: 'u-107',
-      fullName: 'Trọng Hiếu',
-      email: 'tronghieu@csac.local',
-      phone: '+84 978 901 234',
-      showRole: 'Performer',
-      primaryInstrument: 'sound_tech',
-      secondaryInstruments: [],
-      assignedSongCount: 1,
-      assignedSongTitles: ['Hào Khí Việt Nam (Live Audio)'],
-      totalPracticeHours: 6,
-      workloadStatus: 'optimal',
-      attendanceRate: 100,
-      joinedAt: '2026-08-29',
-    },
-  ]);
+  // Roster Seed Data loaded from load function / backend
+  let roster = $state<ShowRosterMember[]>(data?.roster || []);
+
+  $effect(() => {
+    if (data?.roster && data.roster.length > 0) {
+      roster = data.roster;
+    }
+  });
 
   // View Mode & Filtering State
   let viewMode = $state<'cards' | 'matrix'>('cards');
@@ -281,25 +165,40 @@
     isAddEditModalOpen = true;
   }
 
-  function handleSaveMember(e: Event) {
+  async function handleSaveMember(e: Event) {
     e.preventDefault();
     if (!formFullName.trim()) return;
 
     if (editingMember) {
-      roster = roster.map((m) =>
-        m.id === editingMember?.id
-          ? {
-              ...m,
-              fullName: formFullName.trim(),
-              email: formEmail.trim(),
-              phone: formPhone.trim(),
-              showRole: formShowRole,
-              primaryInstrument: formPrimaryInst,
-              secondaryInstruments: formSecondaryInst,
-              totalPracticeHours: Number(formPracticeHours) || m.totalPracticeHours,
-            }
-          : m
-      );
+      const updatedMember: ShowRosterMember = {
+        ...editingMember,
+        fullName: formFullName.trim(),
+        email: formEmail.trim(),
+        phone: formPhone.trim(),
+        showRole: formShowRole,
+        isDM: formShowRole === 'DM',
+        primaryInstrument: formPrimaryInst,
+        secondaryInstruments: formSecondaryInst,
+        totalPracticeHours: Number(formPracticeHours) || editingMember.totalPracticeHours,
+      };
+
+      roster = roster.map((m) => (m.id === editingMember?.id ? updatedMember : m));
+      isAddEditModalOpen = false;
+
+      try {
+        await api.shows.saveRosterMember(showId, {
+          id: editingMember.id,
+          fullName: updatedMember.fullName,
+          email: updatedMember.email,
+          phone: updatedMember.phone,
+          showRole: updatedMember.showRole,
+          primaryInstrument: updatedMember.primaryInstrument,
+          secondaryInstruments: updatedMember.secondaryInstruments,
+          practiceHours: updatedMember.totalPracticeHours,
+        });
+      } catch (err) {
+        console.error('Failed to update roster member in backend:', err);
+      }
     } else {
       const newMember: ShowRosterMember = {
         id: `mem-${Date.now()}`,
@@ -308,6 +207,7 @@
         email: formEmail.trim() || `${formFullName.toLowerCase().replace(/\s+/g, '')}@csac.local`,
         phone: formPhone.trim() || '+84 900 000 000',
         showRole: formShowRole,
+        isDM: formShowRole === 'DM',
         primaryInstrument: formPrimaryInst,
         secondaryInstruments: formSecondaryInst,
         assignedSongCount: 1,
@@ -318,8 +218,22 @@
         joinedAt: new Date().toISOString().split('T')[0],
       };
       roster = [newMember, ...roster];
+      isAddEditModalOpen = false;
+
+      try {
+        await api.shows.saveRosterMember(showId, {
+          fullName: newMember.fullName,
+          email: newMember.email,
+          phone: newMember.phone,
+          showRole: newMember.showRole,
+          primaryInstrument: newMember.primaryInstrument,
+          secondaryInstruments: newMember.secondaryInstruments,
+          practiceHours: newMember.totalPracticeHours,
+        });
+      } catch (err) {
+        console.error('Failed to create roster member in backend:', err);
+      }
     }
-    isAddEditModalOpen = false;
   }
 
   function promptRemoveMember(member: ShowRosterMember) {
@@ -327,11 +241,18 @@
     isRemoveModalOpen = true;
   }
 
-  function confirmRemoveMember() {
+  async function confirmRemoveMember() {
     if (memberToRemove) {
-      roster = roster.filter((m) => m.id !== memberToRemove?.id);
+      const toRemoveId = memberToRemove.id;
+      roster = roster.filter((m) => m.id !== toRemoveId);
       memberToRemove = null;
       isRemoveModalOpen = false;
+
+      try {
+        await api.shows.deleteRosterMember(showId, toRemoveId);
+      } catch (err) {
+        console.error('Failed to delete member from backend:', err);
+      }
     }
   }
 

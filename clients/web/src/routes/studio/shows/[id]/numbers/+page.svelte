@@ -37,6 +37,8 @@
   } from '$lib/auth';
   import type { UserRole } from '$lib/types/timetable';
 
+  import { api } from '$lib/api/client';
+
   export interface SongNumber {
     id: string;
     title: string;
@@ -54,145 +56,20 @@
     };
   }
 
+  let { data } = $props();
+
   const showId = $derived($page.params.id || 'show-2026-annual');
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
   const currentUserName = $derived($page.data?.user?.fullName || 'Administrator');
 
-  // Realistic CSAC Annual Concert production dataset (14 numbers scaling across all 5 stages)
-  let numbers = $state<SongNumber[]>([
-    {
-      id: 'num-1',
-      title: 'Hào Khí Việt Nam',
-      genre: 'Epic Symphony Rock',
-      pmName: 'Minh Pháp',
-      stage: 'stage_ready',
-      qcReviewer: 'Hoàng Nam',
-      qcNotes: 'Flawless vocal harmonies and drum fills. Stage ready.',
-      lineup: { vocalLead: 'Minh Pháp', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-2',
-      title: 'Đi Giữa Trời Rực Rỡ',
-      genre: 'Pop Rock',
-      pmName: 'Hoàng Nam',
-      stage: 'qc_approved',
-      qcReviewer: 'Thu Hà',
-      qcNotes: 'Lead guitar solo approved. Dynamic balance is balanced.',
-      lineup: { vocalLead: 'Gia Huy', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-3',
-      title: 'Giọt Sương Trên Mí Mắt',
-      genre: 'Acoustic Quartet',
-      pmName: 'Bảo Anh',
-      stage: 'ready_for_qc',
-      qcReviewer: 'Minh Pháp',
-      lineup: { vocalLead: 'Minh Pháp', guitarLead: 'Tùng Dương', bass: 'Bảo Anh' },
-    },
-    {
-      id: 'num-4',
-      title: 'Nối Vòng Tay Lớn',
-      genre: 'Choral Folk Rock',
-      pmName: 'Thu Hà',
-      stage: 'in_practice',
-      qcReviewer: 'Bảo Anh',
-      qcNotes: 'Need tighter drum transitions in Chorus 2.',
-      lineup: { vocalLead: 'Anh Pha', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-5',
-      title: 'Túy Âm',
-      genre: 'Future Bass Rock Fusion',
-      pmName: 'Gia Huy',
-      stage: 'stage_ready',
-      qcReviewer: 'Minh Pháp',
-      qcNotes: 'Synthesizer pads and bass groove calibrated perfectly.',
-      lineup: { vocalLead: 'Gia Huy', bass: 'Bảo Anh', keys: 'Phương Nhi', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-6',
-      title: 'Để Mị Nói Cho Mà Nghe',
-      genre: 'Ethnic Pop Punk',
-      pmName: 'Phương Nhi',
-      stage: 'qc_approved',
-      qcReviewer: 'Thu Hà',
-      qcNotes: 'Flute & keyboard blend sounds crisp.',
-      lineup: { vocalLead: 'Phương Nhi', guitarLead: 'Hoàng Nam', bass: 'Bảo Anh' },
-    },
-    {
-      id: 'num-7',
-      title: 'Bài Ca Hy Vọng',
-      genre: 'Chamber Vocal Ensemble',
-      pmName: 'Minh Pháp',
-      stage: 'ready_for_qc',
-      qcReviewer: 'Hoàng Nam',
-      lineup: { vocalLead: 'Minh Pháp', keys: 'Phương Nhi' },
-    },
-    {
-      id: 'num-8',
-      title: 'Ngẫu Hứng Sông Hồng',
-      genre: 'Progressive Folk Rock',
-      pmName: 'Hoàng Nam',
-      stage: 'in_practice',
-      qcReviewer: 'Minh Pháp',
-      lineup: { vocalLead: 'Anh Pha', guitarLead: 'Hoàng Nam', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-9',
-      title: 'Góc Ban Công',
-      genre: 'Indie Pop Ballad',
-      pmName: 'Bảo Anh',
-      stage: 'in_practice',
-      qcReviewer: 'Thu Hà',
-      lineup: { vocalLead: 'Bảo Anh', guitarLead: 'Tùng Dương' },
-    },
-    {
-      id: 'num-10',
-      title: 'Mặt Trời Bé Con',
-      genre: 'Acoustic Duo',
-      pmName: 'Tùng Dương',
-      stage: 'stage_ready',
-      qcReviewer: 'Bảo Anh',
-      qcNotes: 'Acoustic fingerstyle guitar approved for stage soundcheck.',
-      lineup: { vocalLead: 'Thu Hà', guitarLead: 'Tùng Dương' },
-    },
-    {
-      id: 'num-11',
-      title: 'Tháng Mười Hai',
-      genre: 'Alternative Rock',
-      pmName: 'Gia Huy',
-      stage: 'draft',
-      qcReviewer: 'Hoàng Nam',
-      lineup: { vocalLead: 'Gia Huy', guitarLead: 'Hoàng Nam' },
-    },
-    {
-      id: 'num-12',
-      title: 'Đất Nước Trọn Niềm Vui',
-      genre: 'Orchestral Overture',
-      pmName: 'Minh Pháp',
-      stage: 'ready_for_qc',
-      qcReviewer: 'Thu Hà',
-      lineup: { vocalLead: 'Minh Pháp', keys: 'Phương Nhi', drums: 'Thu Hà' },
-    },
-    {
-      id: 'num-13',
-      title: 'Khát Vọng Tuổi Trẻ',
-      genre: 'Youth Anthem Pop',
-      pmName: 'Anh Pha',
-      stage: 'draft',
-      qcReviewer: 'Minh Pháp',
-      lineup: { vocalLead: 'Anh Pha' },
-    },
-    {
-      id: 'num-14',
-      title: 'Khoảnh Khắc',
-      genre: 'Acoustic Soul',
-      pmName: 'Thu Hà',
-      stage: 'in_practice',
-      qcReviewer: 'Gia Huy',
-      lineup: { vocalLead: 'Thu Hà', guitarLead: 'Tùng Dương', bass: 'Bảo Anh' },
-    },
-  ]);
+  // Realistic CSAC Annual Concert production dataset loaded from load function / backend
+  let numbers = $state<SongNumber[]>(data?.numbers || []);
+
+  $effect(() => {
+    if (data?.numbers && data.numbers.length > 0) {
+      numbers = data.numbers;
+    }
+  });
 
   let availableRoster = [
     'Minh Pháp',
@@ -290,47 +167,70 @@
     isLineupDrawerOpen = true;
   }
 
-  function handleLineupSubmit(e: Event) {
+  async function handleLineupSubmit(e: Event) {
     e.preventDefault();
     if (!activeSongForLineup) return;
+
+    const lineupPayload = {
+      vocalLead: formVocalLead || undefined,
+      guitarLead: formGuitarLead || undefined,
+      bass: formBass || undefined,
+      drums: formDrums || undefined,
+      keys: formKeys || undefined,
+    };
 
     numbers = numbers.map((n) =>
       n.id === activeSongForLineup?.id
         ? {
             ...n,
-            lineup: {
-              vocalLead: formVocalLead || undefined,
-              guitarLead: formGuitarLead || undefined,
-              bass: formBass || undefined,
-              drums: formDrums || undefined,
-              keys: formKeys || undefined,
-            },
+            lineup: lineupPayload,
           }
         : n
     );
     isLineupDrawerOpen = false;
+
+    try {
+      await api.shows.updateLineup(showId, activeSongForLineup.id, lineupPayload);
+    } catch (err) {
+      console.error('Failed to sync lineup to backend:', err);
+    }
   }
 
-  function handleQcSubmit(e: Event) {
+  async function handleQcSubmit(e: Event) {
     e.preventDefault();
     if (!activeSongForQc) return;
 
+    const songId = activeSongForQc.id;
+    const verdict = qcVerdict;
+    const notes = qcNotesInput;
+
     numbers = numbers.map((n) =>
-      n.id === activeSongForQc?.id
+      n.id === songId
         ? {
             ...n,
-            stage: qcVerdict === 'pass' ? 'qc_approved' : 'in_practice',
-            qcNotes: qcNotesInput,
+            stage: verdict === 'pass' ? 'qc_approved' : 'in_practice',
+            qcNotes: notes,
           }
         : n
     );
 
     isQcDrawerOpen = false;
     activeSongForQc = null;
+
+    try {
+      await api.shows.submitQc(showId, songId, { verdict, notes });
+    } catch (err) {
+      console.error('Failed to submit QC to backend:', err);
+    }
   }
 
-  function advanceStatus(song: SongNumber, nextStage: SongNumber['stage']) {
+  async function advanceStatus(song: SongNumber, nextStage: SongNumber['stage']) {
     numbers = numbers.map((n) => (n.id === song.id ? { ...n, stage: nextStage } : n));
+    try {
+      await api.shows.updateStage(showId, song.id, nextStage);
+    } catch (err) {
+      console.error('Failed to update stage in backend:', err);
+    }
   }
 
   function openAddModal() {
@@ -341,7 +241,7 @@
     isAddModalOpen = true;
   }
 
-  function handleCreateNumber(e: Event) {
+  async function handleCreateNumber(e: Event) {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
@@ -357,6 +257,17 @@
 
     numbers = [newSong, ...numbers];
     isAddModalOpen = false;
+
+    try {
+      await api.shows.createNumber(showId, {
+        title: newSong.title,
+        genre: newSong.genre,
+        pm_name: newSong.pmName,
+        qc_reviewer: newSong.qcReviewer,
+      });
+    } catch (err) {
+      console.error('Failed to create number in backend:', err);
+    }
   }
 
   function getStageBadgeClass(stage: SongNumber['stage']) {

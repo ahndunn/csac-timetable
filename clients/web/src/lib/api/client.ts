@@ -1,4 +1,10 @@
-import { auth } from '$lib/stores/auth.svelte';
+let authModule: any = null;
+try {
+  // @ts-ignore
+  authModule = await import('$lib/stores/auth.svelte').catch(() => null);
+} catch {
+  // Non-SvelteKit runtime fallback
+}
 
 const API_BASE = '/api/v1';
 
@@ -16,8 +22,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  if (auth.token) {
-    headers.set('Authorization', `Bearer ${auth.token}`);
+  const token = authModule?.auth?.token;
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -195,6 +202,102 @@ export const api = {
       request<any>(`/sprints/${sprintId}/schedule`, {
         method: 'POST',
       }),
+  },
+  shows: {
+    getOverview: (showId: string, customFetch?: typeof fetch) =>
+      (customFetch
+        ? customFetch(`/api/v1/shows/${showId}/overview`).then((r) => r.json())
+        : request<any>(`/shows/${showId}/overview`)),
+    listNumbers: (showId: string, customFetch?: typeof fetch) =>
+      (customFetch
+        ? customFetch(`/api/v1/shows/${showId}/numbers`).then((r) => r.json())
+        : request<any[]>(`/shows/${showId}/numbers`)),
+    createNumber: (
+      showId: string,
+      payload: { title: string; genre?: string; pm_name?: string; qc_reviewer?: string }
+    ) =>
+      request<any>(`/shows/${showId}/numbers`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    updateStage: (showId: string, numberId: string, stage: string) =>
+      request<any>(`/shows/${showId}/numbers/${numberId}/stage`, {
+        method: 'PUT',
+        body: JSON.stringify({ stage }),
+      }),
+    updateLineup: (
+      showId: string,
+      numberId: string,
+      lineup: {
+        vocalLead?: string;
+        guitarLead?: string;
+        bass?: string;
+        drums?: string;
+        keys?: string;
+      }
+    ) =>
+      request<any>(`/shows/${showId}/numbers/${numberId}/lineup`, {
+        method: 'PUT',
+        body: JSON.stringify(lineup),
+      }),
+    submitQc: (
+      showId: string,
+      numberId: string,
+      payload: { verdict: 'pass' | 'revision'; notes?: string }
+    ) =>
+      request<any>(`/shows/${showId}/numbers/${numberId}/qc`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    listRoster: (showId: string, customFetch?: typeof fetch) =>
+      (customFetch
+        ? customFetch(`/api/v1/shows/${showId}/roster`).then((r) => r.json())
+        : request<any[]>(`/shows/${showId}/roster`)),
+    saveRosterMember: (
+      showId: string,
+      payload: {
+        id?: string;
+        fullName: string;
+        email: string;
+        phone?: string;
+        showRole: string;
+        primaryInstrument: string;
+        secondaryInstruments?: string[];
+        practiceHours?: number;
+      }
+    ) => {
+      if (payload.id) {
+        return request<any>(`/shows/${showId}/roster/${payload.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      }
+      return request<any>(`/shows/${showId}/roster`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+    deleteRosterMember: (showId: string, memberId: string) =>
+      request<any>(`/shows/${showId}/roster/${memberId}`, {
+        method: 'DELETE',
+      }),
+    getActiveSprint: (showId: string, customFetch?: typeof fetch) =>
+      (customFetch
+        ? customFetch(`/api/v1/shows/${showId}/sprints/active`).then((r) => r.json())
+        : request<any>(`/shows/${showId}/sprints/active`)),
+    saveSprintAvailability: (
+      showId: string,
+      sprintId: string,
+      slots: Array<{ day_of_week: string; slot_label: string; is_available: boolean }>
+    ) =>
+      request<any>(`/shows/${showId}/sprints/${sprintId}/availability`, {
+        method: 'POST',
+        body: JSON.stringify({ slots }),
+      }),
+    getSprintHistory: (showId: string, sprintId: string, customFetch?: typeof fetch) =>
+      (customFetch
+        ? customFetch(`/api/v1/shows/${showId}/sprints/${sprintId}/history`).then((r) => r.json())
+        : request<any>(`/shows/${showId}/sprints/${sprintId}/history`)),
   },
 };
 

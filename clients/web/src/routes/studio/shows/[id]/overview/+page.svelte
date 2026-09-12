@@ -15,7 +15,19 @@
     Shield,
   } from '@lucide/svelte';
 
+  let { data } = $props();
+
   const showId = $derived($page.params.id || 'show-2026-annual');
+  const overview = $derived(
+    data?.overview || {
+      readiness_percent: 75,
+      total_numbers: 12,
+      total_hours: 48,
+      qc_approved_count: 9,
+      highlights: [],
+      milestones: [],
+    }
+  );
 </script>
 
 <div class="overview-subpage">
@@ -26,12 +38,12 @@
         <span class="metric-label">{$tStore('studio_shows.readiness')}</span>
         <Activity size={18} class="text-orange" />
       </div>
-      <div class="metric-value">75%</div>
+      <div class="metric-value">{overview.readiness_percent}%</div>
       <div class="progress-bar">
-        <div class="progress-fill" style="width: 75%;"></div>
+        <div class="progress-fill" style="width: {overview.readiness_percent}%;"></div>
       </div>
       <div class="metric-footer-row">
-        <span class="metric-sub">9 of 12 numbers ready for stage</span>
+        <span class="metric-sub">{overview.qc_approved_count} of {overview.total_numbers} numbers ready for stage</span>
         <ChevronRight size={14} class="link-arrow" />
       </div>
     </a>
@@ -41,7 +53,7 @@
         <span class="metric-label">{$tStore('studio_shows.total_numbers')}</span>
         <Music size={18} class="text-blue" />
       </div>
-      <div class="metric-value">12</div>
+      <div class="metric-value">{overview.total_numbers}</div>
       <div class="metric-footer-row">
         <span class="metric-sub">Across 4 performance categories</span>
         <ChevronRight size={14} class="link-arrow" />
@@ -53,7 +65,7 @@
         <span class="metric-label">{$tStore('studio_shows.total_hours')}</span>
         <Clock size={18} class="text-purple" />
       </div>
-      <div class="metric-value">48 hrs</div>
+      <div class="metric-value">{overview.total_hours} hrs</div>
       <div class="metric-footer-row">
         <span class="metric-sub">3 practice sprints completed</span>
         <ChevronRight size={14} class="link-arrow" />
@@ -65,7 +77,7 @@
         <span class="metric-label">{$tStore('studio_shows.qc_approved')}</span>
         <CheckCircle2 size={18} class="text-green" />
       </div>
-      <div class="metric-value">9 / 12</div>
+      <div class="metric-value">{overview.qc_approved_count} / {overview.total_numbers}</div>
       <div class="metric-footer-row">
         <span class="metric-sub">Reviewed by designated QC team</span>
         <ChevronRight size={14} class="link-arrow" />

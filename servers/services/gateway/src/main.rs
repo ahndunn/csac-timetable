@@ -3,7 +3,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{sse::{Event as SseEvent, Sse}, Response},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::{DateTime, Utc};
@@ -1232,6 +1232,882 @@ async fn sprint_schedule_sse_handler(
 }
 
 // ==========================================
+// Show Studio Handlers (/api/v1/shows/*)
+// ==========================================
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ShowOverviewData {
+    pub id: String,
+    pub title: String,
+    pub venue: String,
+    pub dates: String,
+    pub readiness_percent: i32,
+    pub total_numbers: usize,
+    pub total_hours: i32,
+    pub qc_approved_count: usize,
+    pub highlights: Vec<Value>,
+    pub milestones: Vec<Value>,
+}
+
+async fn get_show_overview_handler(
+    Path(show_id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let overview = json!({
+        "id": show_id,
+        "title": "CSAC Annual Concert 2026",
+        "venue": "CSAC Main Auditorium",
+        "dates": "Oct 1 - Oct 15, 2026",
+        "readiness_percent": 75,
+        "total_numbers": 12,
+        "total_hours": 48,
+        "qc_approved_count": 9,
+        "highlights": [
+            {
+                "title": "\"Hào Khí Việt Nam\" (Grand Symphony)",
+                "meta": "Leader (PM): Minh Pháp • Band: Full Orchestra",
+                "stage": "stage_ready",
+                "badge": "Stage Ready"
+            },
+            {
+                "title": "\"Đi Giữa Trời Rực Rỡ\" (Pop Rock)",
+                "meta": "Leader (PM): Hoàng Nam • Drums: Thu Hà",
+                "stage": "qc_approved",
+                "badge": "QC Approved"
+            },
+            {
+                "title": "\"Giọt Sương Trên Mí Mắt\" (Acoustic Quartet)",
+                "meta": "Leader (PM): Bảo Anh • Guitar: Tùng Dương",
+                "stage": "in_practice",
+                "badge": "In Practice"
+            }
+        ],
+        "milestones": [
+            {
+                "title": "Sprint 1: Song Arrangement & Scratch Demo",
+                "date": "Completed Sept 15, 2026",
+                "status": "done"
+            },
+            {
+                "title": "Sprint 2: Band Rehearsals & Vocal Harmonies",
+                "date": "Completed Sept 25, 2026",
+                "status": "done"
+            },
+            {
+                "title": "Sprint 3: Quality Check (QC) Stage Audits",
+                "date": "In Progress (Ends Oct 02)",
+                "status": "active"
+            }
+        ]
+    });
+
+    Ok(Json(overview))
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SongNumberDto {
+    pub id: String,
+    pub title: String,
+    pub genre: String,
+    pub pmName: String,
+    pub stage: String,
+    pub qcReviewer: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qcNotes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineup: Option<Value>,
+}
+
+async fn list_show_numbers_handler(
+    Path(_show_id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let numbers = json!([
+        {
+            "id": "num-1",
+            "title": "Hào Khí Việt Nam",
+            "genre": "Epic Symphony Rock",
+            "pmName": "Minh Pháp",
+            "stage": "stage_ready",
+            "qcReviewer": "Hoàng Nam",
+            "qcNotes": "Flawless vocal harmonies and drum fills. Stage ready.",
+            "lineup": { "vocalLead": "Minh Pháp", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-2",
+            "title": "Đi Giữa Trời Rực Rỡ",
+            "genre": "Pop Rock",
+            "pmName": "Hoàng Nam",
+            "stage": "qc_approved",
+            "qcReviewer": "Thu Hà",
+            "qcNotes": "Lead guitar solo approved. Dynamic balance is balanced.",
+            "lineup": { "vocalLead": "Gia Huy", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-3",
+            "title": "Giọt Sương Trên Mí Mắt",
+            "genre": "Acoustic Quartet",
+            "pmName": "Bảo Anh",
+            "stage": "ready_for_qc",
+            "qcReviewer": "Minh Pháp",
+            "lineup": { "vocalLead": "Minh Pháp", "guitarLead": "Tùng Dương", "bass": "Bảo Anh" }
+        },
+        {
+            "id": "num-4",
+            "title": "Nối Vòng Tay Lớn",
+            "genre": "Choral Folk Rock",
+            "pmName": "Thu Hà",
+            "stage": "in_practice",
+            "qcReviewer": "Bảo Anh",
+            "qcNotes": "Need tighter drum transitions in Chorus 2.",
+            "lineup": { "vocalLead": "Anh Pha", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-5",
+            "title": "Túy Âm",
+            "genre": "Future Bass Rock Fusion",
+            "pmName": "Gia Huy",
+            "stage": "stage_ready",
+            "qcReviewer": "Minh Pháp",
+            "qcNotes": "Synthesizer pads and bass groove calibrated perfectly.",
+            "lineup": { "vocalLead": "Gia Huy", "bass": "Bảo Anh", "keys": "Phương Nhi", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-6",
+            "title": "Để Mị Nói Cho Mà Nghe",
+            "genre": "Ethnic Pop Punk",
+            "pmName": "Phương Nhi",
+            "stage": "qc_approved",
+            "qcReviewer": "Thu Hà",
+            "qcNotes": "Flute & keyboard blend sounds crisp.",
+            "lineup": { "vocalLead": "Phương Nhi", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh" }
+        },
+        {
+            "id": "num-7",
+            "title": "Bài Ca Hy Vọng",
+            "genre": "Chamber Vocal Ensemble",
+            "pmName": "Minh Pháp",
+            "stage": "ready_for_qc",
+            "qcReviewer": "Hoàng Nam",
+            "lineup": { "vocalLead": "Minh Pháp", "keys": "Phương Nhi" }
+        },
+        {
+            "id": "num-8",
+            "title": "Ngẫu Hứng Sông Hồng",
+            "genre": "Progressive Folk Rock",
+            "pmName": "Hoàng Nam",
+            "stage": "in_practice",
+            "qcReviewer": "Minh Pháp",
+            "lineup": { "vocalLead": "Anh Pha", "guitarLead": "Hoàng Nam", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-9",
+            "title": "Góc Ban Công",
+            "genre": "Indie Pop Ballad",
+            "pmName": "Bảo Anh",
+            "stage": "in_practice",
+            "qcReviewer": "Thu Hà",
+            "lineup": { "vocalLead": "Bảo Anh", "guitarLead": "Tùng Dương" }
+        },
+        {
+            "id": "num-10",
+            "title": "Mặt Trời Bé Con",
+            "genre": "Acoustic Duo",
+            "pmName": "Tùng Dương",
+            "stage": "stage_ready",
+            "qcReviewer": "Bảo Anh",
+            "qcNotes": "Acoustic fingerstyle guitar approved for stage soundcheck.",
+            "lineup": { "vocalLead": "Thu Hà", "guitarLead": "Tùng Dương" }
+        },
+        {
+            "id": "num-11",
+            "title": "Tháng Mười Hai",
+            "genre": "Alternative Rock",
+            "pmName": "Gia Huy",
+            "stage": "draft",
+            "qcReviewer": "Hoàng Nam",
+            "lineup": { "vocalLead": "Gia Huy", "guitarLead": "Hoàng Nam" }
+        },
+        {
+            "id": "num-12",
+            "title": "Đất Nước Trọn Niềm Vui",
+            "genre": "Orchestral Overture",
+            "pmName": "Minh Pháp",
+            "stage": "ready_for_qc",
+            "qcReviewer": "Thu Hà",
+            "lineup": { "vocalLead": "Minh Pháp", "keys": "Phương Nhi", "drums": "Thu Hà" }
+        },
+        {
+            "id": "num-13",
+            "title": "Khát Vọng Tuổi Trẻ",
+            "genre": "Youth Anthem Pop",
+            "pmName": "Anh Pha",
+            "stage": "draft",
+            "qcReviewer": "Minh Pháp",
+            "lineup": { "vocalLead": "Anh Pha" }
+        },
+        {
+            "id": "num-14",
+            "title": "Khoảnh Khắc",
+            "genre": "Acoustic Soul",
+            "pmName": "Thu Hà",
+            "stage": "in_practice",
+            "qcReviewer": "Gia Huy",
+            "lineup": { "vocalLead": "Thu Hà", "guitarLead": "Tùng Dương", "bass": "Bảo Anh" }
+        }
+    ]);
+
+    Ok(Json(numbers))
+}
+
+#[derive(Deserialize)]
+struct CreateShowNumberReq {
+    title: String,
+    genre: Option<String>,
+    pm_name: Option<String>,
+    qc_reviewer: Option<String>,
+}
+
+async fn create_show_number_handler(
+    Path(_show_id): Path<String>,
+    Json(payload): Json<CreateShowNumberReq>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let new_song = json!({
+        "id": format!("num-{}", Utc::now().timestamp_millis()),
+        "title": payload.title,
+        "genre": payload.genre.unwrap_or_else(|| "Live Performance".to_string()),
+        "pmName": payload.pm_name.unwrap_or_else(|| "Minh Pháp".to_string()),
+        "stage": "draft",
+        "qcReviewer": payload.qc_reviewer.unwrap_or_else(|| "Hoàng Nam".to_string()),
+        "lineup": {}
+    });
+
+    Ok((StatusCode::CREATED, Json(new_song)))
+}
+
+#[derive(Deserialize)]
+struct UpdateStageReq {
+    stage: String,
+}
+
+async fn update_show_number_stage_handler(
+    Path((_show_id, number_id)): Path<(String, String)>,
+    Json(payload): Json<UpdateStageReq>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Ok(Json(json!({
+        "id": number_id,
+        "stage": payload.stage,
+        "updated_at": Utc::now()
+    })))
+}
+
+#[derive(Deserialize)]
+struct UpdateLineupReq {
+    #[serde(rename = "vocalLead")]
+    vocal_lead: Option<String>,
+    #[serde(rename = "guitarLead")]
+    guitar_lead: Option<String>,
+    bass: Option<String>,
+    drums: Option<String>,
+    keys: Option<String>,
+}
+
+async fn update_show_number_lineup_handler(
+    Path((_show_id, number_id)): Path<(String, String)>,
+    Json(payload): Json<UpdateLineupReq>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Ok(Json(json!({
+        "id": number_id,
+        "lineup": {
+            "vocalLead": payload.vocal_lead,
+            "guitarLead": payload.guitar_lead,
+            "bass": payload.bass,
+            "drums": payload.drums,
+            "keys": payload.keys
+        },
+        "updated_at": Utc::now()
+    })))
+}
+
+#[derive(Deserialize)]
+struct SubmitQcReq {
+    verdict: String,
+    notes: Option<String>,
+}
+
+async fn submit_show_number_qc_handler(
+    Path((_show_id, number_id)): Path<(String, String)>,
+    Json(payload): Json<SubmitQcReq>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let next_stage = if payload.verdict == "pass" {
+        "qc_approved"
+    } else {
+        "in_practice"
+    };
+
+    Ok(Json(json!({
+        "id": number_id,
+        "stage": next_stage,
+        "qcNotes": payload.notes,
+        "reviewed_at": Utc::now()
+    })))
+}
+
+async fn list_show_roster_handler(
+    Path(_show_id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let roster = json!([
+        {
+            "id": "mem-1",
+            "userId": "u-101",
+            "fullName": "Minh Pháp",
+            "email": "minhphap@csac.local",
+            "phone": "+84 901 234 567",
+            "showRole": "DM",
+            "isDM": true,
+            "pmSongTitles": ["Hào Khí Việt Nam", "Bài Ca Hy Vọng"],
+            "qcSongTitles": ["Giọt Sương Trên Mí Mắt", "Túy Âm"],
+            "primaryInstrument": "vocal_lead",
+            "secondaryInstruments": ["guitar_rhythm"],
+            "assignedSongCount": 5,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Nối Vòng Tay Lớn", "Bài Ca Hy Vọng", "Dấu Chân Phía Trước"],
+            "totalPracticeHours": 24,
+            "workloadStatus": "fatigued",
+            "attendanceRate": 98,
+            "joinedAt": "2026-08-15"
+        },
+        {
+            "id": "mem-2",
+            "userId": "u-102",
+            "fullName": "Hoàng Nam",
+            "email": "hoangnam@csac.local",
+            "phone": "+84 912 345 678",
+            "showRole": "PM",
+            "isDM": false,
+            "pmSongTitles": ["Đi Giữa Trời Rực Rỡ", "Ngẫu Hứng Sông Hồng"],
+            "qcSongTitles": ["Hào Khí Việt Nam"],
+            "primaryInstrument": "guitar_lead",
+            "secondaryInstruments": ["guitar_rhythm"],
+            "assignedSongCount": 3,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Khát Vọng Tuổi Trẻ"],
+            "totalPracticeHours": 16,
+            "workloadStatus": "moderate",
+            "attendanceRate": 94,
+            "joinedAt": "2026-08-18"
+        },
+        {
+            "id": "mem-3",
+            "userId": "u-103",
+            "fullName": "Bảo Anh",
+            "email": "baoanh@csac.local",
+            "phone": "+84 934 567 890",
+            "showRole": "PM",
+            "isDM": false,
+            "pmSongTitles": ["Giọt Sương Trên Mí Mắt", "Góc Ban Công"],
+            "qcSongTitles": ["Nối Vòng Tay Lớn"],
+            "primaryInstrument": "bass",
+            "secondaryInstruments": ["guitar_lead"],
+            "assignedSongCount": 4,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Nối Vòng Tay Lớn", "Rock Vầng Trăng"],
+            "totalPracticeHours": 18,
+            "workloadStatus": "moderate",
+            "attendanceRate": 92,
+            "joinedAt": "2026-08-20"
+        },
+        {
+            "id": "mem-4",
+            "userId": "u-104",
+            "fullName": "Thu Hà",
+            "email": "thuha@csac.local",
+            "phone": "+84 945 678 901",
+            "showRole": "QC",
+            "isDM": false,
+            "pmSongTitles": ["Nối Vòng Tay Lớn", "Khoảnh Khắc"],
+            "qcSongTitles": ["Đi Giữa Trời Rực Rỡ", "Để Mị Nói Cho Mà Nghe"],
+            "primaryInstrument": "drums",
+            "secondaryInstruments": ["percussion"],
+            "assignedSongCount": 2,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Nối Vòng Tay Lớn"],
+            "totalPracticeHours": 10,
+            "workloadStatus": "optimal",
+            "attendanceRate": 100,
+            "joinedAt": "2026-08-22"
+        },
+        {
+            "id": "mem-5",
+            "userId": "u-105",
+            "fullName": "Khánh Linh",
+            "email": "khanhlinh@csac.local",
+            "phone": "+84 956 789 012",
+            "showRole": "Performer",
+            "isDM": false,
+            "primaryInstrument": "vocal_harmony",
+            "secondaryInstruments": ["keys"],
+            "assignedSongCount": 2,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Bài Ca Hy Vọng"],
+            "totalPracticeHours": 8,
+            "workloadStatus": "optimal",
+            "attendanceRate": 95,
+            "joinedAt": "2026-08-25"
+        },
+        {
+            "id": "mem-6",
+            "userId": "u-106",
+            "fullName": "Quốc Bảo",
+            "email": "quocbao@csac.local",
+            "phone": "+84 967 890 123",
+            "showRole": "Performer",
+            "isDM": false,
+            "primaryInstrument": "keys",
+            "secondaryInstruments": ["sound_tech"],
+            "assignedSongCount": 3,
+            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Bài Ca Hy Vọng"],
+            "totalPracticeHours": 14,
+            "workloadStatus": "moderate",
+            "attendanceRate": 90,
+            "joinedAt": "2026-08-27"
+        },
+        {
+            "id": "mem-7",
+            "userId": "u-107",
+            "fullName": "Trọng Hiếu",
+            "email": "tronghieu@csac.local",
+            "phone": "+84 978 901 234",
+            "showRole": "Performer",
+            "isDM": false,
+            "primaryInstrument": "sound_tech",
+            "secondaryInstruments": [],
+            "assignedSongCount": 1,
+            "assignedSongTitles": ["Hào Khí Việt Nam (Live Audio)"],
+            "totalPracticeHours": 6,
+            "workloadStatus": "optimal",
+            "attendanceRate": 100,
+            "joinedAt": "2026-08-29"
+        }
+    ]);
+
+    Ok(Json(roster))
+}
+
+#[derive(Deserialize)]
+struct SaveRosterMemberReq {
+    #[serde(rename = "fullName")]
+    full_name: String,
+    email: String,
+    phone: Option<String>,
+    #[serde(rename = "showRole")]
+    show_role: String,
+    #[serde(rename = "primaryInstrument")]
+    primary_instrument: String,
+    #[serde(rename = "secondaryInstruments")]
+    secondary_instruments: Option<Vec<String>>,
+    #[serde(rename = "practiceHours")]
+    practice_hours: Option<i32>,
+}
+
+async fn create_show_roster_handler(
+    Path(_show_id): Path<String>,
+    Json(payload): Json<SaveRosterMemberReq>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let new_member = json!({
+        "id": format!("mem-{}", Utc::now().timestamp_millis()),
+        "userId": format!("u-{}", Utc::now().timestamp_millis()),
+        "fullName": payload.full_name,
+        "email": payload.email,
+        "phone": payload.phone.unwrap_or_default(),
+        "showRole": payload.show_role,
+        "isDM": payload.show_role == "DM",
+        "primaryInstrument": payload.primary_instrument,
+        "secondaryInstruments": payload.secondary_instruments.unwrap_or_default(),
+        "assignedSongCount": 0,
+        "assignedSongTitles": [],
+        "totalPracticeHours": payload.practice_hours.unwrap_or(4),
+        "workloadStatus": "optimal",
+        "attendanceRate": 100,
+        "joinedAt": Utc::now().format("%Y-%m-%d").to_string()
+    });
+
+    Ok((StatusCode::CREATED, Json(new_member)))
+}
+
+async fn update_show_roster_handler(
+    Path((_show_id, member_id)): Path<(String, String)>,
+    Json(payload): Json<SaveRosterMemberReq>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Ok(Json(json!({
+        "id": member_id,
+        "fullName": payload.full_name,
+        "email": payload.email,
+        "phone": payload.phone.unwrap_or_default(),
+        "showRole": payload.show_role,
+        "isDM": payload.show_role == "DM",
+        "primaryInstrument": payload.primary_instrument,
+        "secondaryInstruments": payload.secondary_instruments.unwrap_or_default(),
+        "totalPracticeHours": payload.practice_hours.unwrap_or(4),
+        "updatedAt": Utc::now()
+    })))
+}
+
+async fn delete_show_roster_handler(
+    Path((_show_id, member_id)): Path<(String, String)>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Ok(Json(json!({
+        "status": "deleted",
+        "memberId": member_id
+    })))
+}
+
+async fn get_active_sprint_handler(
+    Path(_show_id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let sprint_data = json!({
+        "sprint": {
+            "id": "sprint-3",
+            "name": "Sprint 3 (Stage QC & 15m Rehearsal Optimization)",
+            "status": "active"
+        },
+        "selectedSlots": {
+            "0_17:00": true,
+            "0_17:15": true,
+            "0_17:30": true,
+            "0_17:45": true,
+            "0_18:00": true,
+            "0_18:15": true,
+            "0_18:30": true,
+            "0_18:45": true,
+            "2_19:00": true,
+            "2_19:15": true,
+            "2_19:30": true,
+            "2_19:45": true,
+            "2_20:00": true,
+            "2_20:15": true,
+            "2_20:30": true,
+            "2_20:45": true,
+            "4_18:00": true,
+            "4_18:15": true,
+            "4_18:30": true,
+            "4_18:45": true,
+            "4_19:00": true,
+            "4_19:15": true,
+            "5_17:30": true,
+            "5_17:45": true,
+            "5_18:00": true,
+            "5_18:15": true,
+            "5_18:30": true,
+            "5_18:45": true,
+            "6_19:00": true,
+            "6_19:15": true,
+            "6_19:30": true,
+            "6_19:45": true,
+            "6_20:00": true,
+            "6_20:15": true
+        },
+        "rehearsals": [
+            {
+                "id": "reh-1a",
+                "songTitle": "Hào Khí Việt Nam",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 3,
+                "dayIdx": 0,
+                "dayName": "Monday",
+                "startTime": "18:15",
+                "endTime": "19:45",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Minh Pháp",
+                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "stage_ready",
+                "color": "#ff6b00"
+            },
+            {
+                "id": "reh-1b",
+                "songTitle": "Hào Khí Việt Nam",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 3,
+                "dayIdx": 2,
+                "dayName": "Wednesday",
+                "startTime": "19:30",
+                "endTime": "21:00",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Minh Pháp",
+                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "stage_ready",
+                "color": "#ff6b00"
+            },
+            {
+                "id": "reh-1c",
+                "songTitle": "Hào Khí Việt Nam",
+                "sessionIndex": 3,
+                "totalTargetRehearsals": 3,
+                "dayIdx": 5,
+                "dayName": "Saturday",
+                "startTime": "17:00",
+                "endTime": "18:30",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Minh Pháp",
+                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "stage_ready",
+                "color": "#ff6b00"
+            },
+            {
+                "id": "reh-2a",
+                "songTitle": "Đi Giữa Trời Rực Rỡ",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 1,
+                "dayName": "Tuesday",
+                "startTime": "18:30",
+                "endTime": "20:00",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Hoàng Nam",
+                "performers": ["Gia Huy (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "qc_approved",
+                "color": "#2563eb"
+            },
+            {
+                "id": "reh-2b",
+                "songTitle": "Đi Giữa Trời Rực Rỡ",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 4,
+                "dayName": "Friday",
+                "startTime": "19:00",
+                "endTime": "20:30",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Hoàng Nam",
+                "performers": ["Gia Huy (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "qc_approved",
+                "color": "#2563eb"
+            },
+            {
+                "id": "reh-3a",
+                "songTitle": "Giọt Sương Trên Mí Mắt",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 0,
+                "dayName": "Monday",
+                "startTime": "20:00",
+                "endTime": "21:30",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Bảo Anh",
+                "performers": ["Minh Pháp (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
+                "status": "ready_for_qc",
+                "color": "#16a34a"
+            },
+            {
+                "id": "reh-3b",
+                "songTitle": "Giọt Sương Trên Mí Mắt",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 3,
+                "dayName": "Thursday",
+                "startTime": "18:15",
+                "endTime": "19:45",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Bảo Anh",
+                "performers": ["Minh Pháp (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
+                "status": "ready_for_qc",
+                "color": "#16a34a"
+            },
+            {
+                "id": "reh-4a",
+                "songTitle": "Nối Vòng Tay Lớn",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 1,
+                "dayName": "Tuesday",
+                "startTime": "17:00",
+                "endTime": "18:30",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Thu Hà",
+                "performers": ["Anh Pha (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "in_practice",
+                "color": "#9333ea"
+            },
+            {
+                "id": "reh-4b",
+                "songTitle": "Nối Vòng Tay Lớn",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 4,
+                "dayName": "Friday",
+                "startTime": "17:30",
+                "endTime": "19:00",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Thu Hà",
+                "performers": ["Anh Pha (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
+                "status": "in_practice",
+                "color": "#9333ea"
+            },
+            {
+                "id": "reh-5a",
+                "songTitle": "Túy Âm",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 2,
+                "dayName": "Wednesday",
+                "startTime": "18:00",
+                "endTime": "19:30",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Gia Huy",
+                "performers": ["Gia Huy (Vocal)", "Bảo Anh (Bass)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
+                "status": "stage_ready",
+                "color": "#ea580c"
+            },
+            {
+                "id": "reh-5b",
+                "songTitle": "Túy Âm",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 6,
+                "dayName": "Sunday",
+                "startTime": "19:00",
+                "endTime": "20:30",
+                "durationMinutes": 90,
+                "room": "Studio Room A",
+                "pmName": "Gia Huy",
+                "performers": ["Gia Huy (Vocal)", "Bảo Anh (Bass)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
+                "status": "stage_ready",
+                "color": "#ea580c"
+            },
+            {
+                "id": "reh-6a",
+                "songTitle": "Đất Nước Trọn Niềm Vui",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 3,
+                "dayName": "Thursday",
+                "startTime": "19:45",
+                "endTime": "21:15",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Minh Pháp",
+                "performers": ["Minh Pháp (Vocal)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
+                "status": "ready_for_qc",
+                "color": "#0891b2"
+            },
+            {
+                "id": "reh-6b",
+                "songTitle": "Đất Nước Trọn Niềm Vui",
+                "sessionIndex": 2,
+                "totalTargetRehearsals": 2,
+                "dayIdx": 5,
+                "dayName": "Saturday",
+                "startTime": "18:45",
+                "endTime": "20:15",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Minh Pháp",
+                "performers": ["Minh Pháp (Vocal)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
+                "status": "ready_for_qc",
+                "color": "#0891b2"
+            },
+            {
+                "id": "reh-7a",
+                "songTitle": "Khoảnh Khắc",
+                "sessionIndex": 1,
+                "totalTargetRehearsals": 1,
+                "dayIdx": 6,
+                "dayName": "Sunday",
+                "startTime": "17:30",
+                "endTime": "19:00",
+                "durationMinutes": 90,
+                "room": "Studio Room B",
+                "pmName": "Thu Hà",
+                "performers": ["Thu Hà (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
+                "status": "in_practice",
+                "color": "#4f46e5"
+            }
+        ]
+    });
+
+    Ok(Json(sprint_data))
+}
+
+async fn get_show_sprint_history_handler(
+    Path((_show_id, _sprint_id)): Path<(String, String)>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let history = json!({
+        "compute_history": [
+            {
+                "id": "run-101",
+                "sprintId": "sprint-3",
+                "triggeredBy": "user-001",
+                "triggeredByName": "Minh Pháp (DM)",
+                "status": "completed",
+                "durationMs": 420,
+                "score": 98.5,
+                "conflictCount": 0,
+                "createdAt": "2026-09-12 09:30:15",
+                "completedAt": "2026-09-12 09:30:16"
+            },
+            {
+                "id": "run-100",
+                "sprintId": "sprint-3",
+                "triggeredBy": "user-002",
+                "triggeredByName": "Hoàng Nam (Admin)",
+                "status": "completed",
+                "durationMs": 650,
+                "score": 92.0,
+                "conflictCount": 1,
+                "createdAt": "2026-09-11 14:15:00",
+                "completedAt": "2026-09-11 14:15:01"
+            }
+        ],
+        "registration_history": [
+            {
+                "id": "reg-501",
+                "sprintId": "sprint-3",
+                "userId": "user-003",
+                "userName": "Thu Hà (Member)",
+                "actorId": "user-003",
+                "actorName": "Thu Hà (Self)",
+                "action": "ADD",
+                "dayOfWeek": "Monday",
+                "slotLabel": "18:15",
+                "isAvailable": true,
+                "createdAt": "2026-09-12 10:12:00"
+            },
+            {
+                "id": "reg-502",
+                "sprintId": "sprint-3",
+                "userId": "user-004",
+                "userName": "Tuấn Kiệt (PM)",
+                "actorId": "user-001",
+                "actorName": "Minh Pháp (DM)",
+                "action": "UPDATE",
+                "dayOfWeek": "Friday",
+                "slotLabel": "19:00",
+                "isAvailable": true,
+                "createdAt": "2026-09-12 08:45:10"
+            },
+            {
+                "id": "reg-503",
+                "sprintId": "sprint-3",
+                "userId": "user-005",
+                "userName": "Bảo Anh (Member)",
+                "actorId": "user-005",
+                "actorName": "Bảo Anh (Self)",
+                "action": "DELETE",
+                "dayOfWeek": "Wednesday",
+                "slotLabel": "21:00",
+                "isAvailable": false,
+                "createdAt": "2026-09-11 19:30:22"
+            }
+        ]
+    });
+
+    Ok(Json(history))
+}
+
+// ==========================================
 // Main Server Entrypoint
 // ==========================================
 
@@ -1309,6 +2185,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/v1/sprints/:id/schedule/stream", get(sprint_schedule_sse_handler))
         // Solver proxy
         .route("/api/v1/schedule/solve", post(solve_proxy))
+        // Show Studio Routes (/api/v1/shows/*)
+        .route("/api/v1/shows/:id/overview", get(get_show_overview_handler))
+        .route("/api/v1/shows/:id/numbers", get(list_show_numbers_handler).post(create_show_number_handler))
+        .route("/api/v1/shows/:id/numbers/:number_id/stage", put(update_show_number_stage_handler))
+        .route("/api/v1/shows/:id/numbers/:number_id/lineup", put(update_show_number_lineup_handler))
+        .route("/api/v1/shows/:id/numbers/:number_id/qc", post(submit_show_number_qc_handler))
+        .route("/api/v1/shows/:id/roster", get(list_show_roster_handler).post(create_show_roster_handler))
+        .route("/api/v1/shows/:id/roster/:member_id", put(update_show_roster_handler).delete(delete_show_roster_handler))
+        .route("/api/v1/shows/:id/sprints/active", get(get_active_sprint_handler))
+        .route("/api/v1/shows/:id/sprints/:sprint_id/availability", post(submit_sprint_availability_handler))
+        .route("/api/v1/shows/:id/sprints/:sprint_id/history", get(get_show_sprint_history_handler))
         .layer(middleware::from_fn_with_state(
             app_state.clone(),
             telemetry_middleware,

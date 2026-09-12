@@ -78,7 +78,28 @@ flowchart TB
   * `/studio/shows/[id]/numbers` $\rightarrow$ Song cards include "View in Sprint Calendar" deep links to `/sprints?song=[song_title]`.
   * `/studio/shows/[id]/sprints` $\rightarrow$ Query param sync via `?song=...` filters rehearsals immediately and links back to song status.
 
-### 1.4 TypeScript Scoped Role & Authorization Contracts
+### 1.4 Show Studio Backend API Specifications (`/api/v1/shows/*`)
+The Show Studio web features (`/studio/shows/[id]/*`) interface directly with the following Axum Gateway REST & SSE endpoints:
+
+| Route Path | Method | Paradigm | Request Body | Response Payload | Error States |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/shows/:id/overview` | `GET` | Sync REST | None | `{ id, title, venue, dates, readiness_percent, total_numbers, total_hours, qc_approved_count, highlights, milestones }` | `404 Not Found` |
+| `/api/v1/shows/:id/numbers` | `GET` | Sync REST | Query: `?stage=...&q=...` | `Array<SongNumber>` (with attached lineup and QC history) | `500 Internal Error` |
+| `/api/v1/shows/:id/numbers` | `POST` | Sync REST | `{ title, genre, pm_name, qc_reviewer }` | Created `SongNumber` (status `201 Created`) | `400 Bad Request` |
+| `/api/v1/shows/:id/numbers/:num_id/stage` | `PUT` | Sync REST | `{ stage: 'draft' \| 'in_practice' \| 'ready_for_qc' \| 'qc_approved' \| 'stage_ready' }` | Updated `SongNumber` | `404 Not Found` |
+| `/api/v1/shows/:id/numbers/:num_id/lineup` | `PUT` | Sync REST | `{ vocalLead?, guitarLead?, bass?, drums?, keys? }` | Updated `SongNumber` | `404 Not Found` |
+| `/api/v1/shows/:id/numbers/:num_id/qc` | `POST` | Sync REST | `{ verdict: 'pass' \| 'revision', notes: string }` | Updated `SongNumber` with audit log | `404 Not Found` |
+| `/api/v1/shows/:id/roster` | `GET` | Sync REST | None | `Array<ShowRosterMember>` with dynamic workload flags | `500 Internal Error` |
+| `/api/v1/shows/:id/roster` | `POST` | Sync REST | `{ fullName, email, phone?, showRole, primaryInstrument, secondaryInstruments?, practiceHours? }` | Created `ShowRosterMember` (`201 Created`) | `400 Bad Request` |
+| `/api/v1/shows/:id/roster/:mem_id` | `PUT` | Sync REST | Member update payload | Updated `ShowRosterMember` | `404 Not Found` |
+| `/api/v1/shows/:id/roster/:mem_id` | `DELETE` | Sync REST | None | `{ status: "deleted" }` | `404 Not Found` |
+| `/api/v1/shows/:id/sprints/active` | `GET` | Sync REST | None | Active sprint info, 15m selected slots, and scheduled rehearsals list | `404 Not Found` |
+| `/api/v1/shows/:id/sprints/:sprint_id/availability` | `POST` | Sync REST | `{ slots: Record<string, boolean> }` | `{ status: "saved", total_hours: number }` | `400 Bad Request` |
+| `/api/v1/sprints/:id/schedule` | `POST` | **Async (202)** | None | `{ run_id, sprint_id, status: "queued", message: string }` | `500 Internal Error` |
+| `/api/v1/sprints/:id/schedule/stream` | `GET` | **Async (SSE)** | None | Server-Sent Event stream emitting `schedule_status` and `schedule_updated` | `500 Internal Error` |
+| `/api/v1/shows/:id/sprints/:sprint_id/history` | `GET` | Sync REST | None | `{ compute_history: Array<ScheduleRunHistoryItem>, registration_history: Array<AvailabilityHistoryItem> }` | `404 Not Found` |
+
+### 1.5 TypeScript Scoped Role & Authorization Contracts
 ```typescript
 // Scoped Show & Music Number Roles
 export interface UserShowScope {

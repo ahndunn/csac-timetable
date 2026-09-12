@@ -28,6 +28,10 @@
     Table,
   } from '@lucide/svelte';
 
+  import { api } from '$lib/api/client';
+
+  let { data } = $props();
+
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -57,41 +61,12 @@
   }
 
   // 15-Minute Selection Matrix State: `${dayIdx}_${slotLabel}` -> boolean
-  let selectedSlots = $state<Record<string, boolean>>({
-    '0_17:00': true,
-    '0_17:15': true,
-    '0_17:30': true,
-    '0_17:45': true,
-    '0_18:00': true,
-    '0_18:15': true,
-    '0_18:30': true,
-    '0_18:45': true,
-    '2_19:00': true,
-    '2_19:15': true,
-    '2_19:30': true,
-    '2_19:45': true,
-    '2_20:00': true,
-    '2_20:15': true,
-    '2_20:30': true,
-    '2_20:45': true,
-    '4_18:00': true,
-    '4_18:15': true,
-    '4_18:30': true,
-    '4_18:45': true,
-    '4_19:00': true,
-    '4_19:15': true,
-    '5_17:30': true,
-    '5_17:45': true,
-    '5_18:00': true,
-    '5_18:15': true,
-    '5_18:30': true,
-    '5_18:45': true,
-    '6_19:00': true,
-    '6_19:15': true,
-    '6_19:30': true,
-    '6_19:45': true,
-    '6_20:00': true,
-    '6_20:15': true,
+  let selectedSlots = $state<Record<string, boolean>>(data?.sprintData?.selectedSlots || {});
+
+  $effect(() => {
+    if (data?.sprintData?.selectedSlots) {
+      selectedSlots = data.sprintData.selectedSlots;
+    }
   });
 
   // Drag interaction state
@@ -118,76 +93,20 @@
   let isHistoryOpen = $state(false);
   let activeHistoryTab = $state<'compute' | 'registration'>('compute');
 
-  // Mock / Fetched Compute Run History
-  let computeHistory = $state<ScheduleRunHistoryItem[]>([
-    {
-      id: 'run-101',
-      sprintId: 'sprint-3',
-      triggeredBy: 'user-001',
-      triggeredByName: 'Minh Pháp (DM)',
-      status: 'completed',
-      durationMs: 420,
-      score: 98.5,
-      conflictCount: 0,
-      createdAt: '2026-09-12 09:30:15',
-      completedAt: '2026-09-12 09:30:16',
-    },
-    {
-      id: 'run-100',
-      sprintId: 'sprint-3',
-      triggeredBy: 'user-002',
-      triggeredByName: 'Hoàng Nam (Admin)',
-      status: 'completed',
-      durationMs: 650,
-      score: 92.0,
-      conflictCount: 1,
-      createdAt: '2026-09-11 14:15:00',
-      completedAt: '2026-09-11 14:15:01',
-    },
-  ]);
+  // Compute Run History loaded from backend
+  let computeHistory = $state<ScheduleRunHistoryItem[]>(data?.historyData?.compute_history || []);
 
-  // Mock / Fetched Free-Time Registration History
-  let registrationHistory = $state<AvailabilityHistoryItem[]>([
-    {
-      id: 'reg-501',
-      sprintId: 'sprint-3',
-      userId: 'user-003',
-      userName: 'Thu Hà (Member)',
-      actorId: 'user-003',
-      actorName: 'Thu Hà (Self)',
-      action: 'ADD',
-      dayOfWeek: 'Monday',
-      slotLabel: '18:15',
-      isAvailable: true,
-      createdAt: '2026-09-12 10:12:00',
-    },
-    {
-      id: 'reg-502',
-      sprintId: 'sprint-3',
-      userId: 'user-004',
-      userName: 'Tuấn Kiệt (PM)',
-      actorId: 'user-001',
-      actorName: 'Minh Pháp (DM)',
-      action: 'UPDATE',
-      dayOfWeek: 'Friday',
-      slotLabel: '19:00',
-      isAvailable: true,
-      createdAt: '2026-09-12 08:45:10',
-    },
-    {
-      id: 'reg-503',
-      sprintId: 'sprint-3',
-      userId: 'user-005',
-      userName: 'Bảo Anh (Member)',
-      actorId: 'user-005',
-      actorName: 'Bảo Anh (Self)',
-      action: 'DELETE',
-      dayOfWeek: 'Wednesday',
-      slotLabel: '21:00',
-      isAvailable: false,
-      createdAt: '2026-09-11 19:30:22',
-    },
-  ]);
+  // Free-Time Registration History loaded from backend
+  let registrationHistory = $state<AvailabilityHistoryItem[]>(data?.historyData?.registration_history || []);
+
+  $effect(() => {
+    if (data?.historyData?.compute_history) {
+      computeHistory = data.historyData.compute_history;
+    }
+    if (data?.historyData?.registration_history) {
+      registrationHistory = data.historyData.registration_history;
+    }
+  });
 
   interface ScheduledRehearsal {
     id: string;
@@ -206,245 +125,13 @@
     color: string;
   }
 
-  let scheduledSessions = $state<ScheduledRehearsal[]>([
-    // Song 1: Hào Khí Việt Nam (3 rehearsals target, 3 scheduled)
-    {
-      id: 'reh-1a',
-      songTitle: 'Hào Khí Việt Nam',
-      sessionIndex: 1,
-      totalTargetRehearsals: 3,
-      dayIdx: 0, // Monday
-      dayName: 'Monday',
-      startTime: '18:15',
-      endTime: '19:45',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'stage_ready',
-      color: '#ff6b00',
-    },
-    {
-      id: 'reh-1b',
-      songTitle: 'Hào Khí Việt Nam',
-      sessionIndex: 2,
-      totalTargetRehearsals: 3,
-      dayIdx: 2, // Wednesday
-      dayName: 'Wednesday',
-      startTime: '19:30',
-      endTime: '21:00',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'stage_ready',
-      color: '#ff6b00',
-    },
-    {
-      id: 'reh-1c',
-      songTitle: 'Hào Khí Việt Nam',
-      sessionIndex: 3,
-      totalTargetRehearsals: 3,
-      dayIdx: 5, // Saturday
-      dayName: 'Saturday',
-      startTime: '17:00',
-      endTime: '18:30',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'stage_ready',
-      color: '#ff6b00',
-    },
+  let scheduledSessions = $state<ScheduledRehearsal[]>(data?.sprintData?.rehearsals || []);
 
-    // Song 2: Đi Giữa Trời Rực Rỡ (2 rehearsals target, 2 scheduled)
-    {
-      id: 'reh-2a',
-      songTitle: 'Đi Giữa Trời Rực Rỡ',
-      sessionIndex: 1,
-      totalTargetRehearsals: 2,
-      dayIdx: 1, // Tuesday
-      dayName: 'Tuesday',
-      startTime: '18:30',
-      endTime: '20:00',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Hoàng Nam',
-      performers: ['Gia Huy (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'qc_approved',
-      color: '#2563eb',
-    },
-    {
-      id: 'reh-2b',
-      songTitle: 'Đi Giữa Trời Rực Rỡ',
-      sessionIndex: 2,
-      totalTargetRehearsals: 2,
-      dayIdx: 4, // Friday
-      dayName: 'Friday',
-      startTime: '19:00',
-      endTime: '20:30',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Hoàng Nam',
-      performers: ['Gia Huy (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'qc_approved',
-      color: '#2563eb',
-    },
-
-    // Song 3: Giọt Sương Trên Mí Mắt (2 rehearsals target, 2 scheduled)
-    {
-      id: 'reh-3a',
-      songTitle: 'Giọt Sương Trên Mí Mắt',
-      sessionIndex: 1,
-      totalTargetRehearsals: 2,
-      dayIdx: 0, // Monday
-      dayName: 'Monday',
-      startTime: '20:00',
-      endTime: '21:30',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Bảo Anh',
-      performers: ['Minh Pháp (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
-      status: 'ready_for_qc',
-      color: '#16a34a',
-    },
-    {
-      id: 'reh-3b',
-      songTitle: 'Giọt Sương Trên Mí Mắt',
-      sessionIndex: 2,
-      totalTargetRehearsals: 2,
-      dayIdx: 3, // Thursday
-      dayName: 'Thursday',
-      startTime: '18:15',
-      endTime: '19:45',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Bảo Anh',
-      performers: ['Minh Pháp (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
-      status: 'ready_for_qc',
-      color: '#16a34a',
-    },
-
-    // Song 4: Nối Vòng Tay Lớn (2 rehearsals target, 2 scheduled)
-    {
-      id: 'reh-4a',
-      songTitle: 'Nối Vòng Tay Lớn',
-      sessionIndex: 1,
-      totalTargetRehearsals: 2,
-      dayIdx: 1, // Tuesday
-      dayName: 'Tuesday',
-      startTime: '17:00',
-      endTime: '18:30',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Thu Hà',
-      performers: ['Anh Pha (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'in_practice',
-      color: '#9333ea',
-    },
-    {
-      id: 'reh-4b',
-      songTitle: 'Nối Vòng Tay Lớn',
-      sessionIndex: 2,
-      totalTargetRehearsals: 2,
-      dayIdx: 4, // Friday
-      dayName: 'Friday',
-      startTime: '17:30',
-      endTime: '19:00',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Thu Hà',
-      performers: ['Anh Pha (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
-      status: 'in_practice',
-      color: '#9333ea',
-    },
-
-    // Song 5: Túy Âm (2 rehearsals target, 2 scheduled)
-    {
-      id: 'reh-5a',
-      songTitle: 'Túy Âm',
-      sessionIndex: 1,
-      totalTargetRehearsals: 2,
-      dayIdx: 2, // Wednesday
-      dayName: 'Wednesday',
-      startTime: '18:00',
-      endTime: '19:30',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Gia Huy',
-      performers: ['Gia Huy (Vocal)', 'Bảo Anh (Bass)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
-      status: 'stage_ready',
-      color: '#ea580c',
-    },
-    {
-      id: 'reh-5b',
-      songTitle: 'Túy Âm',
-      sessionIndex: 2,
-      totalTargetRehearsals: 2,
-      dayIdx: 6, // Sunday
-      dayName: 'Sunday',
-      startTime: '19:00',
-      endTime: '20:30',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Gia Huy',
-      performers: ['Gia Huy (Vocal)', 'Bảo Anh (Bass)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
-      status: 'stage_ready',
-      color: '#ea580c',
-    },
-
-    // Song 6: Đất Nước Trọn Niềm Vui (2 rehearsals target, 2 scheduled)
-    {
-      id: 'reh-6a',
-      songTitle: 'Đất Nước Trọn Niềm Vui',
-      sessionIndex: 1,
-      totalTargetRehearsals: 2,
-      dayIdx: 3, // Thursday
-      dayName: 'Thursday',
-      startTime: '19:45',
-      endTime: '21:15',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
-      status: 'ready_for_qc',
-      color: '#0891b2',
-    },
-    {
-      id: 'reh-6b',
-      songTitle: 'Đất Nước Trọn Niềm Vui',
-      sessionIndex: 2,
-      totalTargetRehearsals: 2,
-      dayIdx: 5, // Saturday
-      dayName: 'Saturday',
-      startTime: '18:45',
-      endTime: '20:15',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
-      status: 'ready_for_qc',
-      color: '#0891b2',
-    },
-
-    // Song 7: Khoảnh Khắc (1 rehearsal target, 1 scheduled)
-    {
-      id: 'reh-7a',
-      songTitle: 'Khoảnh Khắc',
-      sessionIndex: 1,
-      totalTargetRehearsals: 1,
-      dayIdx: 6, // Sunday
-      dayName: 'Sunday',
-      startTime: '17:30',
-      endTime: '19:00',
-      durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Thu Hà',
-      performers: ['Thu Hà (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
-      status: 'in_practice',
-      color: '#4f46e5',
-    },
-  ]);
+  $effect(() => {
+    if (data?.sprintData?.rehearsals) {
+      scheduledSessions = data.sprintData.rehearsals;
+    }
+  });
 
   // Computed count of selected 15-min slots
   let selectedCount = $derived(
@@ -511,15 +198,32 @@
 
   let taskStatus = $state<'idle' | 'syncing' | 'saved' | 'queued' | 'processing' | 'completed' | 'failed'>('idle');
 
-  function handleSaveFreetime() {
+  async function handleSaveFreetime() {
     taskStatus = 'syncing';
-    setTimeout(() => {
+
+    const slotPayload = Object.entries(selectedSlots).map(([key, is_available]) => {
+      const [dayIdxStr, slot_label] = key.split('_');
+      const dayIdx = parseInt(dayIdxStr, 10);
+      return {
+        day_of_week: days[dayIdx] || 'Monday',
+        slot_label,
+        is_available: Boolean(is_available),
+      };
+    });
+
+    try {
+      const showId = $page.params.id || 'show-2026-annual';
+      await api.shows.saveSprintAvailability(showId, 'sprint-3', slotPayload);
       taskStatus = 'saved';
+      isSaved = true;
       activeToast = $tStore('studio.freetime_saved');
       setTimeout(() => {
         activeToast = null;
       }, 3500);
-    }, 800);
+    } catch (err) {
+      console.error('Failed to save sprint availability:', err);
+      taskStatus = 'failed';
+    }
   }
 
   // Trigger CSP Auto-Scheduler via Async Kafka & SSE Pipeline

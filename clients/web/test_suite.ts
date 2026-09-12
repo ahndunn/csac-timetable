@@ -447,6 +447,25 @@ async function runAllTests() {
   const sprintTargetUrl = `/studio/shows/show-2026-annual/sprints?song=${testSongQuery}`;
   assert(sprintTargetUrl.includes('song=%C4%90i%20Gi%E1%BB%AFa%20Tr%E1%BB%9Di%20R%E1%BB%B1c%20R%E1%BB%A1'), 'Cross-screen song deep-linking URL formats correctly with UTF-8 encoding');
 
+  // ----------------------------------------------------
+  // TEST 15: Show Studio API Client Contracts & Endpoints
+  // ----------------------------------------------------
+  console.log('\nTEST 15: Show Studio API Client Contracts & Endpoints');
+
+  const { api } = await import('./src/lib/api/client');
+  assert(typeof api.shows.getOverview === 'function', 'api.shows.getOverview exists');
+  assert(typeof api.shows.listNumbers === 'function', 'api.shows.listNumbers exists');
+  assert(typeof api.shows.createNumber === 'function', 'api.shows.createNumber exists');
+  assert(typeof api.shows.updateStage === 'function', 'api.shows.updateStage exists');
+  assert(typeof api.shows.updateLineup === 'function', 'api.shows.updateLineup exists');
+  assert(typeof api.shows.submitQc === 'function', 'api.shows.submitQc exists');
+  assert(typeof api.shows.listRoster === 'function', 'api.shows.listRoster exists');
+  assert(typeof api.shows.saveRosterMember === 'function', 'api.shows.saveRosterMember exists');
+  assert(typeof api.shows.deleteRosterMember === 'function', 'api.shows.deleteRosterMember exists');
+  assert(typeof api.shows.getActiveSprint === 'function', 'api.shows.getActiveSprint exists');
+  assert(typeof api.shows.saveSprintAvailability === 'function', 'api.shows.saveSprintAvailability exists');
+  assert(typeof api.shows.getSprintHistory === 'function', 'api.shows.getSprintHistory exists');
+
   // Summary
 
   console.log('\n====================================================');
