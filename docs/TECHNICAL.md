@@ -69,7 +69,13 @@ flowchart TB
   * **Live Search & Filter**: Real-time filtering by text query across title, PM, reviewer, and performer names.
   * **Action Button Rows (`.card-btn-row`)**: Uses responsive wrapping (`flex-wrap: wrap`) and fluid flex basis (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC", "Audit & Submit QC", and "Assign Lineup") never clip or overflow across any viewport.
   * **Creation & Allocation Modals**: Modals for New Music Number, Band Lineup Assignment, and QC Audit Verdict with form validation and backdrop dismissal.
-
+* **Practice Sprint Schedule UI (`/studio/shows/[id]/sprints`)**:
+  * **15-Minute Free-Time Precision Grid**: Interactive 15-minute slot matrix (08:00 to 22:45 across 7 days) supporting click-and-drag mouse painting and preset shortcuts (`Peak Evenings`, `Afternoons`, `Clear`).
+  * **High-Density Rehearsal Calendar**:
+    - **View Modes**: Switchable between Bento Grid (`view = 'grid'`) and Compact Timeline Table (`view = 'timeline'`).
+    - **Rehearsal Quota Tracker**: Header stat pills displaying total scheduled sessions, multi-session song count, room utilization, and quota fulfillment status.
+    - **Multi-Dimension Filters**: Dropdown filters by Day of Week (`Monday`..`Sunday`), Song Title, and Studio Room (`Studio Room A`, `Studio Room B`).
+    - **Session Metadata**: Renders exact session index (e.g. `Rehearsal #1 of 2`, `#2 of 3`), PM leader, performer lineups, duration, and status indicators.
 
 ---
 

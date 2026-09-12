@@ -139,7 +139,13 @@ Each music event is divided into **Practice Sprints** (typically 1 to 2 weeks pe
 1. **Sprint Planning & Free-Time Registration**:
    - **15-Minute Precision Grid**: Members register available time slots for active practice sprints using a fine-grained 15-minute resolution matrix (e.g. 08:00, 08:15, 08:30 up to 22:45).
    - **Click-and-Drag Selection**: Supports intuitive click-and-drag mouse painting across days and 15-minute sub-slots for rapid multi-slot availability entry, alongside preset selection shortcuts (Peak Evenings, Afternoons, Clear).
-   - **Auto-Scheduled Sprint Rehearsals Calendar Display**: Clicking "Auto-Schedule Sprint Rehearsals" triggers CSP optimization to solve practice session assignments. Scheduled rehearsals are rendered on an interactive Calendar Display grid showing exact 15-minute start/end times, assigned music numbers, PMs, performer lineups, studio room allocations (e.g. Studio Room A / Studio Room B), and conflict indicators.
+   - **Auto-Scheduled Sprint Rehearsals Calendar Display & High-Density Multi-View**: Clicking "Auto-Schedule Sprint Rehearsals" triggers CSP optimization to solve practice session assignments. Scheduled rehearsals are rendered on an interactive Calendar Display grid showing exact 15-minute start/end times, assigned music numbers, session index (e.g. Session #1 of 2, #2 of 3), PMs, performer lineups, studio room allocations (e.g. Studio Room A / Studio Room B), and conflict indicators.
+   - **High-Density Concert Production Scaling (10–20 Numbers, 1–3 Rehearsals Weekly)**: To support 20–40 weekly scheduled sessions across active numbers without visual overload or page scrolling bloat:
+     1. **Rehearsal Quota Tracker**: Real-time summary header displaying target rehearsal fulfillment (e.g. `15/16 Rehearsals Scheduled`, `100% Quota Fulfilled`, `Rooms Utilized`).
+     2. **Multi-View Modes**:
+        - **Bento Grid View (`view = 'grid'`)**: Visual 7-day card grid with room color indicators, stage badges, and lineup tags.
+        - **Compact Timeline Table View (`view = 'timeline'`)**: Dense chronological table grouping by Day/Time with room badges, PM leaders, and performer lineups for DMs/PMs to inspect and manage 20–40 sessions at once.
+     3. **Multi-Dimension Filters**: Instant filtering by Day of Week, Music Number Title, or Studio Room.
    - PMs define weekly sprint objectives and requested rehearsal sessions.
 2. **Study & Create Tasks**:
    - **Study Task**: Individual member homework (e.g., memorizing vocal melodies, studying guitar chords/tabs, mastering drum fills).

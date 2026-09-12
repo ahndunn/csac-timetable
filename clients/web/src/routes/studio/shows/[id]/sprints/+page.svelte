@@ -23,6 +23,8 @@
     Radio,
     X,
     Activity,
+    LayoutGrid,
+    Table,
   } from '@lucide/svelte';
 
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
@@ -182,6 +184,8 @@
   interface ScheduledRehearsal {
     id: string;
     songTitle: string;
+    sessionIndex: number;          // e.g. 1 (for #1 of 2)
+    totalTargetRehearsals: number;  // e.g. 2
     dayIdx: number;
     dayName: string;
     startTime: string; // e.g. "18:15"
@@ -190,80 +194,247 @@
     room: string;
     pmName: string;
     performers: string[];
-    status: 'in_practice' | 'ready_for_qc';
+    status: 'in_practice' | 'ready_for_qc' | 'qc_approved' | 'stage_ready';
     color: string;
   }
 
   let scheduledSessions = $state<ScheduledRehearsal[]>([
+    // Song 1: Hào Khí Việt Nam (3 rehearsals target, 3 scheduled)
     {
-      id: 'reh-1',
-      songTitle: 'Nơi Này Có Anh',
+      id: 'reh-1a',
+      songTitle: 'Hào Khí Việt Nam',
+      sessionIndex: 1,
+      totalTargetRehearsals: 3,
       dayIdx: 0, // Monday
       dayName: 'Monday',
       startTime: '18:15',
       endTime: '19:45',
       durationMinutes: 90,
       room: 'Studio Room A',
-      pmName: 'Phạm Minh Pháp',
-      performers: ['Minh Pháp (Vocal)', 'Bảo Anh (Guitar)', 'Tuấn Kiệt (Keys)'],
-      status: 'in_practice',
+      pmName: 'Minh Pháp',
+      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'stage_ready',
       color: '#ff6b00',
     },
     {
-      id: 'reh-2',
-      songTitle: 'Tình Mới',
+      id: 'reh-1b',
+      songTitle: 'Hào Khí Việt Nam',
+      sessionIndex: 2,
+      totalTargetRehearsals: 3,
       dayIdx: 2, // Wednesday
       dayName: 'Wednesday',
       startTime: '19:30',
       endTime: '21:00',
       durationMinutes: 90,
       room: 'Studio Room A',
-      pmName: 'Đặng Bảo Anh',
-      performers: ['Bảo Anh (Vocal)', 'Hoàng Nam (Bass)', 'Gia Huy (Drums)'],
-      status: 'ready_for_qc',
+      pmName: 'Minh Pháp',
+      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'stage_ready',
+      color: '#ff6b00',
+    },
+    {
+      id: 'reh-1c',
+      songTitle: 'Hào Khí Việt Nam',
+      sessionIndex: 3,
+      totalTargetRehearsals: 3,
+      dayIdx: 5, // Saturday
+      dayName: 'Saturday',
+      startTime: '17:00',
+      endTime: '18:30',
+      durationMinutes: 90,
+      room: 'Studio Room A',
+      pmName: 'Minh Pháp',
+      performers: ['Minh Pháp (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'stage_ready',
+      color: '#ff6b00',
+    },
+
+    // Song 2: Đi Giữa Trời Rực Rỡ (2 rehearsals target, 2 scheduled)
+    {
+      id: 'reh-2a',
+      songTitle: 'Đi Giữa Trời Rực Rỡ',
+      sessionIndex: 1,
+      totalTargetRehearsals: 2,
+      dayIdx: 1, // Tuesday
+      dayName: 'Tuesday',
+      startTime: '18:30',
+      endTime: '20:00',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Hoàng Nam',
+      performers: ['Gia Huy (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'qc_approved',
       color: '#2563eb',
     },
     {
-      id: 'reh-3',
-      songTitle: 'Việt Nam Trong Tôi Là',
+      id: 'reh-2b',
+      songTitle: 'Đi Giữa Trời Rực Rỡ',
+      sessionIndex: 2,
+      totalTargetRehearsals: 2,
       dayIdx: 4, // Friday
       dayName: 'Friday',
+      startTime: '19:00',
+      endTime: '20:30',
+      durationMinutes: 90,
+      room: 'Studio Room A',
+      pmName: 'Hoàng Nam',
+      performers: ['Gia Huy (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'qc_approved',
+      color: '#2563eb',
+    },
+
+    // Song 3: Giọt Sương Trên Mí Mắt (2 rehearsals target, 2 scheduled)
+    {
+      id: 'reh-3a',
+      songTitle: 'Giọt Sương Trên Mí Mắt',
+      sessionIndex: 1,
+      totalTargetRehearsals: 2,
+      dayIdx: 0, // Monday
+      dayName: 'Monday',
+      startTime: '20:00',
+      endTime: '21:30',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Bảo Anh',
+      performers: ['Minh Pháp (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
+      status: 'ready_for_qc',
+      color: '#16a34a',
+    },
+    {
+      id: 'reh-3b',
+      songTitle: 'Giọt Sương Trên Mí Mắt',
+      sessionIndex: 2,
+      totalTargetRehearsals: 2,
+      dayIdx: 3, // Thursday
+      dayName: 'Thursday',
+      startTime: '18:15',
+      endTime: '19:45',
+      durationMinutes: 90,
+      room: 'Studio Room A',
+      pmName: 'Bảo Anh',
+      performers: ['Minh Pháp (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
+      status: 'ready_for_qc',
+      color: '#16a34a',
+    },
+
+    // Song 4: Nối Vòng Tay Lớn (2 rehearsals target, 2 scheduled)
+    {
+      id: 'reh-4a',
+      songTitle: 'Nối Vòng Tay Lớn',
+      sessionIndex: 1,
+      totalTargetRehearsals: 2,
+      dayIdx: 1, // Tuesday
+      dayName: 'Tuesday',
+      startTime: '17:00',
+      endTime: '18:30',
+      durationMinutes: 90,
+      room: 'Studio Room A',
+      pmName: 'Thu Hà',
+      performers: ['Anh Pha (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'in_practice',
+      color: '#9333ea',
+    },
+    {
+      id: 'reh-4b',
+      songTitle: 'Nối Vòng Tay Lớn',
+      sessionIndex: 2,
+      totalTargetRehearsals: 2,
+      dayIdx: 4, // Friday
+      dayName: 'Friday',
+      startTime: '17:30',
+      endTime: '19:00',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Thu Hà',
+      performers: ['Anh Pha (Vocal)', 'Hoàng Nam (Guitar)', 'Bảo Anh (Bass)', 'Thu Hà (Drums)'],
+      status: 'in_practice',
+      color: '#9333ea',
+    },
+
+    // Song 5: Túy Âm (2 rehearsals target, 2 scheduled)
+    {
+      id: 'reh-5a',
+      songTitle: 'Túy Âm',
+      sessionIndex: 1,
+      totalTargetRehearsals: 2,
+      dayIdx: 2, // Wednesday
+      dayName: 'Wednesday',
       startTime: '18:00',
       endTime: '19:30',
       durationMinutes: 90,
       room: 'Studio Room B',
-      pmName: 'Lê Tuấn Kiệt',
-      performers: ['Tuấn Kiệt (Keys)', 'Phương Thảo (Vocal)', 'Minh Pháp (Chorus)'],
-      status: 'in_practice',
-      color: '#16a34a',
+      pmName: 'Gia Huy',
+      performers: ['Gia Huy (Vocal)', 'Bảo Anh (Bass)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
+      status: 'stage_ready',
+      color: '#ea580c',
     },
     {
-      id: 'reh-4',
-      songTitle: 'Chiếc Khăn Gió Ấm',
-      dayIdx: 5, // Saturday
-      dayName: 'Saturday',
-      startTime: '17:30',
-      endTime: '19:00',
-      durationMinutes: 90,
-      room: 'Studio Room A',
-      pmName: 'Nguyễn Hoàng Nam',
-      performers: ['Hoàng Nam (Lead)', 'Bảo Anh (Acoustic)', 'Gia Huy (Percussion)'],
-      status: 'ready_for_qc',
-      color: '#9333ea',
-    },
-    {
-      id: 'reh-5',
-      songTitle: 'Bài Ca Tuổi Trẻ',
+      id: 'reh-5b',
+      songTitle: 'Túy Âm',
+      sessionIndex: 2,
+      totalTargetRehearsals: 2,
       dayIdx: 6, // Sunday
       dayName: 'Sunday',
       startTime: '19:00',
       endTime: '20:30',
       durationMinutes: 90,
-      room: 'Studio Room B',
-      pmName: 'Trần Gia Huy',
-      performers: ['Gia Huy (Drums)', 'Phương Thảo (Vocal)', 'Tuấn Kiệt (Keys)'],
-      status: 'in_practice',
+      room: 'Studio Room A',
+      pmName: 'Gia Huy',
+      performers: ['Gia Huy (Vocal)', 'Bảo Anh (Bass)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
+      status: 'stage_ready',
       color: '#ea580c',
+    },
+
+    // Song 6: Đất Nước Trọn Niềm Vui (2 rehearsals target, 2 scheduled)
+    {
+      id: 'reh-6a',
+      songTitle: 'Đất Nước Trọn Niềm Vui',
+      sessionIndex: 1,
+      totalTargetRehearsals: 2,
+      dayIdx: 3, // Thursday
+      dayName: 'Thursday',
+      startTime: '19:45',
+      endTime: '21:15',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Minh Pháp',
+      performers: ['Minh Pháp (Vocal)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
+      status: 'ready_for_qc',
+      color: '#0891b2',
+    },
+    {
+      id: 'reh-6b',
+      songTitle: 'Đất Nước Trọn Niềm Vui',
+      sessionIndex: 2,
+      totalTargetRehearsals: 2,
+      dayIdx: 5, // Saturday
+      dayName: 'Saturday',
+      startTime: '18:45',
+      endTime: '20:15',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Minh Pháp',
+      performers: ['Minh Pháp (Vocal)', 'Phương Nhi (Keys)', 'Thu Hà (Drums)'],
+      status: 'ready_for_qc',
+      color: '#0891b2',
+    },
+
+    // Song 7: Khoảnh Khắc (1 rehearsal target, 1 scheduled)
+    {
+      id: 'reh-7a',
+      songTitle: 'Khoảnh Khắc',
+      sessionIndex: 1,
+      totalTargetRehearsals: 1,
+      dayIdx: 6, // Sunday
+      dayName: 'Sunday',
+      startTime: '17:30',
+      endTime: '19:00',
+      durationMinutes: 90,
+      room: 'Studio Room B',
+      pmName: 'Thu Hà',
+      performers: ['Thu Hà (Vocal)', 'Tùng Dương (Guitar)', 'Bảo Anh (Bass)'],
+      status: 'in_practice',
+      color: '#4f46e5',
     },
   ]);
 
@@ -352,12 +523,37 @@
     }, 700);
   }
 
+  // Schedule View Mode & Day Filter State
+  let scheduleView = $state<'grid' | 'timeline'>('grid');
+  let filterDay = $state('all');
+
+  // Rehearsal Quota Metrics
+  const quotaMetrics = $derived.by(() => {
+    const totalSessions = scheduledSessions.length;
+    const uniqueSongsCount = new Set(scheduledSessions.map((s) => s.songTitle)).size;
+    const multiSessionSongs = Array.from(
+      scheduledSessions.reduce((acc, s) => {
+        acc.set(s.songTitle, (acc.get(s.songTitle) || 0) + 1);
+        return acc;
+      }, new Map<string, number>()).entries()
+    ).filter(([_, count]) => count > 1).length;
+    const roomsUsed = new Set(scheduledSessions.map((s) => s.room)).size;
+
+    return {
+      totalSessions,
+      uniqueSongsCount,
+      multiSessionSongs,
+      roomsUsed,
+    };
+  });
+
   // Filtered scheduled sessions
   let filteredSessions = $derived(
     scheduledSessions.filter((s) => {
       const matchSong = filterSong === 'all' || s.songTitle === filterSong;
       const matchRoom = filterRoom === 'all' || s.room === filterRoom;
-      return matchSong && matchRoom;
+      const matchDay = filterDay === 'all' || s.dayName === filterDay;
+      return matchSong && matchRoom && matchDay;
     })
   );
 
@@ -491,6 +687,26 @@
   <!-- Auto-Scheduled Sprint Rehearsals Calendar Display -->
   {#if isAutoScheduled}
     <div class="calendar-card bento-card">
+      <!-- Quota Metrics Summary Bar -->
+      <div class="quota-summary-bar">
+        <div class="quota-pill">
+          <Sparkles size={14} class="text-orange" />
+          <span><strong>{quotaMetrics.totalSessions}</strong> Rehearsals Scheduled</span>
+        </div>
+        <div class="quota-pill">
+          <Music size={14} class="text-blue" />
+          <span><strong>{quotaMetrics.uniqueSongsCount}</strong> Active Songs</span>
+        </div>
+        <div class="quota-pill">
+          <Zap size={14} class="text-purple" />
+          <span><strong>{quotaMetrics.multiSessionSongs}</strong> Multi-Rehearsal Songs</span>
+        </div>
+        <div class="quota-pill">
+          <MapPin size={14} class="text-green" />
+          <span><strong>{quotaMetrics.roomsUsed}</strong> Rooms Utilized</span>
+        </div>
+      </div>
+
       <div class="calendar-header-row">
         <div>
           <div class="badge-scheduled">
@@ -502,6 +718,41 @@
         </div>
 
         <div class="filters-row">
+          <!-- View Switcher Toggle Buttons -->
+          <div class="view-toggle-group">
+            <button
+              type="button"
+              class="view-toggle-btn {scheduleView === 'grid' ? 'is-active' : ''}"
+              onclick={() => (scheduleView = 'grid')}
+              title="Bento Grid View"
+            >
+              <LayoutGrid size={14} />
+              <span>Grid</span>
+            </button>
+            <button
+              type="button"
+              class="view-toggle-btn {scheduleView === 'timeline' ? 'is-active' : ''}"
+              onclick={() => (scheduleView = 'timeline')}
+              title="Compact Timeline Table View"
+            >
+              <Table size={14} />
+              <span>Timeline</span>
+            </button>
+          </div>
+
+          <!-- Day Filter -->
+          <div class="filter-item">
+            <CalendarIcon size={13} class="text-muted" />
+            <span class="filter-label">Day</span>
+            <select bind:value={filterDay} class="bento-select">
+              <option value="all">All Days</option>
+              {#each days as day}
+                <option value={day}>{day}</option>
+              {/each}
+            </select>
+          </div>
+
+          <!-- Song Filter -->
           <div class="filter-item">
             <Filter size={13} class="text-muted" />
             <span class="filter-label">{$tStore('studio.filter_number')}</span>
@@ -513,6 +764,7 @@
             </select>
           </div>
 
+          <!-- Room Filter -->
           <div class="filter-item">
             <MapPin size={13} class="text-muted" />
             <span class="filter-label">{$tStore('studio.filter_room')}</span>
@@ -526,57 +778,138 @@
         </div>
       </div>
 
-      <!-- Sprint Calendar Timetable Grid -->
-      <div class="calendar-grid">
-        {#each days as day, dIdx}
-          {@const daySessions = filteredSessions.filter((s) => s.dayIdx === dIdx)}
-          <div class="day-column">
-            <div class="day-column-header">
-              <span class="day-name">{day}</span>
-              <span class="session-badge">{daySessions.length} sessions</span>
+      {#if scheduleView === 'grid'}
+        <!-- Sprint Calendar Timetable Grid -->
+        <div class="calendar-grid">
+          {#each days as day, dIdx}
+            {@const daySessions = filteredSessions.filter((s) => s.dayIdx === dIdx)}
+            <div class="day-column">
+              <div class="day-column-header">
+                <span class="day-name">{day}</span>
+                <span class="session-badge">{daySessions.length} sessions</span>
+              </div>
+
+              <div class="day-sessions-container">
+                {#if daySessions.length === 0}
+                  <div class="empty-day-state">No rehearsals</div>
+                {:else}
+                  {#each daySessions as session}
+                    <div class="rehearsal-card" style="border-left-color: {session.color}">
+                      <div class="rehearsal-top">
+                        <div class="song-title-group">
+                          <h4 class="song-name">{session.songTitle}</h4>
+                          <span class="session-index-tag">#{session.sessionIndex} of {session.totalTargetRehearsals}</span>
+                        </div>
+                        <span
+                          class="status-chip {session.status === 'stage_ready'
+                            ? 'chip-success'
+                            : session.status === 'qc_approved'
+                              ? 'chip-approved'
+                              : session.status === 'ready_for_qc'
+                                ? 'chip-qc'
+                                : 'chip-practice'}"
+                        >
+                          {session.status === 'stage_ready'
+                            ? 'Stage Ready'
+                            : session.status === 'qc_approved'
+                              ? 'QC Approved'
+                              : session.status === 'ready_for_qc'
+                                ? 'Ready QC'
+                                : 'In Practice'}
+                        </span>
+                      </div>
+
+                      <div class="rehearsal-meta">
+                        <div class="meta-row">
+                          <Clock size={12} />
+                          <span class="time-range">{session.startTime} – {session.endTime}</span>
+                          <span class="duration-pill">({session.durationMinutes}m)</span>
+                        </div>
+
+                        <div class="meta-row">
+                          <MapPin size={12} />
+                          <span>{session.room}</span>
+                        </div>
+
+                        <div class="performers-list">
+                          <Users size={12} class="text-muted" />
+                          <span>{session.performers.join(', ')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                {/if}
+              </div>
             </div>
-
-            <div class="day-sessions-container">
-              {#if daySessions.length === 0}
-                <div class="empty-day-state">No rehearsals</div>
+          {/each}
+        </div>
+      {:else}
+        <!-- Compact Timeline Table View -->
+        <div class="timeline-table-wrapper">
+          <table class="timeline-table">
+            <thead>
+              <tr>
+                <th>Day & Time</th>
+                <th>Song & Session</th>
+                <th>PM Leader</th>
+                <th>Studio Room</th>
+                <th>Lineup Performers</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#if filteredSessions.length === 0}
+                <tr>
+                  <td colspan="6" class="empty-timeline-td">No rehearsals match the selected filters.</td>
+                </tr>
               {:else}
-                {#each daySessions as session}
-                  <div class="rehearsal-card" style="border-left-color: {session.color}">
-                    <div class="rehearsal-top">
-                      <h4 class="song-name">{session.songTitle}</h4>
+                {#each filteredSessions as session}
+                  <tr>
+                    <td class="td-daytime">
+                      <div class="daytime-pill">
+                        <strong>{session.dayName}</strong>
+                        <span>{session.startTime} – {session.endTime} ({session.durationMinutes}m)</span>
+                      </div>
+                    </td>
+                    <td class="td-song">
+                      <div class="song-timeline-info">
+                        <strong class="timeline-song-title">{session.songTitle}</strong>
+                        <span class="session-index-tag">Session #{session.sessionIndex} of {session.totalTargetRehearsals}</span>
+                      </div>
+                    </td>
+                    <td class="td-pm">{session.pmName}</td>
+                    <td class="td-room">
+                      <span class="room-pill">{session.room}</span>
+                    </td>
+                    <td class="td-lineup">
+                      <span class="lineup-text">{session.performers.join(', ')}</span>
+                    </td>
+                    <td class="td-status">
                       <span
-                        class="status-chip {session.status === 'ready_for_qc'
-                          ? 'chip-qc'
-                          : 'chip-practice'}"
+                        class="status-chip {session.status === 'stage_ready'
+                          ? 'chip-success'
+                          : session.status === 'qc_approved'
+                            ? 'chip-approved'
+                            : session.status === 'ready_for_qc'
+                              ? 'chip-qc'
+                              : 'chip-practice'}"
                       >
-                        {session.status === 'ready_for_qc' ? 'Ready QC' : 'In Practice'}
+                        {session.status === 'stage_ready'
+                          ? 'Stage Ready'
+                          : session.status === 'qc_approved'
+                            ? 'QC Approved'
+                            : session.status === 'ready_for_qc'
+                              ? 'Ready QC'
+                              : 'In Practice'}
                       </span>
-                    </div>
-
-                    <div class="rehearsal-meta">
-                      <div class="meta-row">
-                        <Clock size={12} />
-                        <span class="time-range">{session.startTime} – {session.endTime}</span>
-                        <span class="duration-pill">({session.durationMinutes}m)</span>
-                      </div>
-
-                      <div class="meta-row">
-                        <MapPin size={12} />
-                        <span>{session.room}</span>
-                      </div>
-
-                      <div class="performers-list">
-                        <Users size={12} class="text-muted" />
-                        <span>{session.performers.join(', ')}</span>
-                      </div>
-                    </div>
-                  </div>
+                    </td>
+                  </tr>
                 {/each}
               {/if}
-            </div>
-          </div>
-        {/each}
-      </div>
+            </tbody>
+          </table>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -1147,6 +1480,174 @@
     font-size: 12px;
     font-weight: 600;
     color: #475569;
+  }
+
+  /* Quota Metrics Summary Bar */
+  .quota-summary-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+  }
+
+  .quota-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #475569;
+    background: #ffffff;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+  }
+
+  .quota-pill strong {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  /* View Toggle Switcher */
+  .view-toggle-group {
+    display: flex;
+    background: #e2e8f0;
+    padding: 2px;
+    border-radius: 8px;
+  }
+
+  .view-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .view-toggle-btn.is-active {
+    background: #ffffff;
+    color: #ff6b00;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .session-index-tag {
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+  }
+
+  .song-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .chip-approved {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+  }
+
+  .chip-success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #16a34a;
+  }
+
+  /* Timeline Table */
+  .timeline-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+  }
+
+  .timeline-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .timeline-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+
+  .timeline-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+  }
+
+  .timeline-table tr:hover {
+    background: #f8fafc;
+  }
+
+  .td-daytime .daytime-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .td-daytime strong {
+    color: #0f172a;
+    font-size: 12px;
+  }
+
+  .td-daytime span {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .song-timeline-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .timeline-song-title {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  .room-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    font-weight: 700;
+    color: #475569;
+    font-size: 11px;
+  }
+
+  .lineup-text {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .empty-timeline-td {
+    text-align: center;
+    padding: 24px;
+    color: #94a3b8;
+    font-style: italic;
   }
 
   .bento-select {
