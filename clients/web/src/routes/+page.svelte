@@ -11,8 +11,10 @@
     Sparkles,
     Lock,
     FileSpreadsheet,
-    Activity,
   } from '@lucide/svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
 </script>
 
 <svelte:head>
@@ -22,288 +24,142 @@
 
 <Navbar />
 
-<div class="hub-container">
+<div class="mx-auto flex max-w-7xl flex-col gap-6 p-6">
   <!-- Hero Bento Banner -->
-  <div class="hero-bento bento-card">
-    <div class="hero-content">
-      <div class="hero-tag">
-        <Sparkles size={16} class="text-orange" />
+  <Card class="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-8 shadow-sm">
+    <div class="flex flex-col gap-3 max-w-3xl">
+      <Badge variant="outline" class="w-fit bg-primary/10 text-primary border-primary/20 gap-1.5 font-bold">
+        <Sparkles class="w-3.5 h-3.5 text-primary" />
         <span>{$tStore('hub.tag')}</span>
-      </div>
-      <h1 class="hero-title">{$tStore('hub.hero_title')}</h1>
-      <p class="hero-description">
+      </Badge>
+
+      <h1 class="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+        {$tStore('hub.hero_title')}
+      </h1>
+      <p class="text-sm leading-relaxed text-muted-foreground">
         {$tStore('hub.hero_description')}
       </p>
 
-      <div class="hero-actions">
-        <a href="/studio" class="primary-hero-btn">
-          <Music size={18} />
+      <div class="flex flex-wrap items-center gap-3 pt-2">
+        <Button href="/studio" variant="default" size="lg" class="shadow-sm font-bold gap-2">
+          <Music class="w-4 h-4" />
           <span>Launch Music Studio</span>
-          <ArrowRight size={18} />
-        </a>
-        <a href="/studio/gear" class="secondary-hero-btn">
-          <FileSpreadsheet size={18} />
+          <ArrowRight class="w-4 h-4" />
+        </Button>
+        <Button href="/studio/gear" variant="outline" size="lg" class="gap-2">
+          <FileSpreadsheet class="w-4 h-4 text-blue-600" />
           <span>Instrument Fleet</span>
-        </a>
+        </Button>
         {#if auth.isAuthenticated}
-          <a href="/admin/shows" class="secondary-hero-btn">
-            <Calendar size={18} />
+          <Button href="/admin/shows" variant="outline" size="lg" class="gap-2">
+            <Calendar class="w-4 h-4 text-emerald-600" />
             <span>Admin Shows</span>
-          </a>
+          </Button>
         {:else}
-          <a href="/auth/login" class="secondary-hero-btn">
-            <Lock size={18} />
+          <Button href="/auth/login" variant="outline" size="lg" class="gap-2">
+            <Lock class="w-4 h-4 text-muted-foreground" />
             <span>{$tStore('hub.sign_in_admin')}</span>
-          </a>
+          </Button>
         {/if}
       </div>
     </div>
-  </div>
+  </Card>
 
   <!-- Bento Grid Cards -->
-  <div class="bento-grid">
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
     <!-- Card 1: Music Studio Workspace -->
-    <div class="bento-card card-featured">
-      <div class="card-icon-wrap bg-orange-soft">
-        <Music size={24} class="text-orange" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">Music Production Studio</h3>
-        <p class="card-desc">
+    <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40">
+      <div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+          <Music class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-foreground mb-2">Music Production Studio</h3>
+        <p class="text-xs leading-relaxed text-muted-foreground mb-6">
           Show-driven music numbers, Kanban practice stages, QC verdict audits, and 1-click weekly sprint free-time registration.
         </p>
       </div>
-      <div class="card-footer">
-        <a href="/studio" class="card-link">
+      <div class="border-t border-border pt-4">
+        <a href="/studio" class="flex items-center justify-between text-xs font-bold text-primary hover:underline">
           <span>Open Studio</span>
-          <ArrowRight size={16} />
+          <ArrowRight class="w-4 h-4" />
         </a>
       </div>
-    </div>
+    </Card>
 
     <!-- Card 2: Instrument Fleet & Custody -->
-    <div class="bento-card">
-      <div class="card-icon-wrap bg-blue-soft">
-        <FileSpreadsheet size={24} class="text-blue" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">Instrument Fleet & Custody</h3>
-        <p class="card-desc">
+    <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-blue-500/40">
+      <div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 mb-4">
+          <FileSpreadsheet class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-foreground mb-2">Instrument Fleet & Custody</h3>
+        <p class="text-xs leading-relaxed text-muted-foreground mb-6">
           Centralized registry tracking club property and member-owned instruments, physical custody holders, and zero-conflict reservations.
         </p>
       </div>
-      <div class="card-footer">
-        <a href="/studio/gear" class="card-link">
+      <div class="border-t border-border pt-4">
+        <a href="/studio/gear" class="flex items-center justify-between text-xs font-bold text-blue-600 hover:underline">
           <span>Manage Fleet</span>
-          <ArrowRight size={16} />
+          <ArrowRight class="w-4 h-4" />
         </a>
       </div>
-    </div>
+    </Card>
 
     <!-- Card 3: Admin Show Studio -->
-    <div class="bento-card">
-      <div class="card-icon-wrap bg-green-soft">
-        <Calendar size={24} class="text-green" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">Admin Show Studio</h3>
-        <p class="card-desc">
+    <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-emerald-500/40">
+      <div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 mb-4">
+          <Calendar class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-foreground mb-2">Admin Show Studio</h3>
+        <p class="text-xs leading-relaxed text-muted-foreground mb-6">
           Design music shows, define production date windows, monitor rehearsal metrics, and track QC approval rates in real-time.
         </p>
       </div>
-      <div class="card-footer">
-        <a href="/admin/shows" class="card-link">
+      <div class="border-t border-border pt-4">
+        <a href="/admin/shows" class="flex items-center justify-between text-xs font-bold text-emerald-600 hover:underline">
           <span>Admin Shows</span>
-          <ArrowRight size={16} />
+          <ArrowRight class="w-4 h-4" />
         </a>
       </div>
-    </div>
+    </Card>
 
     <!-- Card 4: Member Governance -->
-    <div class="bento-card">
-      <div class="card-icon-wrap bg-purple-soft">
-        <Users size={24} class="text-purple" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">{$tStore('hub.card_users_title')}</h3>
-        <p class="card-desc">
+    <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-purple-500/40">
+      <div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 mb-4">
+          <Users class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-foreground mb-2">{$tStore('hub.card_users_title')}</h3>
+        <p class="text-xs leading-relaxed text-muted-foreground mb-6">
           {$tStore('hub.card_users_desc')}
         </p>
       </div>
-      <div class="card-footer">
-        <a href="/admin/users" class="card-link">
+      <div class="border-t border-border pt-4">
+        <a href="/admin/users" class="flex items-center justify-between text-xs font-bold text-purple-600 hover:underline">
           <span>{$tStore('hub.card_users_link')}</span>
-          <ArrowRight size={16} />
+          <ArrowRight class="w-4 h-4" />
         </a>
       </div>
-    </div>
+    </Card>
 
     <!-- Card 5: Quorum Demotion Approval -->
-    <div class="bento-card">
-      <div class="card-icon-wrap bg-red-soft">
-        <ShieldAlert size={24} class="text-red" />
-      </div>
-      <div class="card-body">
-        <h3 class="card-title">{$tStore('hub.card_quorum_title')}</h3>
-        <p class="card-desc">
+    <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-destructive/40">
+      <div>
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive mb-4">
+          <ShieldAlert class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-foreground mb-2">{$tStore('hub.card_quorum_title')}</h3>
+        <p class="text-xs leading-relaxed text-muted-foreground mb-6">
           {$tStore('hub.card_quorum_desc')}
         </p>
       </div>
-      <div class="card-footer">
-        <a href="/admin/approve" class="card-link">
+      <div class="border-t border-border pt-4">
+        <a href="/admin/approve" class="flex items-center justify-between text-xs font-bold text-destructive hover:underline">
           <span>{$tStore('hub.card_quorum_link')}</span>
-          <ArrowRight size={16} />
+          <ArrowRight class="w-4 h-4" />
         </a>
       </div>
-    </div>
+    </Card>
   </div>
 </div>
-
-<style>
-  .hub-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .bento-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .hero-bento {
-    background: linear-gradient(135deg, #ffffff 0%, #fffbf7 100%);
-    border: 1px solid rgba(255, 107, 0, 0.2);
-  }
-
-  .hero-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 12px;
-  }
-
-  .hero-title {
-    font-size: 28px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 8px 0;
-  }
-
-  .hero-description {
-    font-size: 14px;
-    color: #64748b;
-    margin: 0 0 20px 0;
-    max-width: 720px;
-    line-height: 1.5;
-  }
-
-  .hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .primary-hero-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #ff6b00;
-    color: #ffffff;
-    padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 14px;
-    text-decoration: none;
-    box-shadow: 0 2px 4px rgba(255, 107, 0, 0.2);
-  }
-
-  .secondary-hero-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    color: #334155;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 14px;
-    text-decoration: none;
-  }
-
-  .bento-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-  }
-
-  .card-icon-wrap {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-  }
-
-  .bg-orange-soft { background: rgba(255, 107, 0, 0.1); }
-  .bg-blue-soft { background: rgba(59, 130, 246, 0.1); }
-  .bg-green-soft { background: rgba(22, 163, 74, 0.1); }
-  .bg-purple-soft { background: rgba(147, 51, 234, 0.1); }
-  .bg-red-soft { background: rgba(239, 68, 68, 0.1); }
-
-  .text-orange { color: #ff6b00; }
-  .text-blue { color: #3b82f6; }
-  .text-green { color: #16a34a; }
-  .text-purple { color: #9333ea; }
-  .text-red { color: #ef4444; }
-
-  .card-body {
-    flex: 1;
-  }
-
-  .card-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 6px 0;
-  }
-
-  .card-desc {
-    font-size: 13px;
-    color: #64748b;
-    line-height: 1.4;
-    margin: 0 0 16px 0;
-  }
-
-  .card-footer {
-    border-top: 1px solid #f1f5f9;
-    padding-top: 12px;
-  }
-
-  .card-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-weight: 700;
-    font-size: 13px;
-    color: #ff6b00;
-    text-decoration: none;
-  }
-</style>

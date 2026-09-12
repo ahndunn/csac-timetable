@@ -1,21 +1,26 @@
 <script lang="ts">
   import Navbar from '$lib/components/Navbar.svelte';
-  import { tStore } from '$lib/i18n';
+  import { tStore, t } from '$lib/i18n';
   import {
     Calendar,
     Plus,
-    Music,
-    Users,
-    Activity,
-    CheckCircle2,
-    Clock,
-    AlertTriangle,
-    ArrowRight,
     Search,
+    Music,
+    Clock,
+    CheckCircle2,
+    ArrowRight,
     MapPin,
+    Sparkles,
+    AlertCircle,
   } from '@lucide/svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Card } from '$lib/components/ui/card';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import * as Dialog from '$lib/components/ui/dialog';
 
-  interface Show {
+  interface ShowItem {
     id: string;
     title: string;
     description: string;
@@ -28,11 +33,11 @@
     rehearsalHours: number;
   }
 
-  let shows = $state<Show[]>([
+  let shows = $state<ShowItem[]>([
     {
       id: 'show-2026-annual',
       title: 'CSAC Annual Concert 2026',
-      description: 'Main annual cultural concert featuring 12 band numbers and orchestral arrangements.',
+      description: 'Grand annual showcase featuring multi-genre band performances, acoustic arrangements, and orchestral medleys.',
       venue: 'CSAC Main Auditorium',
       startDate: '2026-10-01',
       endDate: '2026-10-15',
@@ -44,29 +49,27 @@
     {
       id: 'show-acoustic-vol4',
       title: 'Acoustic Night Vol. 4',
-      description: 'Intimate acoustic unplugged session with vocal harmonies & classical guitars.',
+      description: 'Intimate unplugged acoustic showcase emphasizing close vocal harmonies, fingerstyle guitars, and jazz fusion.',
       venue: 'Studio Lounge B',
       startDate: '2026-11-05',
       endDate: '2026-11-12',
       targetNumbers: 6,
-      activeSprints: 1,
+      activeSprints: 2,
       qcPassRate: 40,
       rehearsalHours: 18,
     },
   ]);
 
-  let isCreateModalOpen = $state(false);
   let search = $state('');
-
-  // Form State
+  let isCreateModalOpen = $state(false);
   let newTitle = $state('');
-  let newDesc = $state('');
-  let newVenue = $state('');
-  let newStartDate = $state('2026-10-20');
-  let newEndDate = $state('2026-10-30');
-  let newTarget = $state(8);
+  let newDescription = $state('');
+  let newVenue = $state('CSAC Main Auditorium');
+  let newStartDate = $state('2026-12-01');
+  let newEndDate = $state('2026-12-15');
+  let newTargetNumbers = $state(8);
 
-  const filteredShows = $derived(
+  let filteredShows = $derived(
     shows.filter(
       (s) =>
         s.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -78,14 +81,14 @@
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newShow: Show = {
+    const newShow: ShowItem = {
       id: `show-${Date.now()}`,
-      title: newTitle,
-      description: newDesc,
-      venue: newVenue || 'CSAC Studio',
+      title: newTitle.trim(),
+      description: newDescription.trim() || 'New music show workspace.',
+      venue: newVenue.trim() || 'CSAC Studio',
       startDate: newStartDate,
       endDate: newEndDate,
-      targetNumbers: newTarget,
+      targetNumbers: Number(newTargetNumbers) || 8,
       activeSprints: 1,
       qcPassRate: 0,
       rehearsalHours: 0,
@@ -96,8 +99,7 @@
 
     // Reset Form
     newTitle = '';
-    newDesc = '';
-    newVenue = '';
+    newDescription = '';
   }
 </script>
 
@@ -107,465 +109,249 @@
 
 <Navbar />
 
-<div class="admin-shows-page">
+<div class="mx-auto flex max-w-7xl flex-col gap-6 p-6">
   <!-- Header Banner -->
-  <div class="page-header bento-card">
-    <div class="header-content">
-      <div class="header-badge">
-        <Calendar size={16} class="text-orange" />
+  <Card class="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+    <div class="flex flex-col gap-1.5">
+      <Badge variant="outline" class="w-fit bg-primary/10 text-primary border-primary/20 gap-1.5 font-bold">
+        <Calendar class="w-3.5 h-3.5 text-primary" />
         <span>{$tStore('admin_shows.navbar_title')}</span>
-      </div>
-      <h1>{$tStore('admin_shows.heading')}</h1>
-      <p>{$tStore('admin_shows.subheading')}</p>
+      </Badge>
+      <h1 class="text-2xl font-extrabold tracking-tight text-foreground">
+        {$tStore('admin_shows.heading')}
+      </h1>
+      <p class="text-xs text-muted-foreground">
+        {$tStore('admin_shows.subheading')}
+      </p>
     </div>
 
-    <button
-      type="button"
-      class="bento-btn bento-btn-primary"
-      onclick={() => (isCreateModalOpen = true)}
-    >
-      <Plus size={16} />
+    <Button variant="default" size="sm" onclick={() => (isCreateModalOpen = true)} class="font-bold gap-1.5">
+      <Plus class="w-4 h-4" />
       <span>{$tStore('admin_shows.btn_create_show')}</span>
-    </button>
-  </div>
+    </Button>
+  </Card>
 
   <!-- Monitor Stats Overview -->
-  <div class="stats-grid">
-    <div class="stat-card bento-card">
-      <div class="stat-icon orange"><Music size={20} /></div>
-      <div class="stat-info">
-        <span class="stat-value">{shows.reduce((acc, s) => acc + s.targetNumbers, 0)}</span>
-        <span class="stat-label">Total Music Numbers</span>
+  <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <Card class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Music class="w-5 h-5" />
       </div>
-    </div>
+      <div class="flex flex-col">
+        <span class="text-lg font-bold text-foreground">{shows.reduce((acc, s) => acc + s.targetNumbers, 0)}</span>
+        <span class="text-xs text-muted-foreground">Total Music Numbers</span>
+      </div>
+    </Card>
 
-    <div class="stat-card bento-card">
-      <div class="stat-icon blue"><Clock size={20} /></div>
-      <div class="stat-info">
-        <span class="stat-value">{shows.reduce((acc, s) => acc + s.rehearsalHours, 0)} hrs</span>
-        <span class="stat-label">Scheduled Practice</span>
+    <Card class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+        <Clock class="w-5 h-5" />
       </div>
-    </div>
+      <div class="flex flex-col">
+        <span class="text-lg font-bold text-foreground">{shows.reduce((acc, s) => acc + s.rehearsalHours, 0)} hrs</span>
+        <span class="text-xs text-muted-foreground">Scheduled Practice</span>
+      </div>
+    </Card>
 
-    <div class="stat-card bento-card">
-      <div class="stat-icon green"><CheckCircle2 size={20} /></div>
-      <div class="stat-info">
-        <span class="stat-value">68%</span>
-        <span class="stat-label">Avg QC Pass Rate</span>
+    <Card class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+        <CheckCircle2 class="w-5 h-5" />
       </div>
-    </div>
+      <div class="flex flex-col">
+        <span class="text-lg font-bold text-foreground">
+          {Math.round(shows.reduce((acc, s) => acc + s.qcPassRate, 0) / (shows.length || 1))}%
+        </span>
+        <span class="text-xs text-muted-foreground">Average QC Pass</span>
+      </div>
+    </Card>
 
-    <div class="stat-card bento-card">
-      <div class="stat-icon purple"><Activity size={20} /></div>
-      <div class="stat-info">
-        <span class="stat-value">{shows.reduce((acc, s) => acc + s.activeSprints, 0)}</span>
-        <span class="stat-label">Active Sprints</span>
+    <Card class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600">
+        <Sparkles class="w-5 h-5" />
       </div>
-    </div>
+      <div class="flex flex-col">
+        <span class="text-lg font-bold text-foreground">{shows.length}</span>
+        <span class="text-xs text-muted-foreground">Active Productions</span>
+      </div>
+    </Card>
   </div>
 
-  <!-- Search & Filter Controls -->
-  <div class="controls-bar bento-card">
-    <div class="search-input-wrapper">
-      <Search size={16} class="search-icon" />
-      <input
+  <!-- Filter & Search Toolbar -->
+  <Card class="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-bold text-foreground">Productions</h2>
+      <Badge variant="secondary" class="text-xs">{shows.length}</Badge>
+    </div>
+
+    <div class="relative w-full md:w-64">
+      <Search class="pointer-events-none absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+      <Input
         type="text"
         bind:value={search}
         placeholder="Search shows by title or venue..."
-        class="search-input"
+        class="h-8 text-xs pl-8"
       />
     </div>
-  </div>
+  </Card>
 
-  <!-- Shows List -->
-  <div class="shows-grid">
+  <!-- Shows List Grid -->
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
     {#each filteredShows as show (show.id)}
-      <div class="show-card bento-card">
-        <div class="show-header">
-          <div>
-            <h3 class="show-title">{show.title}</h3>
-            <div class="show-venue">
-              <MapPin size={13} />
-              <span>{show.venue} • {show.startDate} to {show.endDate}</span>
+      <Card class="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-primary/40">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h3 class="text-base font-bold text-foreground">{show.title}</h3>
+              <div class="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                <MapPin class="w-3 h-3" />
+                <span>{show.venue} • {show.startDate} to {show.endDate}</span>
+              </div>
+            </div>
+            <Badge variant="secondary" class="text-[10px]">
+              Sprint {show.activeSprints}
+            </Badge>
+          </div>
+
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {show.description}
+          </p>
+
+          <!-- Progress Metrics -->
+          <div class="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/40 p-2.5 text-center text-xs">
+            <div class="flex flex-col">
+              <span class="font-extrabold text-foreground">{show.targetNumbers}</span>
+              <span class="text-[10px] text-muted-foreground uppercase">Numbers</span>
+            </div>
+            <div class="flex flex-col border-x border-border">
+              <span class="font-extrabold text-foreground">{show.rehearsalHours}h</span>
+              <span class="text-[10px] text-muted-foreground uppercase">Practice</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="font-extrabold text-emerald-600">{show.qcPassRate}%</span>
+              <span class="text-[10px] text-muted-foreground uppercase">QC Passed</span>
             </div>
           </div>
-          <span class="badge-sprint">Sprint {show.activeSprints}</span>
         </div>
 
-        <p class="show-desc">{show.description}</p>
-
-        <!-- Progress Metrics -->
-        <div class="show-metrics">
-          <div class="metric">
-            <span class="metric-num">{show.targetNumbers}</span>
-            <span class="metric-tag">Numbers</span>
-          </div>
-          <div class="metric">
-            <span class="metric-num">{show.rehearsalHours}h</span>
-            <span class="metric-tag">Practice</span>
-          </div>
-          <div class="metric">
-            <span class="metric-num text-green">{show.qcPassRate}%</span>
-            <span class="metric-tag">QC Approved</span>
-          </div>
-        </div>
-
-        <div class="show-footer">
-          <a href="/studio/shows/{show.id}/overview" class="bento-btn bento-btn-secondary open-btn">
+        <div class="flex items-center justify-end border-t border-border pt-4 mt-6">
+          <Button href="/studio/shows/{show.id}/overview" variant="default" size="sm" class="gap-1.5">
             <span>{$tStore('admin_shows.card_btn_open')}</span>
-            <ArrowRight size={14} />
-          </a>
+            <ArrowRight class="w-3.5 h-3.5" />
+          </Button>
         </div>
-      </div>
+      </Card>
     {/each}
   </div>
 </div>
 
-<!-- Modal: Create Show -->
+<!-- Modal: Create New Show -->
 {#if isCreateModalOpen}
-  <div class="modal-backdrop" onclick={() => (isCreateModalOpen = false)} role="presentation">
-    <div class="modal-card bento-card" onclick={(e) => e.stopPropagation()} role="dialog">
-      <h2>{$tStore('admin_shows.modal_create_title')}</h2>
+  <Dialog.Root open={true} onOpenChange={(open) => { if (!open) isCreateModalOpen = false; }}>
+    <Dialog.Content class="max-w-lg">
+      <Dialog.Header>
+        <Dialog.Title class="text-base font-bold">
+          {$tStore('admin_shows.modal_create_title')}
+        </Dialog.Title>
+        <Dialog.Description class="text-xs text-muted-foreground">
+          Initialize a new production workspace for managing music numbers and sprints.
+        </Dialog.Description>
+      </Dialog.Header>
 
-      <form onsubmit={handleCreateShow} class="modal-form">
-        <div class="form-group">
-          <label for="show-title">{$tStore('admin_shows.modal_title_label')}</label>
-          <input
+      <form onsubmit={handleCreateShow} class="flex flex-col gap-3 py-2">
+        <div class="flex flex-col gap-1.5">
+          <Label for="show-title" class="text-xs font-semibold">
+            {$tStore('admin_shows.modal_title_label')} *
+          </Label>
+          <Input
             id="show-title"
             type="text"
-            bind:value={newTitle}
             placeholder={$tStore('admin_shows.modal_title_placeholder')}
+            bind:value={newTitle}
             required
-            class="form-input"
+            class="h-8 text-xs"
           />
         </div>
 
-        <div class="form-group">
-          <label for="show-desc">{$tStore('admin_shows.modal_desc_label')}</label>
-          <textarea
+        <div class="flex flex-col gap-1.5">
+          <Label for="show-desc" class="text-xs font-semibold">
+            {$tStore('admin_shows.modal_desc_label')}
+          </Label>
+          <Input
             id="show-desc"
-            bind:value={newDesc}
+            type="text"
             placeholder={$tStore('admin_shows.modal_desc_placeholder')}
-            rows="3"
-            class="form-input"
-          ></textarea>
+            bind:value={newDescription}
+            class="h-8 text-xs"
+          />
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="show-venue">{$tStore('admin_shows.modal_venue_label')}</label>
-            <input
-              id="show-venue"
-              type="text"
-              bind:value={newVenue}
-              placeholder={$tStore('admin_shows.modal_venue_placeholder')}
-              class="form-input"
+        <div class="flex flex-col gap-1.5">
+          <Label for="show-venue" class="text-xs font-semibold">
+            {$tStore('admin_shows.modal_venue_label')}
+          </Label>
+          <Input
+            id="show-venue"
+            type="text"
+            placeholder={$tStore('admin_shows.modal_venue_placeholder')}
+            bind:value={newVenue}
+            class="h-8 text-xs"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <Label for="start-date" class="text-xs font-semibold">
+              {$tStore('admin_shows.modal_start_date')}
+            </Label>
+            <Input
+              id="start-date"
+              type="date"
+              bind:value={newStartDate}
+              class="h-8 text-xs"
             />
           </div>
 
-          <div class="form-group">
-            <label for="show-target">{$tStore('admin_shows.modal_target_numbers')}</label>
-            <input
-              id="show-target"
-              type="number"
-              bind:value={newTarget}
-              min="1"
-              max="30"
-              class="form-input"
+          <div class="flex flex-col gap-1.5">
+            <Label for="end-date" class="text-xs font-semibold">
+              {$tStore('admin_shows.modal_end_date')}
+            </Label>
+            <Input
+              id="end-date"
+              type="date"
+              bind:value={newEndDate}
+              class="h-8 text-xs"
             />
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="show-start">{$tStore('admin_shows.modal_start_date')}</label>
-            <input id="show-start" type="date" bind:value={newStartDate} class="form-input" />
-          </div>
-
-          <div class="form-group">
-            <label for="show-end">{$tStore('admin_shows.modal_end_date')}</label>
-            <input id="show-end" type="date" bind:value={newEndDate} class="form-input" />
-          </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="target-numbers" class="text-xs font-semibold">
+            {$tStore('admin_shows.modal_target_numbers')}
+          </Label>
+          <Input
+            id="target-numbers"
+            type="number"
+            min="1"
+            max="50"
+            bind:value={newTargetNumbers}
+            class="h-8 text-xs"
+          />
         </div>
 
-        <div class="modal-actions">
-          <button
+        <Dialog.Footer class="pt-3">
+          <Button
             type="button"
-            class="bento-btn"
+            variant="outline"
+            size="sm"
             onclick={() => (isCreateModalOpen = false)}
           >
             {$tStore('admin_shows.modal_btn_cancel')}
-          </button>
-          <button type="submit" class="bento-btn bento-btn-primary">
+          </Button>
+          <Button type="submit" variant="default" size="sm">
             {$tStore('admin_shows.modal_btn_submit')}
-          </button>
-        </div>
+          </Button>
+        </Dialog.Footer>
       </form>
-    </div>
-  </div>
+    </Dialog.Content>
+  </Dialog.Root>
 {/if}
-
-<style>
-  .admin-shows-page {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .bento-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .header-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: rgba(255, 107, 0, 0.1);
-    color: #ff6b00;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-
-  .page-header h1 {
-    font-size: 24px;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0 0 4px 0;
-  }
-
-  .page-header p {
-    color: #64748b;
-    font-size: 14px;
-    margin: 0;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-  }
-
-  .stat-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-  }
-
-  .stat-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .stat-icon.orange { background: rgba(255, 107, 0, 0.1); color: #ff6b00; }
-  .stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-  .stat-icon.green { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
-  .stat-icon.purple { background: rgba(147, 51, 234, 0.1); color: #9333ea; }
-
-  .stat-value {
-    display: block;
-    font-size: 22px;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 600;
-  }
-
-  .controls-bar {
-    padding: 12px 16px;
-  }
-
-  .search-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 12px;
-    color: #94a3b8;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 8px 12px 8px 36px;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    font-size: 14px;
-    outline: none;
-  }
-
-  .search-input:focus {
-    border-color: #ff6b00;
-  }
-
-  .shows-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 20px;
-  }
-
-  .show-card {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .show-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .show-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 4px 0;
-  }
-
-  .show-venue {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  .badge-sprint {
-    background: #f1f5f9;
-    color: #475569;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .show-desc {
-    font-size: 13px;
-    color: #475569;
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .show-metrics {
-    display: flex;
-    gap: 12px;
-    background: #f8fafc;
-    padding: 10px 14px;
-    border-radius: 10px;
-  }
-
-  .metric {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .metric-num {
-    font-weight: 700;
-    font-size: 15px;
-    color: #0f172a;
-  }
-
-  .metric-num.text-green { color: #16a34a; }
-
-  .metric-tag {
-    font-size: 10px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-
-  .open-btn {
-    width: 100%;
-    justify-content: center;
-    text-decoration: none;
-  }
-
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 16px;
-  }
-
-  .modal-card {
-    width: 100%;
-    max-width: 520px;
-  }
-
-  .modal-card h2 {
-    font-size: 18px;
-    font-weight: 800;
-    margin: 0 0 16px 0;
-  }
-
-  .modal-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .form-group label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #334155;
-  }
-
-  .form-input {
-    padding: 8px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-size: 14px;
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
-  }
-</style>
