@@ -428,6 +428,10 @@ export const vi = {
   studio: {
     nav_title: 'Studio Âm Nhạc & Nhạc Cụ',
     page_title: 'CSAC Production Studio — Quản Lý Tiết Mục & Nhạc Cụ',
+    tag: 'Dự Án Biểu Diễn Đang Hoạt Động',
+    hero_title: 'Không Gian Sản Xuất & Studio Show CSAC',
+    hero_description: 'Không gian làm việc cộng tác cho các show âm nhạc với các Sprint tập luyện Agile, đăng ký lịch rảnh 15 phút và tự động xếp lịch tập không xung đột.',
+    active_shows_title: 'Các Show Âm Nhạc Đang Sản Xuất',
     heading: 'Hệ Thống Sản Xuất Âm Nhạc CSAC',
     subheading: 'Quản lý tiết mục biểu diễn, quy trình tập luyện Agile SDLC, kiểm định chất lượng (QC) và điều phối nhạc cụ không xung đột.',
     role_dm: 'Góc nhìn Quản Lý (DM / Admin)',

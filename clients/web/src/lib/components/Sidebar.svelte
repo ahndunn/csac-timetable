@@ -3,6 +3,10 @@
   import { Music, Users, Sliders, Eye, X, ChevronLeft, ChevronRight } from '@lucide/svelte';
   import { getMonthMatrix, isSameWeek, formatWeekRange, getMonday } from '../utils/dateUtils';
   import { tStore, currentLocale } from '$lib/i18n';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
+  import { cn } from '$lib/utils';
 
   interface Props {
     songs: SongVoteData[];
@@ -71,11 +75,7 @@
     return ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
   });
 
-  function getScheduledCount(songId: string) {
-    return schedule.filter(s => s.songId === songId).length;
-  }
-
-  function handlePrevMonth() {
+  function prevMonth() {
     if (viewMonth === 0) {
       viewMonth = 11;
       viewYear -= 1;
@@ -84,7 +84,7 @@
     }
   }
 
-  function handleNextMonth() {
+  function nextMonth() {
     if (viewMonth === 11) {
       viewMonth = 0;
       viewYear += 1;
@@ -92,283 +92,186 @@
       viewMonth += 1;
     }
   }
+
+  function getMemberSessionCount(member: string) {
+    return schedule.filter(s => s.allMembers.includes(member)).length;
+  }
 </script>
 
-<aside class="sidebar {isOpenMobile ? 'open' : ''}">
-  <!-- Mobile Drawer Header -->
-  <div class="sidebar-mobile-header">
-    <div class="sidebar-mobile-title">
-      <Sliders size={18} color="var(--accent)" />
-      <span>{$tStore('sidebar.options_and_data')}</span>
+<aside class={cn(
+  "w-80 flex-shrink-0 flex flex-col gap-4 border-r border-slate-200 bg-white p-4 overflow-y-auto z-30 transition-transform duration-300 dark:border-slate-800 dark:bg-card md:static md:translate-x-0",
+  isOpenMobile ? "fixed inset-y-0 left-0 shadow-2xl translate-x-0" : "fixed -translate-x-full md:translate-x-0"
+)}>
+  {#if isOpenMobile}
+    <div class="flex items-center justify-between md:hidden pb-2 border-b border-slate-100 dark:border-slate-800">
+      <span class="text-xs font-bold text-slate-800 dark:text-slate-100">Controls</span>
+      <Button variant="ghost" size="icon-xs" onclick={onCloseMobile}>
+        <X size={16} />
+      </Button>
     </div>
-    {#if onCloseMobile}
-      <button
-        type="button"
-        class="bento-icon-btn"
-        onclick={onCloseMobile}
-        aria-label={$tStore('sidebar.close_menu')}
-      >
-        <X size={18} />
-      </button>
-    {/if}
+  {/if}
+
+  <!-- Mini Calendar Picker -->
+  <Card class="p-3 border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
+    <div class="flex items-center justify-between mb-2">
+      <strong class="text-xs font-bold text-slate-800 dark:text-slate-100">{displayMonthYear}</strong>
+      <div class="flex items-center gap-1">
+        <Button variant="ghost" size="icon-xs" onclick={prevMonth}>
+          <ChevronLeft size={13} />
+        </Button>
+        <Button variant="ghost" size="icon-xs" onclick={nextMonth}>
+          <ChevronRight size={13} />
+        </Button>
+      </div>
+    </div>
+
+    <!-- Mini calendar table -->
+    <table class="w-full text-center text-[10px]">
+      <thead>
+        <tr class="text-slate-400 font-semibold">
+          {#each miniCalDayLabels as dl}
+            <th class="p-1">{dl}</th>
+          {/each}
+        </tr>
+      </thead>
+      <tbody>
+        {#each monthWeeks as week}
+          {@const isThisWeekSelected = isSameWeek(week[0].date, selectedWeekStart)}
+          <tr
+            class={cn(
+              "cursor-pointer rounded-md transition-colors hover:bg-primary/10",
+              isThisWeekSelected && "bg-primary/20"
+            )}
+            onclick={() => onSelectWeek(week[0].date)}
+          >
+            {#each week as dayObj}
+              <td class={cn(
+                "p-1.5 font-medium",
+                !dayObj.isCurrentMonth && "text-muted-foreground/40",
+                dayObj.isCurrentMonth && "text-foreground",
+                dayObj.isToday && "text-primary font-bold"
+              )}>
+                {dayObj.dayNumber}
+              </td>
+            {/each}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </Card>
+
+  <!-- Repertoire / Songs Section -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center justify-between text-xs font-bold text-foreground">
+      <div class="flex items-center gap-1.5">
+        <Music size={14} class="text-primary" />
+        <span>{$tStore('sidebar.songs_title')} ({songs.length})</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+      {#each songs as song (song.id)}
+        <Card class="flex items-center justify-between p-2.5 border border-border bg-card">
+          <div class="flex items-center gap-2 min-w-0">
+            <div
+              class="h-2.5 w-2.5 rounded-full shrink-0"
+              style="background-color: {song.color.border};"
+            ></div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-xs font-semibold text-foreground truncate">{song.name}</span>
+              <span class="text-[10px] text-muted-foreground">
+                {$tStore('sidebar.song_members_count', { count: song.members.length })}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onclick={() => onViewSongVotes(song)}
+              title={$tStore('sidebar.view_votes')}
+            >
+              <Eye size={13} class="text-muted-foreground" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onclick={() => onDeleteSong(song.id)}
+              class="text-destructive hover:text-destructive/80"
+              title={$tStore('sidebar.delete_song')}
+            >
+              <X size={13} />
+            </Button>
+          </div>
+        </Card>
+      {/each}
+    </div>
   </div>
 
-  <div class="sidebar-scroll-area">
-    <!-- Interactive Week Picker Mini Calendar -->
-    <div class="mini-calendar">
-      <div class="mini-cal-header">
-        <span>{displayMonthYear}</span>
-        <div style="display: flex; gap: 4px;">
-          <button
-            type="button"
-            class="mini-cal-nav-btn"
-            onclick={handlePrevMonth}
-            title={$tStore('sidebar.prev_month')}
-            aria-label={$tStore('sidebar.prev_month')}
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <button
-            type="button"
-            class="mini-cal-nav-btn"
-            onclick={handleNextMonth}
-            title={$tStore('sidebar.next_month')}
-            aria-label={$tStore('sidebar.next_month')}
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
+  <!-- Roster / Members Filter -->
+  <div class="flex flex-col gap-2">
+    <div class="flex items-center justify-between text-xs font-bold text-foreground">
+      <div class="flex items-center gap-1.5">
+        <Users size={14} class="text-primary" />
+        <span>{$tStore('sidebar.members_title')} ({allMembers.length})</span>
       </div>
-
-      <div class="mini-cal-grid" style="margin-bottom: 4px;">
-        {#each miniCalDayLabels as dLabel}
-          <div class="mini-cal-day-label">{dLabel}</div>
-        {/each}
-      </div>
-
-      <div style="display: flex; flex-direction: column; gap: 2px;">
-        {#each monthWeeks as week, wIdx (wIdx)}
-          {@const mondayDate = getMonday(week[0].date)}
-          {@const isSelectedWeek = isSameWeek(mondayDate, selectedWeekStart)}
-          {@const weekRangeLabel = formatWeekRange(mondayDate)}
-
-          <div
-            class="mini-cal-grid"
-            style="cursor: pointer; border-radius: var(--radius-xs); padding: 1px 0;"
-            onclick={() => onSelectWeek(mondayDate)}
-            onkeydown={(e) => { if (e.key === 'Enter') onSelectWeek(mondayDate); }}
-            role="button"
-            tabindex="0"
-            title={$tStore('sidebar.select_week_tooltip', { range: weekRangeLabel })}
-          >
-            {#each week as cell, dIdx (dIdx)}
-              <div
-                class="mini-cal-day-cell {!cell.isCurrentMonth ? 'is-other-month' : ''} {cell.isToday ? 'is-today' : ''} {isSelectedWeek ? 'is-selected-week' : ''}"
-              >
-                {cell.dayNumber}
-              </div>
-            {/each}
-          </div>
-        {/each}
-      </div>
-    </div>
-
-    <!-- Song List & Target Sessions Section -->
-    <div>
-      <div class="sidebar-section-title">
-        <span style="display: flex; align-items: center; gap: 6px;">
-          <Music size={14} color="var(--accent)" />
-          <span>{$tStore('sidebar.songs_header', { count: songs.length })}</span>
-        </span>
-        <span style="font-size: 11px; font-weight: 500; color: var(--text-muted);">
-          {$tStore('sidebar.col_sessions')}
-        </span>
-      </div>
-
-      {#if songs.length === 0}
-        <div style="font-size: 12px; color: var(--text-muted); padding: 8px 4px; text-align: center;">
-          {$tStore('sidebar.empty_songs')}
-        </div>
-      {:else}
-        <div>
-          {#each songs as song (song.id)}
-            {@const scheduledCount = getScheduledCount(song.id)}
-            {@const isFulfilled = scheduledCount >= song.targetSessions}
-
-            <div class="sidebar-song-card">
-              <div class="sidebar-song-top">
-                <div class="sidebar-song-title-wrap">
-                  <div
-                    class="sidebar-song-dot"
-                    style="background-color: {song.color.border};"
-                  ></div>
-                  <span class="sidebar-song-name" title={song.name}>
-                    {song.name}
-                  </span>
-                </div>
-
-                <div class="sidebar-song-actions">
-                  <button
-                    type="button"
-                    class="bento-icon-btn"
-                    style="width: 26px; height: 26px;"
-                    onclick={() => onViewSongVotes(song)}
-                    title={$tStore('sidebar.view_votes_tooltip')}
-                    aria-label={$tStore('sidebar.view_votes_tooltip')}
-                  >
-                    <Eye size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    class="bento-icon-btn"
-                    style="width: 26px; height: 26px; color: var(--danger);"
-                    onclick={() => onDeleteSong(song.id)}
-                    title={$tStore('sidebar.delete_song_tooltip')}
-                    aria-label={$tStore('sidebar.delete_song_tooltip')}
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              </div>
-
-              <div class="sidebar-song-meta">
-                {song.members.length} {$tStore('sidebar.members_count', { count: song.members.length })} ({song.members.slice(0, 3).join(', ')}{song.members.length > 3 ? '...' : ''})
-              </div>
-
-              <div class="sidebar-song-controls">
-                <span>{$tStore('sidebar.weekly_need')}</span>
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <button
-                    type="button"
-                    class="bento-btn"
-                    style="padding: 2px 8px; font-size: 11px; min-width: 22px; height: 24px;"
-                    onclick={() => onUpdateSongSessions(song.id, Math.max(1, song.targetSessions - 1))}
-                    title={$tStore('sidebar.decrease_sessions')}
-                  >
-                    -
-                  </button>
-                  <span class="sidebar-freq-input" style="display: flex; align-items: center; justify-content: center;">
-                    {song.targetSessions}
-                  </span>
-                  <button
-                    type="button"
-                    class="bento-btn"
-                    style="padding: 2px 8px; font-size: 11px; min-width: 22px; height: 24px;"
-                    onclick={() => onUpdateSongSessions(song.id, song.targetSessions + 1)}
-                    title={$tStore('sidebar.increase_sessions')}
-                  >
-                    +
-                  </button>
-                  <span
-                    class="bento-pill {isFulfilled ? 'is-accent' : ''}"
-                    style="font-size: 10px; padding: 2px 6px; {isFulfilled ? '' : 'color: var(--warning-text); background: var(--warning-light);'}"
-                  >
-                    {scheduledCount}/{song.targetSessions}
-                  </span>
-                </div>
-              </div>
-            </div>
-          {/each}
-        </div>
+      {#if selectedMember}
+        <Button variant="ghost" size="xs" onclick={() => onSelectMember(null)}>
+          {$tStore('sidebar.clear_filter')}
+        </Button>
       {/if}
     </div>
 
-    <!-- Members Filter Directory -->
-    <div>
-      <div class="sidebar-section-title">
-        <span style="display: flex; align-items: center; gap: 6px;">
-          <Users size={14} color="var(--accent)" />
-          <span>{$tStore('sidebar.members_header', { count: allMembers.length })}</span>
-        </span>
-        {#if selectedMember}
-          <button
-            type="button"
-            class="bento-pill is-active"
-            onclick={() => onSelectMember(null)}
-            style="font-size: 10px; padding: 2px 8px;"
-          >
-            {$tStore('sidebar.clear_filter')}
-          </button>
-        {/if}
-      </div>
+    <div class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+      {#each allMembers as member}
+        {@const count = getMemberSessionCount(member)}
+        {@const isSelected = selectedMember === member}
+        <Button
+          variant={isSelected ? 'default' : 'outline'}
+          size="xs"
+          onclick={() => onSelectMember(isSelected ? null : member)}
+          class="text-[11px] gap-1"
+        >
+          <span>{member}</span>
+          <Badge variant={isSelected ? 'secondary' : 'default'} class="text-[9px] px-1 py-0 h-4">
+            {count}
+          </Badge>
+        </Button>
+      {/each}
+    </div>
+  </div>
 
-      {#if allMembers.length === 0}
-        <div style="font-size: 12px; color: var(--text-muted); padding: 4px; text-align: center;">
-          {$tStore('sidebar.empty_members')}
-        </div>
-      {:else}
-        <div class="member-chips-container">
-          {#each allMembers as member (member)}
-            <button
-              type="button"
-              class="member-chip {selectedMember === member ? 'is-active' : ''}"
-              onclick={() => onSelectMember(selectedMember === member ? null : member)}
-              title={$tStore('sidebar.filter_member_tooltip', { member })}
-            >
-              {member}
-            </button>
-          {/each}
-        </div>
-      {/if}
+  <!-- Solver Settings -->
+  <div class="flex flex-col gap-2 pt-2 border-t border-border">
+    <div class="flex items-center gap-1.5 text-xs font-bold text-foreground">
+      <Sliders size={14} class="text-primary" />
+      <span>{$tStore('sidebar.settings_title')}</span>
     </div>
 
-    <!-- Solver Settings Panel -->
-    <div>
-      <div class="sidebar-section-title">
-        <span style="display: flex; align-items: center; gap: 6px;">
-          <Sliders size={14} color="var(--accent)" />
-          <span>{$tStore('sidebar.settings_title')}</span>
-        </span>
-      </div>
+    <div class="flex flex-col gap-2 text-xs">
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="text-muted-foreground">{$tStore('sidebar.setting_max_rooms')}</span>
+        <select
+          class="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground"
+          value={settings.maxRooms}
+          onchange={(e) => onUpdateSettings({ ...settings, maxRooms: parseInt((e.target as HTMLSelectElement).value) })}
+        >
+          <option value="1">1 {$tStore('sidebar.room_single')}</option>
+          <option value="2">2 {$tStore('sidebar.rooms_multi')}</option>
+          <option value="3">3 {$tStore('sidebar.rooms_multi')}</option>
+        </select>
+      </label>
 
-      <div class="settings-box">
-        <div class="setting-row">
-          <div>
-            <div>{$tStore('sidebar.max_rooms')}</div>
-            <div class="setting-subtext">{$tStore('sidebar.max_rooms_desc')}</div>
-          </div>
-          <select
-            class="bento-input"
-            style="width: auto; padding: 4px 8px; font-weight: 700;"
-            value={settings.maxRooms}
-            onchange={(e) => onUpdateSettings({ ...settings, maxRooms: Number((e.target as HTMLSelectElement).value) })}
-          >
-            <option value={1}>{$currentLocale === 'en' ? '1 Room' : '1 Phòng'}</option>
-            <option value={2}>{$currentLocale === 'en' ? '2 Rooms' : '2 Phòng'}</option>
-            <option value={3}>{$currentLocale === 'en' ? '3 Rooms' : '3 Phòng'}</option>
-          </select>
-        </div>
-
-        <div class="setting-row">
-          <div>
-            <div>{$tStore('sidebar.allow_partial')}</div>
-            <div class="setting-subtext">{$tStore('sidebar.allow_partial_desc')}</div>
-          </div>
-          <label class="bento-switch">
-            <input
-              type="checkbox"
-              checked={settings.allowPartialAttendance}
-              onchange={(e) => onUpdateSettings({ ...settings, allowPartialAttendance: (e.target as HTMLInputElement).checked })}
-            />
-            <span class="bento-switch-slider"></span>
-          </label>
-        </div>
-
-        <div class="setting-row">
-          <div>
-            <div>{$tStore('sidebar.spread_days')}</div>
-            <div class="setting-subtext">{$tStore('sidebar.spread_days_desc')}</div>
-          </div>
-          <label class="bento-switch">
-            <input
-              type="checkbox"
-              checked={settings.spreadDays}
-              onchange={(e) => onUpdateSettings({ ...settings, spreadDays: (e.target as HTMLInputElement).checked })}
-            />
-            <span class="bento-switch-slider"></span>
-          </label>
-        </div>
-      </div>
+      <label class="flex items-center justify-between cursor-pointer">
+        <span class="text-muted-foreground">{$tStore('sidebar.setting_spread')}</span>
+        <input
+          type="checkbox"
+          class="rounded text-primary focus:ring-primary accent-primary"
+          checked={settings.spreadDays}
+          onchange={(e) => onUpdateSettings({ ...settings, spreadDays: (e.target as HTMLInputElement).checked })}
+        />
+      </label>
     </div>
   </div>
 </aside>

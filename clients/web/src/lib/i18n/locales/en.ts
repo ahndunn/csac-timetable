@@ -428,6 +428,10 @@ export const en = {
   studio: {
     nav_title: 'Music Studio & Gear',
     page_title: 'CSAC Production Studio — Music Numbers & Instrument Fleet',
+    tag: 'Active Production Shows',
+    hero_title: 'CSAC Show & Production Studio',
+    hero_description: 'Collaborative music show workspaces with Agile practice sprints, 15-minute free-time availability registration, and zero-conflict rehearsal scheduling.',
+    active_shows_title: 'Active Production Shows',
     heading: 'CSAC Music Production Studio',
     subheading: 'Manage performance numbers, Agile SDLC practice sprints, Quality Check (QC) audits, and zero-conflict instrument allocations.',
     role_dm: 'Manager View (DM / Admin)',
