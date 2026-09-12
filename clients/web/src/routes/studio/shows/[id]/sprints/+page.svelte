@@ -146,26 +146,56 @@
   );
   let totalHoursFormatted = $derived((selectedCount * 0.25).toFixed(2));
 
-  // Mouse drag handlers
-  function handleCellMouseDown(dayIdx: number, slotLabel: string, event: MouseEvent) {
+  // Mouse drag handlers (2D Bounding Box Rectangle Selection)
+  let dragStart = $state<{ dayIdx: number; slotIdx: number } | null>(null);
+  let dragCurrent = $state<{ dayIdx: number; slotIdx: number } | null>(null);
+  let initialSelectedSlotsSnapshot = $state<Record<string, boolean>>({});
+
+  function handleCellMouseDown(dayIdx: number, slotIdx: number, event: MouseEvent) {
     event.preventDefault(); // Prevent text selection while dragging
     isDragging = true;
+    dragStart = { dayIdx, slotIdx };
+    dragCurrent = { dayIdx, slotIdx };
+    initialSelectedSlotsSnapshot = { ...selectedSlots };
+
+    const slotLabel = timeSlots[slotIdx].label;
     const key = `${dayIdx}_${slotLabel}`;
     dragTargetValue = !selectedSlots[key];
+
+    // Apply initial cell
     selectedSlots[key] = dragTargetValue;
     isSaved = false;
   }
 
-  function handleCellMouseEnter(dayIdx: number, slotLabel: string) {
-    if (isDragging) {
-      const key = `${dayIdx}_${slotLabel}`;
-      selectedSlots[key] = dragTargetValue;
+  function handleCellMouseEnter(dayIdx: number, slotIdx: number) {
+    if (isDragging && dragStart) {
+      dragCurrent = { dayIdx, slotIdx };
+
+      const minDay = Math.min(dragStart.dayIdx, dayIdx);
+      const maxDay = Math.max(dragStart.dayIdx, dayIdx);
+      const minSlot = Math.min(dragStart.slotIdx, slotIdx);
+      const maxSlot = Math.max(dragStart.slotIdx, slotIdx);
+
+      // Start from the pre-drag snapshot
+      const updated = { ...initialSelectedSlotsSnapshot };
+
+      // Apply dragTargetValue to all cells within the 2D diagonal bounding box
+      for (let d = minDay; d <= maxDay; d++) {
+        for (let s = minSlot; s <= maxSlot; s++) {
+          const label = timeSlots[s].label;
+          updated[`${d}_${label}`] = dragTargetValue;
+        }
+      }
+
+      selectedSlots = updated;
       isSaved = false;
     }
   }
 
   function handleMouseUpGlobal() {
     isDragging = false;
+    dragStart = null;
+    dragCurrent = null;
   }
 
   onMount(() => {
@@ -400,32 +430,36 @@
     </div>
 
     <!-- 15-Minute Drag Matrix Table -->
-    <div class="overflow-x-auto select-none border border-slate-200 rounded-xl max-h-[420px]">
+    <div class="overflow-x-auto select-none border border-slate-200/80 rounded-xl max-h-[420px] bg-white shadow-xs">
       <table class="w-full border-collapse text-xs">
-        <thead class="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
+        <thead class="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10 border-b border-slate-200">
           <tr>
-            <th class="p-2 text-center font-bold text-muted-foreground w-20 border-r border-slate-200">15m Slot</th>
+            <th class="p-2 text-center font-bold text-muted-foreground w-20 border-r border-slate-200/80">15m Slot</th>
             {#each days as day}
-              <th class="p-2 text-center font-bold text-slate-700 border-r border-slate-200 last:border-r-0">{day}</th>
+              <th class="p-2 text-center font-bold text-slate-700 border-r border-slate-200/80 last:border-r-0">{day}</th>
             {/each}
           </tr>
         </thead>
         <tbody>
-          {#each timeSlots as slot}
-            <tr class="hover:bg-slate-50/50 {slot.isHourStart ? 'border-t-2 border-t-slate-200' : 'border-t border-t-slate-100'}">
-              <td class="p-1.5 text-center font-mono text-[11px] font-semibold border-r border-slate-200 {slot.isHourStart ? 'bg-slate-100/80 text-foreground font-bold' : 'text-muted-foreground'}">
+          {#each timeSlots as slot, sIdx}
+            <tr class="hover:bg-slate-50/50 transition-colors {slot.isHourStart ? 'border-t-2 border-t-slate-200/90' : 'border-t border-t-slate-100'}">
+              <td class="p-1.5 text-center font-mono text-[11px] font-semibold border-r border-slate-200/80 {slot.isHourStart ? 'bg-slate-100/70 text-foreground font-bold' : 'text-muted-foreground/80'}">
                 <span>{slot.label}</span>
               </td>
               {#each days as day, dIdx}
                 {@const isSelected = selectedSlots[`${dIdx}_${slot.label}`]}
                 <td
-                  class="p-0.5 border-r border-slate-200 last:border-r-0 text-center cursor-pointer"
-                  onmousedown={(e) => handleCellMouseDown(dIdx, slot.label, e)}
-                  onmouseenter={() => handleCellMouseEnter(dIdx, slot.label)}
+                  class="p-0.5 border-r border-slate-100 last:border-r-0 text-center cursor-pointer"
+                  onmousedown={(e) => handleCellMouseDown(dIdx, sIdx, e)}
+                  onmouseenter={() => handleCellMouseEnter(dIdx, sIdx)}
                 >
-                  <div class="w-full h-5 rounded-sm transition-colors flex items-center justify-center {isSelected ? 'bg-primary text-primary-foreground shadow-xs' : 'hover:bg-slate-100'}">
+                  <div
+                    class="w-full h-5 rounded-md transition-all duration-150 flex items-center justify-center {isSelected
+                      ? 'bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 shadow-2xs'
+                      : 'hover:bg-slate-100/80'}"
+                  >
                     {#if isSelected}
-                      <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                      <span class="w-1.5 h-1.5 rounded-full bg-primary ring-2 ring-primary/20"></span>
                     {/if}
                   </div>
                 </td>

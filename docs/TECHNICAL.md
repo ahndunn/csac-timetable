@@ -74,6 +74,10 @@ flowchart TB
   * **Live Search & Filter**: Real-time filtering by text query across title, PM, reviewer, and performer names.
   * **Action Button Rows (`.card-btn-row`)**: Uses responsive wrapping (`flex-wrap: wrap`) and fluid flex basis (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC", "Audit & Submit QC", and "Assign Lineup") never clip or overflow across any viewport.
   * **Creation & Allocation Modals**: Modals for New Music Number, Band Lineup Assignment, and QC Audit Verdict with form validation and backdrop dismissal.
+* **Sprint Free-Time 15-Minute Registration Grid (`/studio/shows/[id]/sprints`)**:
+  * **Ergonomic Bento Color Palette & Visual Weight**: Avoids overly saturated, high-intensity neon fills across hundreds of small matrix cells. Utilizes an elegant, eye-friendly soft brand tint (`bg-primary/15` light orange tint with `border border-primary/30` and crisp subtle `bg-primary` micro-dot indicator; on hover `bg-primary/25`) against a calm slate matrix canvas (`bg-slate-50/50` zebra hours).
+  * **2D Bounding-Box Rectangle Drag Selection**: Dragging from cell $(d_1, s_1)$ to $(d_2, s_2)$ computes a 2D selection rectangle where the diagonal is the cursor vector: all cells $(d, s)$ within $\min(d_1, d_2) \le d \le \max(d_1, d_2)$ and $\min(s_1, s_2) \le s \le \max(s_1, s_2)$ are dynamically updated with active drag preview and applied on release.
+  * **Micro-Interactions**: Smooth spring transition, real-time bounding box preview, time slot hover tracks, and preset filter triggers for peak evening and afternoon rehearsals.
 * **Show Roster & Scoped Leadership Matrix (`/studio/shows/[id]/roster`)**:
   * **Zero Generic Role Dropdowns**: Roster members have their authority derived from `(user_id, show_id)` (Show DM) and `(user_id, show_id, number_id)` (Number PM, QC, Performer).
   * **Multi-Role Scoped Badges**: Renders specific badges identifying scoped leadership roles (e.g. `Show DM`, `PM (2 Songs)`, `QC (1 Song)`, `Performer`).
@@ -132,6 +136,35 @@ export function getEffectiveRole(
   if (numberScope?.role === 'pm') return 'pm';
   if (numberScope?.role === 'qc') return 'qc';
   return 'member';
+}
+
+// Sprint History Contracts
+export interface ScheduleRunHistoryItem {
+  id: string;
+  sprintId: string;
+  triggeredBy: string;
+  triggeredByName: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  durationMs: number;
+  score: number;
+  conflictCount?: number;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface AvailabilityHistoryItem {
+  id: string;
+  sprintId: string;
+  userId: string;
+  userName: string;
+  actorId: string;
+  actorName: string;
+  action: 'ADD' | 'REMOVE' | 'UPDATE';
+  dayOfWeek: string;
+  slotLabel: string;
+  isAvailable: boolean;
+  createdAt: string;
 }
 ```
 
@@ -403,15 +436,25 @@ CREATE TABLE sprint_schedule_runs (
 
 ## 4. REST API Endpoint Specifications
 
-### 4.1 Authentication (`/api/v1/auth`)
-* `POST /api/v1/auth/login`: `{ email, password }` $\rightarrow$ `{ token, user: { id, email, full_name, role } }`.
-* `GET /api/v1/auth/me`: Validates JWT $\rightarrow$ returns current user profile.
+### 4.1 Authentication & Self-Service Activation (`/api/v1/auth`)
+* `POST /api/v1/auth/login`: `{ email, password }` $\rightarrow$ `{ token, user: { id, email, full_name, role, auth_epoch } }` + `HttpOnly` Refresh Token cookie.
+* `POST /api/v1/auth/verify-activation-otp`: `{ token: string, otp: string }` $\rightarrow$ `{ activation_session_id, email, prefilled_data: { full_name, phone } }`.
+* `POST /api/v1/auth/complete-activation`: `{ activation_session_id, password, full_name, phone }` $\rightarrow$ Hashes password with Argon2id, transitions status to `active`, returns `{ token, user }` + `HttpOnly` Refresh Token cookie.
+* `POST /api/v1/auth/refresh`: Validates refresh token cookie & compares `auth_epoch` $\rightarrow$ returns fresh `{ token, user }`.
+* `GET /api/v1/auth/me`: Validates JWT $\rightarrow$ returns current user profile and active scopes.
 
 ### 4.2 Admin User Management (`/api/v1/admin/users`) — *Admin Only*
-* `GET /api/v1/admin/users`: List users with pagination and role filter.
-* `POST /api/v1/admin/users`: Create user `{ email, full_name, role }` $\rightarrow$ generates random password, hashes with Argon2id, writes to DB, emits Kafka `csac.user.created` event.
-* `PUT /api/v1/admin/users/:id/role`: Change user role to `moderator` or `admin` (or initiate downgrade proposal if target is `admin`).
+* `GET /api/v1/admin/users`: List users with pagination, status (`active`, `pending_activation`, `suspended`), and role filters.
+* `POST /api/v1/admin/users/invite`: Invite user `{ email: string, full_name?: string, role?: string, show_id?: string }` $\rightarrow$ creates user with status `pending_activation`, generates signed activation token and 6-digit OTP, emits `csac.user.invited` Kafka event to SMTP mailer.
+* `POST /api/v1/admin/users/:id/resend-invite`: Regenerates OTP/token and dispatches fresh email to pending user.
+* `PUT /api/v1/admin/users/:id/role`: Change user role to `moderator` or `admin` (or initiate downgrade proposal if target is `admin`). Increments `auth_epoch` and emits SSE `AUTH_INVALIDATED`.
+* `PUT /api/v1/admin/users/:id/status`: Update status (`active`, `suspended`). Increments `auth_epoch` and emits SSE `AUTH_INVALIDATED`.
 * `POST /api/v1/admin/users/:id/downgrade-proposal`: Create downgrade proposal `{ target_role, reason }` $\rightarrow$ calculates required approvals $M = \min(\lceil N/2 \rceil, 3)$.
+
+### 4.3 Real-Time Authority Invalidation via SSE (`/api/v1/events/user`)
+* **Endpoint**: `GET /api/v1/events/user` (SSE Stream with JWT Authorization header).
+* **Event**: `AUTH_INVALIDATED` $\rightarrow$ Payload: `{"type": "AUTH_INVALIDATED", "user_id": "string", "auth_epoch": number}`.
+* **Client Handling**: Web client catches event, checks `user_id == currentUser.id`, acquires Web Lock (`csac_token_refresh`), invokes `POST /api/v1/auth/refresh`, and broadcasts updated session across tabs via `BroadcastChannel('csac_auth_sync')`.
 
 ### 4.3 Admin Quorum Approval (`/api/v1/admin/approve`) — *Admin Only*
 * `GET /api/v1/admin/approve/proposals`: List all pending and historical downgrade proposals.

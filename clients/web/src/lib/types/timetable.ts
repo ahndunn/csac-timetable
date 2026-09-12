@@ -195,12 +195,64 @@ export interface MusicNumber {
 
 // User Roles & Hierarchy
 export type UserRole = 'admin' | 'moderator' | 'dm' | 'pm' | 'qc' | 'member';
+export type UserStatus = 'active' | 'pending_activation' | 'suspended';
 
 export interface UserSession {
   id: string;
   email: string;
   fullName: string;
   role: UserRole;
+  status?: UserStatus;
+  authEpoch?: number;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'admin' | 'moderator' | 'member';
+  status: UserStatus;
+  created_at: string;
+  auth_epoch?: number;
+  phone?: string;
+}
+
+export interface UserInvitationPayload {
+  email: string;
+  full_name?: string;
+  role?: 'admin' | 'moderator' | 'member';
+  show_id?: string;
+  phone?: string;
+}
+
+export interface ActivationVerificationPayload {
+  token?: string;
+  email?: string;
+  otp: string;
+}
+
+export interface ActivationVerificationResponse {
+  activation_session_id: string;
+  email: string;
+  prefilled_data: {
+    full_name?: string;
+    phone?: string;
+  };
+}
+
+export interface ActivationCompletionPayload {
+  activation_session_id: string;
+  password: string;
+  full_name: string;
+  phone?: string;
+}
+
+export interface EffectiveShowPermissions {
+  showId: string;
+  isDM: boolean;
+  pmSongIds: string[];
+  qcSongIds: string[];
+  castSongIds: string[];
 }
 
 // Audit & Compute History Interfaces
@@ -226,6 +278,7 @@ export interface ScheduleRunHistoryItem {
   status: 'queued' | 'processing' | 'completed' | 'failed';
   durationMs: number;
   score: number;
+  conflictCount?: number;
   error?: string;
   createdAt: string;
   completedAt?: string;

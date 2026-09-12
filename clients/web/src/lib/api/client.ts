@@ -50,10 +50,36 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    verifyActivationOtp: (payload: { token?: string; email?: string; otp: string }) =>
+      request<{ activation_session_id: string; email: string; prefilled_data: { full_name?: string; phone?: string } }>(
+        '/auth/verify-activation-otp',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }
+      ),
+    completeActivation: (payload: { activation_session_id: string; password: string; full_name: string; phone?: string }) =>
+      request<{ token: string; user: any }>('/auth/complete-activation', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    refresh: () =>
+      request<{ token: string; user: any }>('/auth/refresh', {
+        method: 'POST',
+      }),
     me: () => request<any>('/auth/me'),
   },
   admin: {
     listUsers: () => request<any[]>('/admin/users'),
+    inviteUser: (payload: { email: string; full_name?: string; role?: string; show_id?: string; phone?: string }) =>
+      request<{ user: any; message: string }>('/admin/users/invite', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    resendInvite: (userId: string) =>
+      request<{ message: string }>(`/admin/users/${userId}/resend-invite`, {
+        method: 'POST',
+      }),
     createUser: (payload: { email: string; full_name: string; role: string }) =>
       request<{ user: any; initial_password?: string }>('/admin/users', {
         method: 'POST',
@@ -65,7 +91,7 @@ export const api = {
         body: JSON.stringify({ new_role: newRole }),
       }),
     updateStatus: (userId: string, status: string) =>
-      request<any>(`/admin/users/${userId}/role`, {
+      request<any>(`/admin/users/${userId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status }),
       }),
@@ -93,13 +119,22 @@ export const api = {
       const users = await request<any[]>('/admin/users');
       return { users };
     },
+    invite: (payload: { email: string; full_name?: string; role?: string; show_id?: string; phone?: string }) =>
+      request<{ user: any; message: string }>('/admin/users/invite', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    resendInvite: (userId: string) =>
+      request<{ message: string }>(`/admin/users/${userId}/resend-invite`, {
+        method: 'POST',
+      }),
     create: (payload: { email: string; full_name: string; password?: string; role: string }) =>
       request<{ user: any; initial_password?: string }>('/admin/users', {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
     updateStatus: (userId: string, status: string) =>
-      request<any>(`/admin/users/${userId}/role`, {
+      request<any>(`/admin/users/${userId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status }),
       }),

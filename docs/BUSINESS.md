@@ -50,12 +50,17 @@ The system organizes access across 6 distinct role levels, structured as strict 
 * **BR-NAV-03 (Roster $\rightarrow$ Numbers Member Songs)**: Clicking any song chip on a member's profile in the Roster page navigates to `/studio/shows/[id]/numbers?q=[song_title]`.
 * **BR-NAV-04 (Workload Feedback Loop)**: If a performer is assigned $\ge 5$ numbers or $\ge 20$ practice hours in active sprints, the Roster and Numbers pages automatically flag them with a `Fatigued` warning badge.
 
-### 2.2 Business Rules for Administration
+### 2.4 Business Rules for Administration & User Lifecycle
 
-* **BR-ADM-01 (User Onboarding & Credential Dispatch)**:
-  * When an Admin creates a user (Name, Email, Role), the system generates a secure initial password.
-  * The password is encrypted with **Argon2id** for database storage.
-  * An asynchronous event is dispatched to send the user their login credentials via SMTP email.
+* **BR-ADM-01 (Single-Mandatory-Param User Invitation & Self-Service Activation)**:
+  * **Zero-Friction Invitation**: Admin invites a user via `/admin/users` by providing only their **Email** (the single mandatory parameter). All other fields (Full Name, Initial Role Preset, Show Assignment) are strictly optional.
+  * **Pending Activation State**: Invited users are created with status `pending_activation`.
+  * **Token & OTP Generation**: The system generates a single-use cryptographically signed Activation Token (TTL: 24 hours) and a 6-digit verification OTP (TTL: 15 minutes), dispatched via email.
+  * **Self-Service Activation (`/auth/activate`)**:
+    1. Invitee opens the activation link or inputs their email + 6-digit OTP on the verification screen.
+    2. Upon OTP verification, the invitee is presented with the profile completion screen: Email is displayed in a locked state; any optional fields prefilled by Admin are pre-populated but completely editable by the user.
+    3. User sets their secure password and completes registration.
+    4. Backend hashes the password using **Argon2id** (m=65536, t=3, p=4), transitions user status to `active`, issues an access token and sets an `HttpOnly` refresh token cookie, and automatically redirects them into CSAC Studio.
 * **BR-ADM-02 (Promotion Authority)**:
   * Any active Admin can promote a Member to Moderator or Admin immediately.
   * Any active Admin can promote a Moderator to Admin immediately.
@@ -69,6 +74,9 @@ The system organizes access across 6 distinct role levels, structured as strict 
   * **Peer Review & Self-Resignation**: An Admin can initiate a demotion on any Admin or on themselves (self-resignation).
   * **OTP Verification**: To approve/reject, each peer Admin requests a 6-digit one-time password (OTP) sent to their email (TTL: 10 minutes) and submits it at `/admin/approve`.
   * Once $M$ approvals are collected, the target user's role is downgraded in PostgreSQL and audit logs are recorded.
+* **BR-ADM-04 (Reactive Token Invalidation & Silent Refresh)**:
+  * Whenever a user's role, permissions, or status change, the server emits an SSE event `AUTH_INVALIDATED` to the client.
+  * The web client automatically coordinates a silent background token refresh via Web Locks and `BroadcastChannel` to obtain a fresh access token reflecting the updated authority state without disrupting the user experience.
 
 ---
 
