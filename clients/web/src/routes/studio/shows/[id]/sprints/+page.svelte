@@ -746,9 +746,12 @@
 
       <div class="calendar-header-row">
         <div>
-          <div class="badge-scheduled">
-            <Sparkles size={13} />
-            <span>Zero-Conflict Schedule Generated</span>
+          <div class="flex items-center gap-3">
+            <div class="badge-scheduled">
+              <Sparkles size={13} />
+              <span>Zero-Conflict Schedule Generated</span>
+            </div>
+            <TaskStatusSignal status={taskStatus} />
           </div>
           <h3>{$tStore('studio.calendar_title')}</h3>
           <p class="grid-subtext">{$tStore('studio.calendar_desc')}</p>
