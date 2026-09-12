@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let status: 'idle' | 'syncing' | 'saved' | 'queued' | 'processing' | 'completed' | 'failed' = 'idle';
+  let { status = 'idle' }: { status?: 'idle' | 'syncing' | 'saved' | 'queued' | 'processing' | 'completed' | 'failed' } = $props();
 
   const statusConfig = {
     idle: { label: 'READY', icon: '🟢', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
