@@ -58,8 +58,13 @@ flowchart TB
 * **Vite Dev Server Proxy (`clients/web/vite.config.ts`)**:
   * Configures development server proxy for `/api` pointing to `http://localhost:8080`.
 
-### 1.3 Web Client Component Specifications
-* **Bento Card Surfaces (`.bento-card`)**: 18px rounded corner radius (`--radius-bento`), 1px translucent border (`rgba(0,0,0,0.08)`), multi-layer elevation shadow (`--shadow-card`).
+### 1.3 Web Client Component & Styling Specifications
+* **Styling Architecture**: Built on **Tailwind CSS v4** (`@tailwindcss/vite`) and **shadcn-svelte** (Svelte 5 runes). All legacy vanilla CSS and inline `<style>` tags are replaced with Tailwind utility classes and accessible UI primitives.
+* **Bento Card Surfaces (`Card` / `.bento-card`)**: 18px rounded corner radius (`rounded-[18px]`), 1px subtle border (`border-black/[0.08]` / `dark:border-white/[0.08]`), soft elevation shadow (`shadow-sm hover:shadow-md transition-all duration-200`).
+* **Brand Theme & 70/20/10 Rule**:
+  * 70% Base Canvas: `bg-[#f8fafc]` (`bg-background`).
+  * 20% Elevated Surfaces: `bg-white` (`bg-card`).
+  * 10% True Orange Accent: `#ff6b00` (`bg-primary`, `text-primary`).
 * **Scalable Music Numbers (`/studio/shows/[id]/numbers`)**:
   * **View Modes**: Supports 3 switchable views:
     - Bento Grid (`view = 'grid'`): Multi-column CSS grid (`repeat(auto-fill, minmax(340px, 1fr))`) with hover lift, lineup tags, status indicator, and wrapped action button rows (`.card-btn-row`).
