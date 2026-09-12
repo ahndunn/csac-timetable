@@ -565,6 +565,7 @@ export const vi = {
     label_pm: 'Performance Manager (PM phụ trách)',
     label_qc_reviewer: 'Người duyệt QC chỉ định',
     btn_create_number: 'Tạo Tiết Mục Mới',
+    btn_add_number: 'Thêm Tiết Mục Mới',
     th_order: '#',
     th_song: 'Tiết mục',
     th_genre: 'Thể loại',

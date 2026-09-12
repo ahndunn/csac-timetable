@@ -565,6 +565,7 @@ export const en = {
     label_pm: 'Performance Manager (PM)',
     label_qc_reviewer: 'Designated QC Reviewer',
     btn_create_number: 'Create Music Number',
+    btn_add_number: 'Add Music Number',
     th_order: '#',
     th_song: 'Music Number',
     th_genre: 'Genre',
