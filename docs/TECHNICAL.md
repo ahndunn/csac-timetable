@@ -69,15 +69,45 @@ flowchart TB
   * **Live Search & Filter**: Real-time filtering by text query across title, PM, reviewer, and performer names.
   * **Action Button Rows (`.card-btn-row`)**: Uses responsive wrapping (`flex-wrap: wrap`) and fluid flex basis (`flex: 1 1 auto`) to ensure labels (such as "Submit for QC", "Audit & Submit QC", and "Assign Lineup") never clip or overflow across any viewport.
   * **Creation & Allocation Modals**: Modals for New Music Number, Band Lineup Assignment, and QC Audit Verdict with form validation and backdrop dismissal.
-* **Practice Sprint Schedule UI (`/studio/shows/[id]/sprints`)**:
-  * **15-Minute Free-Time Precision Grid**: Interactive 15-minute slot matrix (08:00 to 22:45 across 7 days) supporting click-and-drag mouse painting and preset shortcuts (`Peak Evenings`, `Afternoons`, `Clear`).
-  * **High-Density Rehearsal Calendar**:
-    - **View Modes**: Switchable between Bento Grid (`view = 'grid'`) and Compact Timeline Table (`view = 'timeline'`).
-    - **Rehearsal Quota Tracker**: Header stat pills displaying total scheduled sessions, multi-session song count, room utilization, and quota fulfillment status.
-    - **Multi-Dimension Filters**: Dropdown filters by Day of Week (`Monday`..`Sunday`), Song Title, and Studio Room (`Studio Room A`, `Studio Room B`).
-    - **Session Metadata**: Renders exact session index (e.g. `Rehearsal #1 of 2`, `#2 of 3`), PM leader, performer lineups, duration, and status indicators.
+* **Show Roster & Scoped Leadership Matrix (`/studio/shows/[id]/roster`)**:
+  * **Zero Generic Role Dropdowns**: Roster members have their authority derived from `(user_id, show_id)` (Show DM) and `(user_id, show_id, number_id)` (Number PM, QC, Performer).
+  * **Multi-Role Scoped Badges**: Renders specific badges identifying scoped leadership roles (e.g. `Show DM`, `PM (2 Songs)`, `QC (1 Song)`, `Performer`).
+  * **Cross-Screen Deep-Linking**: Clicking assigned song chips on a member profile jumps immediately to `/studio/shows/[id]/numbers?q=[song_title]`.
+* **Cross-Screen Interactivity Architecture**:
+  * `/studio/shows/[id]/overview` $\rightarrow$ Metric pills deep link to `/numbers?stage=...` and `/sprints`.
+  * `/studio/shows/[id]/numbers` $\rightarrow$ Song cards include "View in Sprint Calendar" deep links to `/sprints?song=[song_title]`.
+  * `/studio/shows/[id]/sprints` $\rightarrow$ Query param sync via `?song=...` filters rehearsals immediately and links back to song status.
 
----
+### 1.4 TypeScript Scoped Role & Authorization Contracts
+```typescript
+// Scoped Show & Music Number Roles
+export interface UserShowScope {
+  userId: string;
+  showId: string;
+  isDM: boolean;
+}
+
+export interface UserNumberScope {
+  userId: string;
+  showId: string;
+  numberId: string;
+  role: 'pm' | 'qc' | 'performer';
+  instrumentRole?: BandRole;
+}
+
+// Effective Role Resolution Helper
+export function getEffectiveRole(
+  userRole: UserRole | undefined,
+  showScope?: UserShowScope,
+  numberScope?: UserNumberScope
+): 'admin' | 'moderator' | 'dm' | 'pm' | 'qc' | 'member' {
+  if (userRole === 'admin' || userRole === 'moderator') return userRole;
+  if (showScope?.isDM) return 'dm';
+  if (numberScope?.role === 'pm') return 'pm';
+  if (numberScope?.role === 'qc') return 'qc';
+  return 'member';
+}
+```
 
 ## 2. Database Schema (PostgreSQL 16)
 

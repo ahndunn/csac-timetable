@@ -408,6 +408,45 @@ async function runAllTests() {
   assert(mockSseEvent.score > 90, 'CSP solver optimization score exceeds quality threshold (96.5 > 90)');
   assert(mockSseEvent.conflict_count === 0, 'Zero hard conflicts in computed schedule');
 
+  // ----------------------------------------------------
+  // TEST 14: Key-Based Scoped Roles & Cross-Screen Deep Linking
+  // ----------------------------------------------------
+  console.log('\nTEST 14: Key-Based Scoped Roles & Cross-Screen Deep Linking');
+
+  const {
+    getEffectiveRole,
+    canManageShowScoped,
+    canManageSongScoped,
+    canAuditSongScoped
+  } = await import('./src/lib/auth');
+
+  // Global Admin/Mod always defaults to full authority
+  assert(getEffectiveRole('admin', false, false, false) === 'admin', 'Global Admin defaults to admin across all shows/numbers');
+  assert(getEffectiveRole('moderator', false, false, false) === 'moderator', 'Global Moderator defaults to moderator across all shows/numbers');
+
+  // Show DM attached by (user, show) key
+  assert(getEffectiveRole('member', true, false, false) === 'dm', 'User attached as Show DM gets DM role for the show');
+  assert(canManageShowScoped('member', true) === true, 'Show DM can manage show resources');
+  assert(canManageSongScoped('member', true, false) === true, 'Show DM inherits management over all show songs');
+
+  // Song PM attached by (user, show, number) key
+  assert(getEffectiveRole('member', false, true, false) === 'pm', 'User attached as Song PM gets PM role for that specific number');
+  assert(canManageSongScoped('member', false, true) === true, 'Song PM can manage their assigned song');
+  assert(canManageSongScoped('member', false, false) === false, 'Song PM cannot manage non-assigned songs without show-wide authority');
+
+  // Song QC attached by (user, show, number) key
+  assert(getEffectiveRole('member', false, false, true) === 'qc', 'User attached as Song QC gets QC role for that specific number');
+  assert(canAuditSongScoped('member', false, true) === true, 'Assigned QC Reviewer can audit and submit QC for their song');
+  assert(canAuditSongScoped('member', false, false) === false, 'Non-QC member cannot audit non-assigned songs');
+
+  // Performer attached to number lineup
+  assert(getEffectiveRole('member', false, false, false) === 'member', 'Performer resolves to member role');
+
+  // Cross-screen deep-linking query resolution
+  const testSongQuery = encodeURIComponent('Đi Giữa Trời Rực Rỡ');
+  const sprintTargetUrl = `/studio/shows/show-2026-annual/sprints?song=${testSongQuery}`;
+  assert(sprintTargetUrl.includes('song=%C4%90i%20Gi%E1%BB%AFa%20Tr%E1%BB%9Di%20R%E1%BB%B1c%20R%E1%BB%A1'), 'Cross-screen song deep-linking URL formats correctly with UTF-8 encoding');
+
   // Summary
 
   console.log('\n====================================================');

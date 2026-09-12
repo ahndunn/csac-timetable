@@ -136,6 +136,21 @@ export interface QCVerdict {
 
 export type ShowRole = 'DM' | 'PM' | 'QC' | 'Performer';
 
+// Scoped Role Assignments attached by key
+export interface UserShowScope {
+  userId: string;
+  showId: string;
+  isDM: boolean;
+}
+
+export interface UserNumberScope {
+  userId: string;
+  showId: string;
+  numberId: string;
+  role: 'pm' | 'qc' | 'performer';
+  instrumentRole?: BandRole;
+}
+
 export interface ShowRosterMember {
   id: string;
   userId: string;
@@ -143,6 +158,9 @@ export interface ShowRosterMember {
   email: string;
   phone?: string;
   showRole: ShowRole;
+  isDM?: boolean;
+  pmSongTitles?: string[];
+  qcSongTitles?: string[];
   primaryInstrument: BandRole;
   secondaryInstruments: BandRole[];
   assignedSongCount: number;

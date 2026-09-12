@@ -26,7 +26,15 @@
   } from '@lucide/svelte';
 
   import { page } from '$app/stores';
-  import { canManageNumbers, canReviewQC, hasRole } from '$lib/auth';
+  import {
+    canManageNumbers,
+    canReviewQC,
+    canManageShowScoped,
+    canManageSongScoped,
+    canAuditSongScoped,
+    getEffectiveRole,
+    hasRole,
+  } from '$lib/auth';
   import type { UserRole } from '$lib/types/timetable';
 
   export interface SongNumber {
@@ -46,7 +54,9 @@
     };
   }
 
+  const showId = $derived($page.params.id || 'show-2026-annual');
   const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
+  const currentUserName = $derived($page.data?.user?.fullName || 'Administrator');
 
   // Realistic CSAC Annual Concert production dataset (14 numbers scaling across all 5 stages)
   let numbers = $state<SongNumber[]>([
@@ -626,61 +636,71 @@
             </div>
           {/if}
 
-          <!-- Responsive Action Buttons Row (SSR Role Scoped) -->
-          {#if canManageNumbers(userRole) || canReviewQC(userRole)}
-            <div class="card-btn-row">
-              {#if canManageNumbers(userRole)}
+          <!-- Responsive Action Buttons Row (Key-Scoped Roles) -->
+          <div class="card-btn-row">
+            <!-- Cross-Screen Link to Sprint Timetable -->
+            <a
+              href="/studio/shows/{showId}/sprints?song={encodeURIComponent(song.title)}"
+              class="bento-btn bento-btn-sm sprint-link-btn"
+              title="View all scheduled rehearsal sessions in Sprint Calendar"
+            >
+              <Clock size={12} />
+              <span>Sprint Schedule</span>
+            </a>
+
+            {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+              <button
+                type="button"
+                class="bento-btn bento-btn-sm lineup-btn"
+                onclick={() => openLineupDrawer(song)}
+              >
+                <Users size={12} />
+                <span>Assign Lineup</span>
+              </button>
+
+              {#if song.stage === 'draft'}
                 <button
                   type="button"
-                  class="bento-btn bento-btn-sm lineup-btn"
-                  onclick={() => openLineupDrawer(song)}
+                  class="bento-btn bento-btn-sm action-btn-blue"
+                  onclick={() => advanceStatus(song, 'in_practice')}
                 >
-                  <Users size={12} />
-                  <span>Assign Lineup</span>
+                  <span>Start Practice</span>
                 </button>
-
-                {#if song.stage === 'draft'}
-                  <button
-                    type="button"
-                    class="bento-btn bento-btn-sm action-btn-blue"
-                    onclick={() => advanceStatus(song, 'in_practice')}
-                  >
-                    <span>Start Practice</span>
-                  </button>
-                {:else if song.stage === 'in_practice'}
-                  <button
-                    type="button"
-                    class="bento-btn bento-btn-sm action-btn-orange"
-                    onclick={() => advanceStatus(song, 'ready_for_qc')}
-                  >
-                    <span>Submit for QC</span>
-                  </button>
-                {/if}
-              {/if}
-
-              {#if song.stage === 'ready_for_qc' && canReviewQC(userRole)}
+              {:else if song.stage === 'in_practice'}
                 <button
                   type="button"
-                  class="bento-btn bento-btn-sm qc-btn"
-                  onclick={() => openQcDrawer(song)}
+                  class="bento-btn bento-btn-sm action-btn-orange"
+                  onclick={() => advanceStatus(song, 'ready_for_qc')}
                 >
-                  <UserCheck size={13} />
-                  <span>Audit & Submit QC</span>
+                  <span>Submit for QC</span>
                 </button>
               {/if}
+            {/if}
 
-              {#if song.stage === 'qc_approved' && canManageNumbers(userRole)}
-                <button
-                  type="button"
-                  class="bento-btn bento-btn-sm action-btn-green"
-                  onclick={() => advanceStatus(song, 'stage_ready')}
-                >
-                  <CheckCircle2 size={12} />
-                  <span>Promote to Stage Ready</span>
-                </button>
-              {/if}
-            </div>
-          {:else if song.stage === 'stage_ready'}
+            {#if song.stage === 'ready_for_qc' && canAuditSongScoped(userRole, false, song.qcReviewer === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+              <button
+                type="button"
+                class="bento-btn bento-btn-sm qc-btn"
+                onclick={() => openQcDrawer(song)}
+              >
+                <UserCheck size={13} />
+                <span>Audit & Submit QC</span>
+              </button>
+            {/if}
+
+            {#if song.stage === 'qc_approved' && canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+              <button
+                type="button"
+                class="bento-btn bento-btn-sm action-btn-green"
+                onclick={() => advanceStatus(song, 'stage_ready')}
+              >
+                <CheckCircle2 size={12} />
+                <span>Promote to Stage Ready</span>
+              </button>
+            {/if}
+          </div>
+
+          {#if song.stage === 'stage_ready'}
             <div class="stage-ready-indicator">
               <CheckCircle2 size={14} class="text-green" />
               <span>100% Stage Ready</span>

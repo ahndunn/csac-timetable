@@ -29,13 +29,14 @@
     ChevronDown,
     X,
   } from '@lucide/svelte';
+  import { page } from '$app/stores';
   import type { BandRole, ShowRole, ShowRosterMember, UserRole } from '$lib/types/timetable';
-  import { canManageShowRoster, canEditPerformerProfile, hasRole } from '$lib/auth';
+  import { canManageShowRoster, canEditPerformerProfile, canManageShowScoped, hasRole } from '$lib/auth';
 
-  // Active Session Simulation Role for testing & live governance
-  let activeUserRole = $state<UserRole>('dm');
+  const showId = $derived($page.params.id || 'show-2026-annual');
+  const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
 
-  // Roster Seed Data with full effort, roles, and assigned songs
+  // Roster Seed Data with Key-Scoped Leadership and Assigned Songs
   let roster = $state<ShowRosterMember[]>([
     {
       id: 'mem-1',
@@ -44,6 +45,9 @@
       email: 'minhphap@csac.local',
       phone: '+84 901 234 567',
       showRole: 'DM',
+      isDM: true,
+      pmSongTitles: ['Hào Khí Việt Nam', 'Bài Ca Hy Vọng'],
+      qcSongTitles: ['Giọt Sương Trên Mí Mắt', 'Túy Âm'],
       primaryInstrument: 'vocal_lead',
       secondaryInstruments: ['guitar_rhythm'],
       assignedSongCount: 5,
@@ -60,6 +64,9 @@
       email: 'hoangnam@csac.local',
       phone: '+84 912 345 678',
       showRole: 'PM',
+      isDM: false,
+      pmSongTitles: ['Đi Giữa Trời Rực Rỡ', 'Ngẫu Hứng Sông Hồng'],
+      qcSongTitles: ['Hào Khí Việt Nam'],
       primaryInstrument: 'guitar_lead',
       secondaryInstruments: ['guitar_rhythm'],
       assignedSongCount: 3,
@@ -76,6 +83,9 @@
       email: 'baoanh@csac.local',
       phone: '+84 934 567 890',
       showRole: 'PM',
+      isDM: false,
+      pmSongTitles: ['Giọt Sương Trên Mí Mắt', 'Góc Ban Công'],
+      qcSongTitles: ['Nối Vòng Tay Lớn'],
       primaryInstrument: 'bass',
       secondaryInstruments: ['guitar_lead'],
       assignedSongCount: 4,
@@ -92,6 +102,9 @@
       email: 'thuha@csac.local',
       phone: '+84 945 678 901',
       showRole: 'QC',
+      isDM: false,
+      pmSongTitles: ['Nối Vòng Tay Lớn', 'Khoảnh Khắc'],
+      qcSongTitles: ['Đi Giữa Trời Rực Rỡ', 'Để Mị Nói Cho Mà Nghe'],
       primaryInstrument: 'drums',
       secondaryInstruments: ['percussion'],
       assignedSongCount: 2,
@@ -367,19 +380,21 @@
     </div>
 
     <div class="header-controls">
-      <!-- RBAC Simulation Switcher -->
+      <!-- Active Governance Context Badge -->
       <div class="role-switch-box">
-        <span class="role-switch-label">{$tStore('show_mgmt.roster_page.active_role_badge')}</span>
-        <select bind:value={activeUserRole} class="role-select">
-          <option value="dm">Delivery Manager (DM)</option>
-          <option value="pm">Performance Manager (PM)</option>
-          <option value="qc">QC Reviewer</option>
-          <option value="member">Performer (Member)</option>
-          <option value="admin">Admin</option>
-        </select>
+        <span class="role-switch-label">Governance Scope:</span>
+        <span class="context-scope-badge">
+          {#if userRole === 'admin' || userRole === 'moderator'}
+            <Shield size={13} class="text-orange" />
+            <span>Global {userRole.toUpperCase()}</span>
+          {:else}
+            <Users size={13} class="text-blue" />
+            <span>Show DM Roster Lead</span>
+          {/if}
+        </span>
       </div>
 
-      {#if canManageShowRoster(activeUserRole)}
+      {#if canManageShowScoped(userRole, true)}
         <button type="button" class="bento-btn bento-btn-primary" onclick={openAddModal}>
           <Plus size={16} />
           <span>{$tStore('show_mgmt.roster_modal.btn_add_member')}</span>
@@ -586,7 +601,7 @@
         {#each filteredRoster as member (member.id)}
           {@const workload = getWorkloadBadge(member.workloadStatus)}
           <div class="member-card bento-card">
-            <!-- Header: Avatar, Name, Email, Show Role Badge -->
+            <!-- Header: Avatar, Name, Email, Key-Scoped Role Badges -->
             <div class="member-card-header">
               <div class="avatar-circle">
                 {member.fullName.charAt(0)}
@@ -594,9 +609,28 @@
               <div class="member-info-col">
                 <div class="name-role-row">
                   <span class="member-name">{member.fullName}</span>
-                  <span class="role-badge {getShowRoleBadgeClass(member.showRole)}">
-                    {member.showRole}
-                  </span>
+                  <div class="scoped-badges-group">
+                    {#if member.isDM}
+                      <span class="role-badge role-badge-dm" title="Show-wide Delivery Manager">
+                        Show DM
+                      </span>
+                    {/if}
+                    {#if member.pmSongTitles && member.pmSongTitles.length > 0}
+                      <span class="role-badge role-badge-pm" title="PM for: {member.pmSongTitles.join(', ')}">
+                        PM ({member.pmSongTitles.length})
+                      </span>
+                    {/if}
+                    {#if member.qcSongTitles && member.qcSongTitles.length > 0}
+                      <span class="role-badge role-badge-qc" title="QC for: {member.qcSongTitles.join(', ')}">
+                        QC ({member.qcSongTitles.length})
+                      </span>
+                    {/if}
+                    {#if !member.isDM && (!member.pmSongTitles || member.pmSongTitles.length === 0) && (!member.qcSongTitles || member.qcSongTitles.length === 0)}
+                      <span class="role-badge role-badge-performer">
+                        Performer
+                      </span>
+                    {/if}
+                  </div>
                 </div>
                 <div class="contact-subline">
                   <span class="contact-item"><Mail size={12} /> {member.email}</span>
@@ -620,7 +654,7 @@
               {/each}
             </div>
 
-            <!-- Assigned Numbers & Participation List -->
+            <!-- Assigned Numbers & Participation List (Cross-Screen Deep Links) -->
             <div class="songs-assigned-box">
               <div class="songs-assigned-header">
                 <span class="songs-assigned-title">
@@ -630,7 +664,13 @@
               </div>
               <div class="song-chips-wrap">
                 {#each member.assignedSongTitles as songTitle}
-                  <span class="song-chip">{songTitle}</span>
+                  <a
+                    href="/studio/shows/{showId}/numbers?q={encodeURIComponent(songTitle)}"
+                    class="song-chip song-chip-link"
+                    title="View {songTitle} details & band lineup in Music Numbers"
+                  >
+                    <span>{songTitle}</span>
+                  </a>
                 {/each}
               </div>
             </div>
@@ -649,7 +689,7 @@
 
             <!-- Action Buttons: Role Gated -->
             <div class="card-actions-bar">
-              {#if canEditPerformerProfile(activeUserRole)}
+              {#if canEditPerformerProfile(userRole)}
                 <button
                   type="button"
                   class="action-btn edit-btn"
@@ -660,7 +700,7 @@
                 </button>
               {/if}
 
-              {#if canManageShowRoster(activeUserRole)}
+              {#if canManageShowScoped(userRole, true)}
                 <button
                   type="button"
                   class="action-btn remove-btn"
@@ -713,9 +753,20 @@
                       <div class="table-member-name">{member.fullName}</div>
                       <div class="table-member-email">{member.email}</div>
                     </div>
-                    <span class="role-badge-sm {getShowRoleBadgeClass(member.showRole)}">
-                      {member.showRole}
-                    </span>
+                    <div class="scoped-badges-group">
+                      {#if member.isDM}
+                        <span class="role-badge-sm role-badge-dm">Show DM</span>
+                      {/if}
+                      {#if member.pmSongTitles && member.pmSongTitles.length > 0}
+                        <span class="role-badge-sm role-badge-pm">PM ({member.pmSongTitles.length})</span>
+                      {/if}
+                      {#if member.qcSongTitles && member.qcSongTitles.length > 0}
+                        <span class="role-badge-sm role-badge-qc">QC ({member.qcSongTitles.length})</span>
+                      {/if}
+                      {#if !member.isDM && (!member.pmSongTitles || member.pmSongTitles.length === 0) && (!member.qcSongTitles || member.qcSongTitles.length === 0)}
+                        <span class="role-badge-sm role-badge-performer">Performer</span>
+                      {/if}
+                    </div>
                   </div>
                 </td>
 
@@ -740,13 +791,19 @@
                   {/if}
                 </td>
 
-                <!-- Assigned Songs Count & List preview -->
+                <!-- Assigned Songs Count & List preview with deep-link -->
                 <td>
                   <div class="songs-count-cell">
-                    <strong>{member.assignedSongCount}</strong> songs
-                    <span class="songs-preview-text" title={member.assignedSongTitles.join(', ')}>
-                      ({member.assignedSongTitles.slice(0, 2).join(', ')}{member.assignedSongTitles.length > 2 ? '...' : ''})
-                    </span>
+                    <a
+                      href="/studio/shows/{showId}/numbers?q={encodeURIComponent(member.fullName)}"
+                      class="songs-preview-link"
+                      title="View all assigned numbers for {member.fullName}"
+                    >
+                      <strong>{member.assignedSongCount}</strong> songs
+                      <span class="songs-preview-text">
+                        ({member.assignedSongTitles.slice(0, 2).join(', ')}{member.assignedSongTitles.length > 2 ? '...' : ''})
+                      </span>
+                    </a>
                   </div>
                 </td>
 
@@ -772,7 +829,7 @@
                 </td>
 
                 <!-- Actions -->
-                {#if canEditPerformerProfile(activeUserRole)}
+                {#if canEditPerformerProfile(userRole)}
                   <td>
                     <div class="table-actions">
                       <button
@@ -783,7 +840,7 @@
                       >
                         <Edit3 size={14} />
                       </button>
-                      {#if canManageShowRoster(activeUserRole)}
+                      {#if canManageShowScoped(userRole, true)}
                         <button
                           type="button"
                           class="icon-btn remove-icon"
@@ -1375,6 +1432,25 @@
     text-overflow: ellipsis;
   }
 
+  .scoped-badges-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .context-scope-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
   .role-badge {
     padding: 3px 8px;
     border-radius: 6px;
@@ -1382,10 +1458,17 @@
     font-weight: 800;
   }
 
-  .role-badge-dm { background: rgba(255, 107, 0, 0.15); color: #ff6b00; }
-  .role-badge-pm { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
-  .role-badge-qc { background: rgba(147, 51, 234, 0.15); color: #9333ea; }
+  .role-badge-dm { background: rgba(255, 107, 0, 0.15); color: #ff6b00; border: 1px solid rgba(255, 107, 0, 0.3); }
+  .role-badge-pm { background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); }
+  .role-badge-qc { background: rgba(147, 51, 234, 0.15); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.3); }
   .role-badge-performer { background: #f1f5f9; color: #64748b; }
+
+  .role-badge-sm {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+  }
 
   .contact-subline {
     display: flex;
@@ -1468,6 +1551,25 @@
     border-radius: 4px;
     font-size: 11px;
     color: #334155;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .song-chip-link:hover {
+    background: #fff7ed;
+    border-color: #ff6b00;
+    color: #ff6b00;
+    transform: translateY(-1px);
+  }
+
+  .songs-preview-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.15s ease;
+  }
+
+  .songs-preview-link:hover {
+    color: #ff6b00;
   }
 
   .effort-workload-bar {

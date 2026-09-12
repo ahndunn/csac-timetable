@@ -104,8 +104,15 @@
   let isAutoScheduled = $state(true);
   let isScheduling = $state(false);
   let sseStatus = $state<'connected' | 'syncing' | 'idle'>('connected');
-  let filterSong = $state('all');
+  let filterSong = $state($page.url.searchParams.get('song') || 'all');
   let filterRoom = $state('all');
+
+  $effect(() => {
+    const urlSong = $page.url.searchParams.get('song');
+    if (urlSong) {
+      filterSong = urlSong;
+    }
+  });
 
   // History Drawer State (PM, DM, Moderator, Admin)
   let isHistoryOpen = $state(false);
