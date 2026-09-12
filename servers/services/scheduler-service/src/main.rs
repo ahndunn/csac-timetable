@@ -1,3 +1,5 @@
+mod csp_solver;
+
 use csac_proto::timetable::scheduler_service_server::{SchedulerService, SchedulerServiceServer};
 use csac_proto::timetable::{
     HealthCheckRequest, HealthCheckResponse, SolveTimetableRequest, SolveTimetableResponse,
