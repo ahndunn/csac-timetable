@@ -389,7 +389,6 @@ button {
   align-items: center;
   gap: 14px;
   flex: 1;
-  max-width: 580px;
 }
 
 .navbar-hamburger-btn {

@@ -482,7 +482,6 @@ export const vi = {
     preset_evenings: 'Chọn giờ tối (18:00 - 21:00)',
     preset_afternoons: 'Chọn giờ chiều (13:00 - 17:00)',
     preset_clear: 'Xóa chọn',
-    btn_auto_schedule: 'Tự động xếp lịch tập Sprint',
     calendar_title: 'Lịch tập Sprint đã được xếp tự động',
     calendar_desc: 'Chi tiết lịch tập theo từng ô 15 phút cho các tiết mục âm nhạc trong Sprint.',
     filter_number: 'Tiết mục:',

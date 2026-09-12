@@ -657,7 +657,7 @@
               <th>{$tStore('show_mgmt.roster_page.col_practice_hours')}</th>
               <th>{$tStore('show_mgmt.roster_page.col_attendance')}</th>
               <th>{$tStore('show_mgmt.roster_page.col_workload')}</th>
-              {#if canEditPerformerProfile(activeUserRole)}
+              {#if canEditPerformerProfile(userRole)}
                 <th>{$tStore('show_mgmt.roster_page.col_actions')}</th>
               {/if}
             </tr>
@@ -847,7 +847,7 @@
               id="member-show-role"
               bind:value={formShowRole}
               class="form-input"
-              disabled={!canManageShowRoster(activeUserRole)}
+              disabled={!canManageShowRoster(userRole)}
             >
               <option value="DM">Delivery Manager (DM)</option>
               <option value="PM">Performance Manager (PM)</option>

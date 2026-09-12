@@ -482,7 +482,6 @@ export const en = {
     preset_evenings: 'Select Peak Evenings (18:00 - 21:00)',
     preset_afternoons: 'Select Afternoons (13:00 - 17:00)',
     preset_clear: 'Clear Selection',
-    btn_auto_schedule: 'Auto-Schedule Sprint Rehearsals',
     calendar_title: 'Auto-Scheduled Sprint Rehearsals Calendar',
     calendar_desc: 'Detailed 15-minute rehearsal timetable for active sprint numbers.',
     filter_number: 'Number:',

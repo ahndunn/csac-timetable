@@ -39,7 +39,7 @@
 
   import { api } from '$lib/api/client';
 
-  export interface SongNumber {
+  interface SongNumber {
     id: string;
     title: string;
     genre: string;

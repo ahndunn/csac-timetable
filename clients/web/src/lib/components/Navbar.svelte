@@ -86,7 +86,7 @@
     });
   }
 
-  const isTimetableRoute = $derived($page.url.pathname === '/utils/timetable');
+  const isTimetableRoute = $derived(($page.url.pathname as string) === '/utils/timetable');
   const userRole = $derived(($page.data.user?.role || auth.user?.role || 'admin') as UserRole);
 
   function selectDemoRole(newRole: UserRole) {
@@ -458,8 +458,10 @@
   .nav-links-desktop {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-left: 10px;
+    gap: 4px;
+    margin-left: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .nav-link {
@@ -472,7 +474,12 @@
     font-weight: 600;
     color: var(--text-secondary);
     text-decoration: none;
+    white-space: nowrap;
     transition: all 0.15s ease;
+  }
+
+  .nav-link span {
+    white-space: nowrap;
   }
 
   .nav-link:hover {
