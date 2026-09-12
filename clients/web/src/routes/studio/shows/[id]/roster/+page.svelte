@@ -26,7 +26,7 @@
   } from '@lucide/svelte';
   import { page } from '$app/state';
   import type { BandRole, ShowRole, ShowRosterMember, UserRole } from '$lib/types/timetable';
-  import { canManageShowRoster, canEditPerformerProfile, canManageShowScoped } from '$lib/auth';
+  import { canManageShowRoster, canEditPerformerProfile } from '$lib/auth';
   import { api } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
@@ -292,18 +292,27 @@
     <div class="flex items-center gap-3 flex-wrap">
       <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/80 text-xs">
         <span class="text-muted-foreground font-semibold">Governance Scope:</span>
-        <span class="inline-flex items-center gap-1 font-bold text-primary">
+        <span class="inline-flex items-center gap-1.5 font-bold">
           {#if userRole === 'admin' || userRole === 'moderator'}
-            <Shield class="w-3.5 h-3.5 text-primary" />
-            <span>Global {userRole.toUpperCase()}</span>
+            <Shield class="w-3.5 h-3.5 text-rose-600" />
+            <span class="text-rose-700">Global {userRole === 'admin' ? 'Admin' : 'Moderator'}</span>
+          {:else if userRole === 'dm'}
+            <Shield class="w-3.5 h-3.5 text-emerald-600" />
+            <span class="text-emerald-700">Show Delivery Manager (DM)</span>
+          {:else if userRole === 'pm'}
+            <Music class="w-3.5 h-3.5 text-amber-600" />
+            <span class="text-amber-700">Performance Manager (PM)</span>
+          {:else if userRole === 'qc'}
+            <CircleCheck class="w-3.5 h-3.5 text-purple-600" />
+            <span class="text-purple-700">Quality Reviewer (QC) &bull; Read-Only</span>
           {:else}
-            <Users class="w-3.5 h-3.5 text-blue-600" />
-            <span>Show DM Roster Lead</span>
+            <Users class="w-3.5 h-3.5 text-sky-600" />
+            <span class="text-sky-700">Cast / Member &bull; Read-Only</span>
           {/if}
         </span>
       </div>
 
-      {#if canManageShowScoped(userRole, true)}
+      {#if canManageShowRoster(userRole)}
         <Button size="sm" class="gap-1.5" onclick={openAddModal}>
           <Plus class="w-4 h-4" />
           <span>{$tStore('show_mgmt.roster_modal.btn_add_member')}</span>
@@ -589,7 +598,7 @@
                   </Button>
                 {/if}
 
-                {#if canManageShowScoped(userRole, true)}
+                {#if canManageShowRoster(userRole)}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -677,7 +686,7 @@
                     <Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={() => openEditModal(member)}>
                       <PenLine class="w-3.5 h-3.5" />
                     </Button>
-                    {#if canManageShowScoped(userRole, true)}
+                    {#if canManageShowRoster(userRole)}
                       <Button variant="ghost" size="sm" class="h-7 w-7 p-0 text-red-600 hover:text-red-700" onclick={() => promptRemoveMember(member)}>
                         <Trash2 class="w-3.5 h-3.5" />
                       </Button>

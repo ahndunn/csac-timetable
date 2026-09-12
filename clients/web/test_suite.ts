@@ -17,6 +17,7 @@ import {
 import type { SongVoteData, SolverSettings, DayOfWeek } from './src/lib/types/timetable';
 import { DAYS_OF_WEEK, DEFAULT_TIME_SLOTS, DEFAULT_WEEK_TITLE } from './src/lib/constants/timetableDefaults';
 import { translate, t, setLocale, getLocale, SUPPORTED_LANGUAGES, DICTIONARIES } from './src/lib/i18n';
+import { canManageShowRoster, canEditPerformerProfile } from './src/lib/auth';
 
 async function runAllTests() {
   console.log('====================================================');
@@ -374,6 +375,13 @@ async function runAllTests() {
 
   const showMgmtKeysExist = ['show_mgmt.workload_optimal', 'show_mgmt.workload_moderate', 'show_mgmt.workload_fatigued', 'show_mgmt.roster_modal.title_add'].every(k => translate('en', k) !== k);
   assert(showMgmtKeysExist, 'Show management workload health & roster modal translations exist');
+
+  // Verify Scoped Accessibility for Show Roster RBAC
+  assert(canManageShowRoster('admin') && canManageShowRoster('moderator') && canManageShowRoster('dm'), 'Admin, Moderator, and DM can manage show roster (Add/Remove members & delegate roles)');
+  assert(!canManageShowRoster('pm'), 'PM cannot manage show roster structure (cannot add or delete members)');
+  assert(!canManageShowRoster('qc') && !canManageShowRoster('member'), 'QC and Member cannot manage show roster (view-only)');
+  assert(canEditPerformerProfile('pm') && canEditPerformerProfile('dm') && canEditPerformerProfile('admin'), 'PM, DM, and Admin can edit performer profiles');
+  assert(!canEditPerformerProfile('qc') && !canEditPerformerProfile('member'), 'QC and Member cannot edit performer profiles');
 
   // ----------------------------------------------------
   // TEST 12: Database Seed & Role Schema Verification

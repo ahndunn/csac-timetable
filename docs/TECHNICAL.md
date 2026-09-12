@@ -525,9 +525,17 @@ export interface RoleDistributionSection {
 ```
 
 #### Client RBAC Authorization Enforcement
-- `canManageShowRoster(role)`: Requires `hasRole(role, 'dm')` (Admin, Moderator, DM).
-- `canEditPerformerProfile(role)`: Requires `hasRole(role, 'pm')` (Admin, Moderator, DM, PM).
-- `canViewRoster(role)`: Available to all authenticated roles (`member` and above).
+- `canManageShowRoster(role)`: Requires `hasRole(role, 'dm')` (Admin, Moderator, DM). Grants permission to Add Member, Remove Member, and delegate Show Roles (`DM`, `PM`, `QC`, `Performer`).
+- `canEditPerformerProfile(role)`: Requires `hasRole(role, 'pm')` (Admin, Moderator, DM, PM). Grants permission to update member details, contact info, primary and secondary instruments, and target practice hours.
+- `canViewRoster(role)`: Available to all authenticated roles (`member`, `qc`, `pm`, `dm`, `moderator`, `admin`).
+- **Scoped Accessibility Matrix**:
+  | Role | View Roster | Add Member | Edit Profile | Remove Member | Change Show Role | Governance Scope Badge |
+  | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+  | **Admin / Moderator** | ✅ | ✅ | ✅ | ✅ | ✅ | `Global Admin / Moderator` |
+  | **Delivery Manager (DM)** | ✅ | ✅ | ✅ | ✅ | ✅ | `Show Delivery Manager (DM)` |
+  | **Performance Manager (PM)** | ✅ | ❌ | ✅ | ❌ | ❌ | `Performance Manager (PM)` |
+  | **Quality Reviewer (QC)** | ✅ | ❌ | ❌ | ❌ | ❌ | `Quality Reviewer (QC)` |
+  | **Member / Performer** | ✅ | ❌ | ❌ | ❌ | ❌ | `Cast / Performer` |
 
 ---
 
