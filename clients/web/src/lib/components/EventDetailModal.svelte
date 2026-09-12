@@ -1,8 +1,12 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData } from '../types/timetable';
-  import { Clock, MapPin, Users, FileText, Trash2, X, Check, AlertCircle } from '@lucide/svelte';
+  import { Clock, MapPin, Users, FileText, Trash2, Check, AlertCircle } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
 
   interface Props {
     session: ScheduledSession | null;
@@ -19,122 +23,95 @@
 </script>
 
 {#if session}
-  <div
-    class="modal-overlay"
-    onclick={onClose}
-    onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
-    role="presentation"
-  >
-    <div
-      class="modal-dialog"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-    >
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 10px;">
+  <Dialog.Root open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Content class="max-w-lg">
+      <Dialog.Header>
+        <div class="flex items-center gap-2">
           <div
-            style="width: 14px; height: 14px; border-radius: var(--radius-circle); background-color: {session.color.border};"
+            class="h-3.5 w-3.5 rounded-full"
+            style="background-color: {session.color.border};"
           ></div>
-          <h3 class="modal-header-title">
+          <Dialog.Title class="text-base font-bold">
             {session.songName}
-          </h3>
+          </Dialog.Title>
         </div>
-        <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('event_detail_modal.close')}>
-          <X size={16} />
-        </button>
-      </div>
+      </Dialog.Header>
 
-      <div class="modal-body">
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary);">
-            <Clock size={16} color="var(--accent)" />
+      <div class="flex flex-col gap-3 py-2">
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <Clock size={15} class="text-primary" />
             <span>
               <strong>{localizedDay}</strong>, {session.slot}
             </span>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary);">
-            <MapPin size={16} color="var(--accent)" />
+          <div class="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <MapPin size={15} class="text-primary" />
             <span>{$tStore('event_detail_modal.room_label', { room: session.room })}</span>
           </div>
         </div>
 
-        <div class="bento-card" style="padding: 14px;">
-          <div
-            style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;"
-          >
-            <span
-              style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;"
-            >
-              <Users size={15} color="var(--accent)" />
+        <Card class="border border-border bg-muted/30 p-3.5">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Users size={14} class="text-primary" />
               <span>{$tStore('event_detail_modal.members_header', { present: session.availableMembers.length, total: session.allMembers.length })}</span>
             </span>
 
-            <span
-              class="bento-pill {isPerfect ? 'is-accent' : ''}"
-              style="{isPerfect ? '' : 'color: var(--danger-text); background: var(--danger-light);'}"
-            >
+            <Badge variant={isPerfect ? 'default' : 'destructive'} class="text-[10px]">
               {isPerfect ? $tStore('event_detail_modal.full_attendance') : $tStore('event_detail_modal.absent_count', { count: session.absentMembers.length })}
-            </span>
+            </Badge>
           </div>
 
-          <div
-            style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm);"
-          >
+          <div class="grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-2.5">
             {#each session.allMembers as m}
               {@const isAvail = session.availableMembers.includes(m)}
-              <div
-                style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: {isAvail ? 'var(--text-primary)' : 'var(--text-muted)'};"
-              >
+              <div class="flex items-center gap-1.5 text-xs {isAvail ? 'text-foreground' : 'text-muted-foreground'}">
                 {#if isAvail}
-                  <Check size={14} color="var(--success)" />
+                  <Check size={13} class="text-emerald-600" />
                 {:else}
-                  <AlertCircle size={14} color="var(--danger)" />
+                  <AlertCircle size={13} class="text-destructive" />
                 {/if}
-                <span style="text-decoration: {isAvail ? 'none' : 'line-through'}; font-weight: 500;">
+                <span class={isAvail ? 'font-medium' : 'line-through'}>
                   {m}
                 </span>
                 {#if !isAvail}
-                  <span style="font-size: 10px; color: var(--danger); font-weight: 600;">
+                  <span class="text-[10px] font-bold text-destructive">
                     {$tStore('event_detail_modal.busy_label')}
                   </span>
                 {/if}
               </div>
             {/each}
           </div>
-        </div>
+        </Card>
 
         {#if session.note}
-          <div style="padding: 12px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm);">
-            <div
-              style="font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-bottom: 4px;"
-            >
-              <FileText size={14} color="var(--accent)" />
+          <div class="rounded-lg border border-border bg-muted/30 p-2.5">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1">
+              <FileText size={13} class="text-primary" />
               <span>{$tStore('event_detail_modal.notes_title')}</span>
             </div>
-            <div style="font-size: 12px; color: var(--text-primary);">
+            <div class="text-xs text-foreground">
               {session.note}
             </div>
           </div>
         {/if}
       </div>
 
-      <div class="modal-footer">
-        <button
-          type="button"
-          class="bento-btn bento-btn-danger"
+      <Dialog.Footer class="flex items-center justify-between gap-2 sm:justify-between">
+        <Button
+          variant="destructive"
+          size="sm"
           onclick={() => onDeleteSession(session.id)}
         >
-          <Trash2 size={15} />
+          <Trash2 size={14} class="mr-1.5" />
           <span>{$tStore('event_detail_modal.delete_btn')}</span>
-        </button>
-        <button type="button" class="bento-btn bento-btn-primary" onclick={onClose}>
+        </Button>
+        <Button variant="default" size="sm" onclick={onClose}>
           {$tStore('event_detail_modal.close')}
-        </button>
-      </div>
-    </div>
-  </div>
+        </Button>
+      </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
 {/if}

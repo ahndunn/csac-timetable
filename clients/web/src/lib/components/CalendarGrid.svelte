@@ -4,6 +4,10 @@
   import { AlertTriangle, CheckCircle, Plus, Info, Upload, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
   import { getWeekDays, isSameDay } from '../utils/dateUtils';
   import { tStore, currentLocale } from '$lib/i18n';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
+  import { cn } from '$lib/utils';
 
   interface Props {
     schedule: ScheduledSession[];
@@ -52,117 +56,122 @@
   }
 </script>
 
-<main class="calendar-main">
+<main class="flex-1 flex flex-col p-4 gap-4 overflow-y-auto bg-background">
   <!-- Top Status & Conflict Alert Banner -->
   <div
-    class="status-banner {hasUnresolved || hasMemberConflict ? 'has-conflict' : totalSessionsScheduled > 0 ? 'all-good' : ''}"
+    class={cn(
+      "flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border transition-all duration-200",
+      hasUnresolved || hasMemberConflict
+        ? "bg-amber-50/80 border-amber-200 text-amber-900 dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-200"
+        : totalSessionsScheduled > 0
+          ? "bg-emerald-50/80 border-emerald-200 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-200"
+          : "bg-white border-slate-200 text-slate-700 dark:bg-card dark:border-slate-800 dark:text-slate-200"
+    )}
   >
-    <div class="status-left">
+    <div class="flex items-center gap-3">
       {#if hasUnresolved || hasMemberConflict}
-        <AlertTriangle size={18} color="var(--warning)" />
+        <AlertTriangle size={20} class="text-amber-500 shrink-0" />
+        <div class="flex flex-col">
+          <div class="text-xs font-bold">
+            {$tStore('calendar.status_conflict_title', {
+              scheduled: totalSessionsScheduled,
+              requested: totalSessionsRequested,
+              conflicts: conflicts.length
+            })}
+          </div>
+          <div class="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+            {$tStore('calendar.status_conflict_desc')}
+          </div>
+        </div>
       {:else if totalSessionsScheduled > 0}
-        <CheckCircle size={18} color="var(--success)" />
+        <CheckCircle size={20} class="text-emerald-500 shrink-0" />
+        <div class="flex flex-col">
+          <div class="text-xs font-bold">
+            {$tStore('calendar.status_all_good_title', { count: totalSessionsScheduled })}
+          </div>
+          <div class="text-[11px] text-emerald-700/80 dark:text-emerald-300/80">
+            {$tStore('calendar.status_all_good_desc')}
+          </div>
+        </div>
       {:else}
-        <Info size={18} color="var(--text-muted)" />
+        <Info size={20} class="text-primary shrink-0" />
+        <div class="flex flex-col">
+          <div class="text-xs font-bold">
+            {$tStore('calendar.status_ready_title', { songs: songs.length, requested: totalSessionsRequested })}
+          </div>
+          <div class="text-[11px] text-slate-500">
+            {$tStore('calendar.status_ready_desc')}
+          </div>
+        </div>
       {/if}
-
-      <span>
-        {#if songs.length === 0}
-          {$tStore('calendar.status_no_data')}
-        {:else if totalSessionsScheduled === 0}
-          {$tStore('calendar.status_need_schedule', { songs: songs.length, sessions: totalSessionsRequested })}
-        {:else if hasUnresolved || hasMemberConflict}
-          {$tStore('calendar.status_partial_conflict', {
-            scheduled: totalSessionsScheduled,
-            requested: totalSessionsRequested,
-            unresolved: unresolved.length,
-          })}
-          {#if hasMemberConflict} {$tStore('calendar.status_member_conflict')}{/if}
-        {:else}
-          {$tStore('calendar.status_perfect', {
-            scheduled: totalSessionsScheduled,
-            requested: totalSessionsRequested,
-            songs: songs.length,
-          })}
-        {/if}
-      </span>
     </div>
 
     {#if hasUnresolved || hasMemberConflict}
-      <button
-        type="button"
-        class="status-btn-fix"
+      <Button
+        variant="default"
+        size="sm"
         onclick={onOpenConflictResolver}
-        title={$tStore('conflict_modal.title')}
       >
-        <AlertTriangle size={14} />
-        <span>{$tStore('calendar.btn_resolve_conflicts', { count: unresolved.length + conflicts.length })}</span>
-      </button>
+        <AlertTriangle size={14} class="mr-1.5" />
+        <span>{$tStore('calendar.resolve_conflicts_btn')}</span>
+      </Button>
     {/if}
   </div>
 
-  <!-- Empty State Panel when no songs loaded -->
+  <!-- Empty state if zero songs loaded -->
   {#if songs.length === 0}
-    <div class="empty-state-bento">
-      <div class="empty-state-title">
+    <Card class="flex flex-col items-center justify-center p-12 text-center border-dashed border-2 border-slate-200 bg-white/60 dark:border-slate-800 dark:bg-card/50">
+      <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4 dark:bg-primary/20">
+        <FileSpreadsheet size={28} />
+      </div>
+      <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
         {$tStore('calendar.empty_title')}
-      </div>
-      <div class="empty-state-subtitle">
-        {$tStore('calendar.empty_desc')}
-      </div>
-      <div class="empty-state-actions">
+      </h3>
+      <p class="text-xs text-slate-500 max-w-sm mb-6">
+        {$tStore('calendar.empty_subtitle')}
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3">
         {#if onOpenUpload}
-          <button type="button" class="bento-btn bento-btn-primary" onclick={onOpenUpload}>
-            <Upload size={15} />
-            <span>{$tStore('navbar.upload_files')}</span>
-          </button>
+          <Button variant="default" size="sm" onclick={onOpenUpload}>
+            <Upload size={14} class="mr-1.5" />
+            <span>{$tStore('calendar.empty_upload_btn')}</span>
+          </Button>
         {/if}
         {#if onLoadSampleMultiTab}
-          <button
-            type="button"
-            class="bento-btn"
-            onclick={onLoadSampleMultiTab}
-            title={$tStore('navbar.sample_multitab_desc')}
-          >
-            <Layers size={15} color="var(--accent)" />
-            <span>{$tStore('navbar.sample_multitab_title')}</span>
-          </button>
+          <Button variant="outline" size="sm" onclick={onLoadSampleMultiTab}>
+            <Layers size={14} class="mr-1.5 text-blue-600" />
+            <span>{$tStore('calendar.empty_sample_multi')}</span>
+          </Button>
         {/if}
         {#if onLoadSampleSingleTab}
-          <button
-            type="button"
-            class="bento-btn"
-            onclick={onLoadSampleSingleTab}
-            title={$tStore('navbar.sample_singletab_desc')}
-          >
-            <Files size={15} color="var(--accent)" />
-            <span>{$tStore('navbar.sample_singletab_title')}</span>
-          </button>
-        {/if}
-        {#if onDownloadTemplate}
-          <button type="button" class="bento-btn" onclick={onDownloadTemplate}>
-            <FileSpreadsheet size={15} />
-            <span>{$tStore('navbar.download_template')}</span>
-          </button>
+          <Button variant="outline" size="sm" onclick={onLoadSampleSingleTab}>
+            <Files size={14} class="mr-1.5 text-emerald-600" />
+            <span>{$tStore('calendar.empty_sample_single')}</span>
+          </Button>
         {/if}
       </div>
-    </div>
+    </Card>
   {/if}
 
   <!-- Bento Calendar Viewport -->
-  <div class="calendar-grid-container">
-    <table class="calendar-table">
+  <div class="flex-1 overflow-x-auto rounded-[18px] border border-black/[0.08] bg-white shadow-sm dark:border-white/[0.08] dark:bg-card">
+    <table class="w-full border-collapse text-left min-w-[760px]">
       <thead>
-        <tr>
-          <th class="cal-th-time">GMT+7</th>
+        <tr class="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50">
+          <th class="w-20 p-3 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800">GMT+7</th>
           {#each days as day, idx}
             {@const dayDate = weekDays[idx]}
             {@const dateNum = dayDate ? dayDate.getDate() : idx + 1}
             {@const isToday = dayDate ? isSameDay(dayDate, new Date()) : false}
             {@const labels = DAY_DISPLAY_LABELS[$currentLocale] || DAY_DISPLAY_LABELS.vi}
-            <th class="cal-th-day {isToday ? 'is-today' : ''}">
-              <div class="cal-day-title">{labels[day]?.short || day}</div>
-              <div class="cal-day-date">{$tStore('calendar.day_date', { date: dateNum })}</div>
+            <th class={cn("p-3 border-r border-slate-200 dark:border-slate-800 last:border-r-0", isToday && "bg-primary/10")}>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{labels[day]?.short || day}</span>
+                <span class={cn("text-[11px] font-semibold text-slate-400", isToday && "text-primary font-bold")}>
+                  {$tStore('calendar.day_date', { date: dateNum })}
+                </span>
+              </div>
             </th>
           {/each}
         </tr>
@@ -170,9 +179,9 @@
 
       <tbody>
         {#each slots as slot}
-          <tr>
+          <tr class="border-b border-slate-100 dark:border-slate-800/60 last:border-b-0">
             <!-- Time Gutter -->
-            <td class="cal-time-cell">{slot}</td>
+            <td class="p-2.5 text-center text-xs font-semibold text-slate-500 border-r border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-900/20">{slot}</td>
 
             <!-- Day Columns -->
             {#each days as day}
@@ -182,13 +191,12 @@
                 ? sessionsInSlot.some(s => s.allMembers.includes(selectedMember))
                 : false}
 
-              <td class="cal-slot-cell" style="{containsSelectedMember ? 'border-color: var(--accent); background: var(--accent-light);' : ''}">
-                <div class="cal-slot-inner">
+              <td class={cn("group/slot relative p-1.5 align-top border-r border-slate-100 min-h-[64px] transition-colors dark:border-slate-800/60 last:border-r-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30", containsSelectedMember && "bg-primary/10 border-primary")}>
+                <div class="flex flex-col gap-1.5 min-h-[50px]">
                   <!-- Conflict notification in cell if any -->
                   {#if slotConflicts.length > 0}
                     <div
-                      class="bento-pill"
-                      style="color: var(--danger-text); background: var(--danger-light); border-color: rgba(239, 68, 68, 0.3); margin-bottom: 2px;"
+                      class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
                       title={slotConflicts.map(c => c.message).join('\n')}
                     >
                       <AlertTriangle size={10} />
@@ -203,7 +211,10 @@
                     {@const isPerfect = sess.absentMembers.length === 0}
 
                     <div
-                      class="cal-event-card {isDimmed ? 'is-dimmed' : ''}"
+                      class={cn(
+                        "flex flex-col gap-1 rounded-lg border border-l-4 bg-white p-2 shadow-xs cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.01] dark:bg-slate-900",
+                        isDimmed && "opacity-40 grayscale"
+                      )}
                       style="border-left-color: {sess.color.border};"
                       onclick={() => onSelectSession(sess)}
                       onkeydown={(e) => { if (e.key === 'Enter') onSelectSession(sess); }}
@@ -211,16 +222,16 @@
                       tabindex="0"
                       title={$tStore('calendar.card_tooltip')}
                     >
-                      <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
-                        <span class="event-song-name">
+                      <div class="flex items-center justify-between gap-1">
+                        <span class="text-xs font-bold text-slate-900 truncate dark:text-slate-100">
                           {sess.songName}
                         </span>
-                        <span class="bento-pill" style="font-size: 9px; padding: 1px 5px;">
+                        <Badge variant="secondary" class="text-[9px] px-1 py-0">
                           {$tStore('calendar.room_tag', { room: sess.room })}
-                        </span>
+                        </Badge>
                       </div>
 
-                      <div class="event-attendance-badge {isPerfect ? 'is-perfect' : 'is-warning'}">
+                      <div class={cn("text-[10px] font-semibold", isPerfect ? "text-emerald-600" : "text-amber-600")}>
                         {#if isPerfect}
                           ✓ {$tStore('calendar.attendance_perfect', { count: sess.allMembers.length, total: sess.allMembers.length })}
                         {:else}
@@ -228,7 +239,7 @@
                         {/if}
                       </div>
 
-                      <div style="font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px;">
+                      <div class="text-[10px] text-slate-400 truncate">
                         {sess.allMembers.join(', ')}
                       </div>
                     </div>
@@ -237,12 +248,12 @@
                   <!-- Quick add button on hover -->
                   <button
                     type="button"
-                    class="slot-quick-add-btn"
+                    class="opacity-0 group-hover/slot:opacity-100 flex items-center justify-center h-6 w-full rounded border border-dashed border-slate-300 text-slate-400 hover:border-primary hover:text-primary hover:bg-primary/10 transition-all text-xs"
                     onclick={() => onOpenSlotAdd(day, slot)}
                     title={$tStore('calendar.add_slot_tooltip')}
                     aria-label={$tStore('calendar.add_slot_tooltip')}
                   >
-                    <Plus size={14} />
+                    <Plus size={13} />
                   </button>
                 </div>
               </td>

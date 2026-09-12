@@ -4,6 +4,10 @@
   import { Plus, X, AlertCircle } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
 
   interface Props {
     day: DayOfWeek | null;
@@ -25,103 +29,79 @@
 </script>
 
 {#if day && slot}
-  <div
-    class="modal-overlay"
-    onclick={onClose}
-    onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
-    role="presentation"
-  >
-    <div
-      class="modal-dialog"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-    >
-      <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <Plus size={18} color="var(--accent)" />
-          <h3 class="modal-header-title">
+  <Dialog.Root open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog.Content class="max-w-xl max-h-[85vh] overflow-y-auto">
+      <Dialog.Header>
+        <div class="flex items-center gap-2">
+          <Plus size={18} class="text-primary" />
+          <Dialog.Title class="text-base font-bold">
             {$tStore('slot_add_modal.title', { day: localizedDay, slot })}
-          </h3>
+          </Dialog.Title>
         </div>
-        <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('slot_add_modal.close')}>
-          <X size={16} />
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div style="font-size: 13px; color: var(--text-secondary);">
+        <Dialog.Description class="text-xs text-muted-foreground">
           {$tStore('slot_add_modal.intro')}
-        </div>
+        </Dialog.Description>
+      </Dialog.Header>
 
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          {#each songs as song (song.id)}
-            {@const attendance = getSlotAttendance(song, day, slot)}
-            {@const doubleBookedMembers = existingInSlot.flatMap(existing => 
-              song.members.filter(m => existing.allMembers.includes(m)).map(m => 
-                $tStore('slot_add_modal.busy_in_song', { member: m, song: existing.songName })
-              )
-            )}
-            {@const isAlreadyInSlot = existingInSlot.some(s => s.songId === song.id)}
+      <div class="flex flex-col gap-2.5 py-2">
+        {#each songs as song (song.id)}
+          {@const attendance = getSlotAttendance(song, day, slot)}
+          {@const doubleBookedMembers = existingInSlot.flatMap(existing => 
+            song.members.filter(m => existing.allMembers.includes(m)).map(m => 
+              $tStore('slot_add_modal.busy_in_song', { member: m, song: existing.songName })
+            )
+          )}
+          {@const isAlreadyInSlot = existingInSlot.some(s => s.songId === song.id)}
 
-            <div
-              class="bento-card"
-              style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; gap: 10px; {isAlreadyInSlot ? 'background: var(--surface-card-subtle); opacity: 0.75;' : ''}"
-            >
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div
-                    style="width: 12px; height: 12px; border-radius: var(--radius-circle); background-color: {song.color.border};"
-                  ></div>
-                  <strong style="font-size: 14px; color: var(--text-primary);">
-                    {song.name}
-                  </strong>
-                  <span
-                    class="bento-pill {attendance.is100Percent ? 'is-active' : ''}"
-                    style="font-size: 10px; {attendance.is100Percent ? '' : 'color: var(--danger-text); background: var(--danger-light);'}"
-                  >
-                    {$tStore('slot_add_modal.members_free', { available: attendance.availableMembers.length, total: song.members.length })}
-                  </span>
-                </div>
-
-                {#if doubleBookedMembers.length > 0}
-                  <div style="font-size: 11px; color: var(--danger-text); display: flex; align-items: center; gap: 4px;">
-                    <AlertCircle size={12} />
-                    <span>{$tStore('slot_add_modal.overlap_warning', { members: doubleBookedMembers.join(', ') })}</span>
-                  </div>
-                {/if}
-
-                {#if attendance.absentMembers.length > 0 && doubleBookedMembers.length === 0}
-                  <div style="font-size: 11px; color: var(--warning-text);">
-                    {$tStore('slot_add_modal.absent_by_vote', { members: attendance.absentMembers.join(', ') })}
-                  </div>
-                {/if}
+          <Card class="flex items-center justify-between p-3 border border-slate-200 bg-white dark:border-slate-800 dark:bg-card {isAlreadyInSlot ? 'opacity-60 bg-slate-50' : ''}">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <div
+                  class="h-3 w-3 rounded-full"
+                  style="background-color: {song.color.border};"
+                ></div>
+                <strong class="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  {song.name}
+                </strong>
+                <Badge variant={attendance.is100Percent ? 'default' : 'destructive'} class="text-[10px] py-0">
+                  {$tStore('slot_add_modal.members_free', { available: attendance.availableMembers.length, total: song.members.length })}
+                </Badge>
               </div>
 
-              <button
-                type="button"
-                class="bento-btn {isAlreadyInSlot ? '' : 'bento-btn-primary'}"
-                disabled={isAlreadyInSlot}
-                onclick={() => {
-                  onAssignSong(song, day, slot);
-                  onClose();
-                }}
-                style="font-size: 12px; padding: 6px 12px;"
-              >
-                {isAlreadyInSlot ? $tStore('slot_add_modal.already_assigned') : $tStore('slot_add_modal.assign_btn')}
-              </button>
+              {#if doubleBookedMembers.length > 0}
+                <div class="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400">
+                  <AlertCircle size={12} />
+                  <span>{$tStore('slot_add_modal.overlap_warning', { members: doubleBookedMembers.join(', ') })}</span>
+                </div>
+              {/if}
+
+              {#if attendance.absentMembers.length > 0 && doubleBookedMembers.length === 0}
+                <div class="text-[11px] text-amber-600 dark:text-amber-400">
+                  {$tStore('slot_add_modal.absent_by_vote', { members: attendance.absentMembers.join(', ') })}
+                </div>
+              {/if}
             </div>
-          {/each}
-        </div>
+
+            <Button
+              variant={isAlreadyInSlot ? 'outline' : 'default'}
+              size="sm"
+              disabled={isAlreadyInSlot}
+              onclick={() => {
+                onAssignSong(song, day, slot);
+                onClose();
+              }}
+            >
+              {isAlreadyInSlot ? $tStore('slot_add_modal.already_assigned') : $tStore('slot_add_modal.assign_btn')}
+            </Button>
+          </Card>
+        {/each}
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="bento-btn" onclick={onClose}>
+      <Dialog.Footer>
+        <Button variant="outline" size="sm" onclick={onClose}>
           {$tStore('slot_add_modal.close')}
-        </button>
-      </div>
-    </div>
-  </div>
+        </Button>
+      </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
 {/if}

@@ -3,8 +3,12 @@
   import { inspectExcelFiles, parseSelectedSheets, type FileInspection } from '../engine/excelParser';
   import SheetSelectionModal from './SheetSelectionModal.svelte';
   import { generateMultiTabSampleFile, generateSingleTabSampleFiles } from '../engine/sampleData';
-  import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle, Layers, Files } from '@lucide/svelte';
+  import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle } from '@lucide/svelte';
   import { tStore } from '$lib/i18n';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Button } from '$lib/components/ui/button';
+  import { Badge } from '$lib/components/ui/badge';
+  import { Card } from '$lib/components/ui/card';
 
   interface Props {
     onClose: () => void;
@@ -86,16 +90,6 @@
     }
   }
 
-  function handleTestMultiTab() {
-    const file = generateMultiTabSampleFile();
-    handleFiles([file]);
-  }
-
-  function handleTestSingleTab() {
-    const files = generateSingleTabSampleFiles();
-    handleFiles(files);
-  }
-
   function handleConfirmMultiTab(selectedSongs: SongVoteData[]) {
     parsedSongs = [...parsedSongs, ...selectedSongs];
     multiTabInspections = null;
@@ -112,34 +106,19 @@
   />
 {/if}
 
-<div
-  class="modal-overlay"
-  onclick={onClose}
-  onkeydown={(e) => { if (e.key === 'Escape') onClose(); }}
-  role="presentation"
->
-  <div
-    class="modal-dialog"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-  >
-    <div class="modal-header">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <UploadCloud size={20} color="var(--accent)" />
-        <h3 class="modal-header-title">{$tStore('upload_modal.title')}</h3>
+<Dialog.Root open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+  <Dialog.Content class="max-w-xl max-h-[90vh] overflow-y-auto">
+    <Dialog.Header>
+      <div class="flex items-center gap-2">
+        <UploadCloud size={20} class="text-primary" />
+        <Dialog.Title class="text-base font-bold">{$tStore('upload_modal.title')}</Dialog.Title>
       </div>
-      <button type="button" class="modal-close-btn" onclick={onClose} aria-label={$tStore('upload_modal.cancel')}>
-        <X size={16} />
-      </button>
-    </div>
+    </Dialog.Header>
 
-    <div class="modal-body">
+    <div class="flex flex-col gap-3 py-2">
       <!-- Drag and drop zone -->
       <div
-        class="upload-dropzone {isDragging ? 'is-dragging' : ''}"
+        class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 p-6 text-center transition-colors cursor-pointer hover:border-primary hover:bg-primary/5 {isDragging ? 'border-primary bg-primary/10' : ''}"
         ondragover={(e) => { e.preventDefault(); isDragging = true; }}
         ondragleave={() => isDragging = false}
         ondrop={handleDrop}
@@ -153,77 +132,77 @@
           id="excel-file-input"
           multiple
           accept=".xlsx, .xls"
-          style="display: none;"
+          class="hidden"
           onchange={handleFileInputChange}
         />
 
-        <div class="dropzone-icon-well">
-          <UploadCloud size={26} />
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <UploadCloud size={24} />
         </div>
 
         <div>
-          <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">
-            {$tStore('upload_modal.drop_title')} <span style="color: var(--accent); text-decoration: underline;">{$tStore('upload_modal.browse')}</span>
+          <div class="text-sm font-bold text-foreground">
+            {$tStore('upload_modal.drop_title')} <span class="text-primary underline">{$tStore('upload_modal.browse')}</span>
           </div>
-          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+          <div class="text-xs text-muted-foreground mt-1">
             {$tStore('upload_modal.drop_subtitle')}
           </div>
         </div>
 
         {#if isLoading}
-          <div class="bento-pill is-active">
-            <span>{$tStore('upload_modal.analyzing')}</span>
-          </div>
+          <Badge variant="default" class="mt-2">
+            {$tStore('upload_modal.analyzing')}
+          </Badge>
         {/if}
       </div>
 
       <!-- Official Excel Template Download -->
       {#if onDownloadTemplate}
-        <div style="padding: 12px 14px; background: var(--surface-card-subtle); border: 1px solid var(--border-card); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <FileSpreadsheet size={16} color="var(--success)" />
-            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{$tStore('upload_modal.download_template')}</span>
+        <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-card">
+          <div class="flex items-center gap-2">
+            <FileSpreadsheet size={16} class="text-emerald-600" />
+            <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">{$tStore('upload_modal.download_template')}</span>
           </div>
-          <button
-            type="button"
-            class="bento-btn"
-            style="font-size: 12px; padding: 6px 12px;"
+          <Button
+            variant="outline"
+            size="sm"
             onclick={onDownloadTemplate}
           >
             <span>{$tStore('upload_modal.download_template')}</span>
-          </button>
+          </Button>
         </div>
       {/if}
 
       <!-- Error alert -->
       {#if errorMsg}
-        <div style="padding: 12px; background: var(--danger-light); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 8px; color: var(--danger-text);">
-          <AlertCircle size={16} />
-          <span style="font-size: 12px; font-weight: 600;">{errorMsg}</span>
+        <div class="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
+          <AlertCircle size={15} />
+          <span>{errorMsg}</span>
         </div>
       {/if}
 
       <!-- Successfully parsed songs list preview -->
       {#if parsedSongs.length > 0}
-        <div>
-          <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
+        <div class="flex flex-col gap-2">
+          <div class="text-xs font-bold text-slate-800 dark:text-slate-200">
             {$tStore('upload_modal.found_songs', { count: parsedSongs.length })}
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
+          <div class="flex flex-col gap-1.5 max-h-44 overflow-y-auto pr-1">
             {#each parsedSongs as song (song.id)}
-              <div class="bento-card" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                <div class="flex items-center gap-2">
                   <div
-                    style="width: 10px; height: 10px; border-radius: var(--radius-circle); background-color: {song.color.border};"
+                    class="h-2.5 w-2.5 rounded-full"
+                    style="background-color: {song.color.border};"
                   ></div>
-                  <strong style="font-size: 13px; color: var(--text-primary);">{song.name}</strong>
-                  <span style="font-size: 11px; color: var(--text-muted);">
+                  <strong class="text-xs font-semibold text-slate-800 dark:text-slate-100">{song.name}</strong>
+                  <span class="text-[11px] text-slate-400">
                     {$tStore('upload_modal.members_count', { count: song.members.length })}
                   </span>
                 </div>
-                <span class="bento-pill is-active" style="font-size: 10px; padding: 2px 6px;">
+                <Badge variant="default" class="text-[10px] py-0">
                   {$tStore('upload_modal.sessions_tag', { count: song.targetSessions })}
-                </span>
+                </Badge>
               </div>
             {/each}
           </div>
@@ -231,19 +210,19 @@
       {/if}
     </div>
 
-    <div class="modal-footer">
-      <button type="button" class="bento-btn" onclick={onClose}>
+    <Dialog.Footer class="flex items-center justify-between gap-2 sm:justify-between">
+      <Button variant="outline" size="sm" onclick={onClose}>
         {$tStore('upload_modal.cancel')}
-      </button>
-      <button
-        type="button"
-        class="bento-btn bento-btn-primary"
+      </Button>
+      <Button
+        variant="default"
+        size="sm"
         disabled={parsedSongs.length === 0}
         onclick={handleConfirm}
       >
-        <Check size={16} />
+        <Check size={14} class="mr-1.5" />
         <span>{$tStore('upload_modal.confirm_import', { count: parsedSongs.length })}</span>
-      </button>
-    </div>
-  </div>
-</div>
+      </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
