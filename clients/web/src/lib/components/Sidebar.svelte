@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SongVoteData, SolverSettings, ScheduledSession } from '../types/timetable';
-  import { Music, Users, Sliders, Eye, X, ChevronLeft, ChevronRight } from '@lucide/svelte';
+  import { Music, Users, SlidersVertical, Eye, X, ChevronLeft, ChevronRight } from '@lucide/svelte';
   import { getMonthMatrix, isSameWeek, formatWeekRange, getMonday } from '../utils/dateUtils';
   import { tStore, currentLocale } from '$lib/i18n';
   import { Button } from '$lib/components/ui/button';
@@ -244,9 +244,9 @@
 
   <!-- Solver Settings -->
   <div class="flex flex-col gap-2 pt-2 border-t border-border">
-    <div class="flex items-center gap-1.5 text-xs font-bold text-foreground">
-      <Sliders size={14} class="text-primary" />
-      <span>{$tStore('sidebar.settings_title')}</span>
+    <div class="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-muted-foreground">
+      <SlidersVertical size={14} class="text-primary" />
+      <span>{$tStore('sidebar.solver_settings')}</span>
     </div>
 
     <div class="flex flex-col gap-2 text-xs">

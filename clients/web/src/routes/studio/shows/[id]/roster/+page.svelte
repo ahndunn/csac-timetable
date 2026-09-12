@@ -6,25 +6,25 @@
     Music,
     Mail,
     Phone,
-    AlertTriangle,
+    TriangleAlert,
     Plus,
     Search,
     SlidersHorizontal,
     LayoutGrid,
     Table as TableIcon,
-    CheckCircle2,
+    CircleCheck,
     Activity,
     Clock,
     Zap,
-    Mic2,
+    MicVocal,
     Guitar,
     Disc,
-    Sliders,
+    SlidersVertical,
     Trash2,
-    Edit3,
+    PenLine,
     X,
   } from '@lucide/svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import type { BandRole, ShowRole, ShowRosterMember, UserRole } from '$lib/types/timetable';
   import { canManageShowRoster, canEditPerformerProfile, canManageShowScoped } from '$lib/auth';
   import { api } from '$lib/api/client';
@@ -52,15 +52,13 @@
 
   let { data } = $props();
 
-  const showId = $derived($page.params.id || 'show-2026-annual');
-  const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
+  const showId = $derived(page.params.id || 'show-2026-annual');
+  const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
 
-  let roster = $state<ShowRosterMember[]>(data?.roster || []);
+  let roster = $state<ShowRosterMember[]>([]);
 
   $effect(() => {
-    if (data?.roster && data.roster.length > 0) {
-      roster = data.roster;
-    }
+    roster = data?.roster || [];
   });
 
   let viewMode = $state<'cards' | 'matrix'>('cards');
@@ -81,12 +79,12 @@
   let formPracticeHours = $state(4);
 
   const AVAILABLE_BAND_ROLES: { id: BandRole; key: string; icon: any; category: 'vocals' | 'strings' | 'rhythm' | 'keys_tech' }[] = [
-    { id: 'vocal_lead', key: 'show_mgmt.roles.vocal_lead', icon: Mic2, category: 'vocals' },
-    { id: 'vocal_harmony', key: 'show_mgmt.roles.vocal_harmony', icon: Mic2, category: 'vocals' },
+    { id: 'vocal_lead', key: 'show_mgmt.roles.vocal_lead', icon: MicVocal, category: 'vocals' },
+    { id: 'vocal_harmony', key: 'show_mgmt.roles.vocal_harmony', icon: MicVocal, category: 'vocals' },
     { id: 'guitar_lead', key: 'show_mgmt.roles.guitar_lead', icon: Guitar, category: 'strings' },
     { id: 'guitar_rhythm', key: 'show_mgmt.roles.guitar_rhythm', icon: Guitar, category: 'strings' },
     { id: 'bass', key: 'show_mgmt.roles.bass', icon: Guitar, category: 'strings' },
-    { id: 'keys', key: 'show_mgmt.roles.keys', icon: Sliders, category: 'keys_tech' },
+    { id: 'keys', key: 'show_mgmt.roles.keys', icon: SlidersVertical, category: 'keys_tech' },
     { id: 'drums', key: 'show_mgmt.roles.drums', icon: Disc, category: 'rhythm' },
     { id: 'percussion', key: 'show_mgmt.roles.percussion', icon: Disc, category: 'rhythm' },
     { id: 'sound_tech', key: 'show_mgmt.roles.sound_tech', icon: SlidersHorizontal, category: 'keys_tech' },
@@ -271,11 +269,11 @@
   function getWorkloadBadge(status: 'optimal' | 'moderate' | 'fatigued') {
     switch (status) {
       case 'fatigued':
-        return { labelKey: 'show_mgmt.workload_fatigued', variant: 'bg-red-50 text-red-600 border-red-200', icon: AlertTriangle };
+        return { labelKey: 'show_mgmt.workload_fatigued', variant: 'bg-red-50 text-red-600 border-red-200', icon: TriangleAlert };
       case 'moderate':
         return { labelKey: 'show_mgmt.workload_moderate', variant: 'bg-amber-50 text-amber-600 border-amber-200', icon: Activity };
       default:
-        return { labelKey: 'show_mgmt.workload_optimal', variant: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CheckCircle2 };
+        return { labelKey: 'show_mgmt.workload_optimal', variant: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: CircleCheck };
     }
   }
 </script>
@@ -347,10 +345,10 @@
         </div>
       </div>
       <div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-border text-[11px]">
-        <div class="flex items-center gap-1"><Mic2 class="w-3 h-3 text-muted-foreground" /><span>Vocals: <strong>{vocalsCount}</strong></span></div>
+        <div class="flex items-center gap-1"><MicVocal class="w-3 h-3 text-muted-foreground" /><span>Vocals: <strong>{vocalsCount}</strong></span></div>
         <div class="flex items-center gap-1"><Guitar class="w-3 h-3 text-muted-foreground" /><span>Strings: <strong>{stringsCount}</strong></span></div>
         <div class="flex items-center gap-1"><Disc class="w-3 h-3 text-emerald-600" /><span>Rhythm: <strong>{rhythmCount}</strong></span></div>
-        <div class="flex items-center gap-1"><Sliders class="w-3 h-3 text-muted-foreground" /><span>Keys: <strong>{keysTechCount}</strong></span></div>
+        <div class="flex items-center gap-1"><SlidersVertical class="w-3 h-3 text-muted-foreground" /><span>Keys: <strong>{keysTechCount}</strong></span></div>
       </div>
     </Card>
 
@@ -439,7 +437,7 @@
         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors {selectedFilter === 'vocals' ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
         onclick={() => (selectedFilter = 'vocals')}
       >
-        <Mic2 class="w-3 h-3" />
+        <MicVocal class="w-3 h-3" />
         <span>{$tStore('show_mgmt.roster_page.filter_vocals')}</span>
       </button>
       <button
@@ -463,7 +461,7 @@
         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors {selectedFilter === 'keys_tech' ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
         onclick={() => (selectedFilter = 'keys_tech')}
       >
-        <Sliders class="w-3 h-3" />
+        <SlidersVertical class="w-3 h-3" />
         <span>{$tStore('show_mgmt.roster_page.filter_keys_tech')}</span>
       </button>
     </div>
@@ -586,7 +584,7 @@
                     class="flex-1 text-xs h-7 gap-1"
                     onclick={() => openEditModal(member)}
                   >
-                    <Edit3 class="w-3 h-3" />
+                    <PenLine class="w-3 h-3" />
                     <span>Edit Profile</span>
                   </Button>
                 {/if}
@@ -677,7 +675,7 @@
                 <TableCell class="text-right">
                   <div class="inline-flex items-center gap-1">
                     <Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={() => openEditModal(member)}>
-                      <Edit3 class="w-3.5 h-3.5" />
+                      <PenLine class="w-3.5 h-3.5" />
                     </Button>
                     {#if canManageShowScoped(userRole, true)}
                       <Button variant="ghost" size="sm" class="h-7 w-7 p-0 text-red-600 hover:text-red-700" onclick={() => promptRemoveMember(member)}>
@@ -819,7 +817,7 @@
   <DialogContent class="max-w-sm">
     <DialogHeader>
       <DialogTitle class="text-red-600 flex items-center gap-2">
-        <AlertTriangle class="w-5 h-5 text-red-600" />
+        <TriangleAlert class="w-5 h-5 text-red-600" />
         <span>{$tStore('show_mgmt.roster_page.confirm_remove_title')}</span>
       </DialogTitle>
       {#if memberToRemove}

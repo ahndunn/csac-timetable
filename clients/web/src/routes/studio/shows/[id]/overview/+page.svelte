@@ -1,10 +1,10 @@
 <script lang="ts">
   import { tStore } from '$lib/i18n';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import {
     Music,
     Clock,
-    CheckCircle2,
+    CircleCheck,
     Activity,
     ArrowRight,
     ChevronRight,
@@ -17,7 +17,7 @@
 
   let { data } = $props();
 
-  const showId = $derived($page.params.id || 'show-2026-annual');
+  const showId = $derived(page.params.id || 'show-2026-annual');
   const overview = $derived(
     data?.overview || {
       readiness_percent: 75,
@@ -88,8 +88,9 @@
       <Card class="p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/50">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-bold text-muted-foreground uppercase tracking-wider">{$tStore('studio_shows.qc_approved')}</span>
-          <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 group-hover:scale-110 transition-transform">
-            <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+          <div class="flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
+            <CircleCheck class="w-4 h-4 text-emerald-600" />
+            <span>Target: 100%</span>
           </div>
         </div>
         <div class="text-3xl font-black text-emerald-600 tracking-tight">{overview.qc_approved_count} <span class="text-xl font-bold text-foreground">/ {overview.total_numbers}</span></div>
@@ -204,7 +205,7 @@
       <div class="flex flex-col gap-4 mt-1">
         <div class="flex items-start gap-3 p-2.5 rounded-xl bg-muted/30 border border-border/50">
           <div class="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-            <CheckCircle2 class="w-4 h-4" />
+            <CircleCheck class="w-4 h-4" />
           </div>
           <div>
             <div class="text-xs font-bold text-foreground">Sprint 1: Song Arrangement & Scratch Demo</div>
@@ -214,7 +215,7 @@
 
         <div class="flex items-start gap-3 p-2.5 rounded-xl bg-muted/30 border border-border/50">
           <div class="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-            <CheckCircle2 class="w-4 h-4" />
+            <CircleCheck class="w-4 h-4" />
           </div>
           <div>
             <div class="text-xs font-bold text-foreground">Sprint 2: Band Rehearsals & Vocal Harmonies</div>

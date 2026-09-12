@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SongVoteData, DayOfWeek } from '../types/timetable';
   import { DAYS_OF_WEEK, DEFAULT_TIME_SLOTS, DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
-  import { X, CheckSquare, Square } from '@lucide/svelte';
+  import { X, SquareCheck, Square } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import * as Dialog from '$lib/components/ui/dialog';
   import { Button } from '$lib/components/ui/button';
@@ -94,7 +94,7 @@
                     >
                       <div class="flex items-center justify-center">
                         {#if isChecked}
-                          <CheckSquare size={16} class="text-emerald-600" />
+                          <SquareCheck size={16} class="text-emerald-600" />
                         {:else}
                           <Square size={16} class="text-slate-300 dark:text-slate-600" />
                         {/if}

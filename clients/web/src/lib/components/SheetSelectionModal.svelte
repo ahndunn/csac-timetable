@@ -8,7 +8,7 @@
     Check,
     X,
     Search,
-    CheckSquare,
+    SquareCheck,
     Square,
     Users,
   } from '@lucide/svelte';
@@ -126,7 +126,7 @@
 
         <div class="flex items-center gap-1.5">
           <Button variant="outline" size="sm" onclick={selectAll}>
-            <CheckSquare size={13} class="mr-1 text-emerald-600" />
+            <SquareCheck size={13} class="mr-1 text-emerald-600" />
             <span>{$tStore('sheet_modal.select_all')}</span>
           </Button>
           <Button variant="outline" size="sm" onclick={deselectAll}>
@@ -163,7 +163,7 @@
                   <div class="flex items-center gap-2">
                     {#if sheet.isValid}
                       {#if isSelected}
-                        <CheckSquare size={16} class="text-primary" />
+                        <SquareCheck size={16} class="text-primary" />
                       {:else}
                         <Square size={16} class="text-muted-foreground" />
                       {/if}

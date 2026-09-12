@@ -2,7 +2,7 @@
   import { tStore } from '$lib/i18n';
   import {
     Music,
-    CheckCircle2,
+    CircleCheck,
     Clock,
     UserCheck,
     Users,
@@ -15,17 +15,17 @@
     Search,
     Filter,
     Activity,
-    Mic2,
+    MicVocal,
     Guitar,
     Disc3,
     ShieldCheck,
     ThumbsUp,
-    AlertCircle,
+    CircleAlert,
     RefreshCw,
     Sparkles,
   } from '@lucide/svelte';
 
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import {
     canManageNumbers,
     canManageSongScoped,
@@ -74,16 +74,14 @@
 
   let { data } = $props();
 
-  const showId = $derived($page.params.id || 'show-2026-annual');
-  const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
-  const currentUserName = $derived($page.data?.user?.fullName || 'Administrator');
+  const showId = $derived(page.params.id || 'show-2026-annual');
+  const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
+  const currentUserName = $derived(page.data?.user?.fullName || 'Administrator');
 
-  let numbers = $state<SongNumber[]>(data?.numbers || []);
+  let numbers = $state<SongNumber[]>([]);
 
   $effect(() => {
-    if (data?.numbers && data.numbers.length > 0) {
-      numbers = data.numbers;
-    }
+    numbers = data?.numbers || [];
   });
 
   let availableRoster = [
@@ -98,11 +96,11 @@
   ];
 
   let currentView = $state<'grid' | 'kanban' | 'table'>(
-    ($page.url.searchParams.get('view') as 'grid' | 'kanban' | 'table') || 'grid'
+    (page.url.searchParams.get('view') as 'grid' | 'kanban' | 'table') || 'grid'
   );
 
-  let searchQuery = $state($page.url.searchParams.get('q') || '');
-  let selectedStageFilter = $state<string>($page.url.searchParams.get('stage') || 'all');
+  let searchQuery = $state(page.url.searchParams.get('q') || '');
+  let selectedStageFilter = $state<string>(page.url.searchParams.get('stage') || 'all');
   let selectedPmFilter = $state<string>('all');
 
   let isQcDrawerOpen = $state(false);
@@ -520,7 +518,7 @@
               <div class="flex flex-wrap gap-1.5">
                 {#if song.lineup?.vocalLead}
                   <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary">
-                    <Mic2 class="w-2.5 h-2.5" /> {song.lineup.vocalLead}
+                    <MicVocal class="w-2.5 h-2.5" /> {song.lineup.vocalLead}
                   </span>
                 {/if}
                 {#if song.lineup?.guitarLead}
@@ -619,7 +617,7 @@
                   class="flex-1 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
                   onclick={() => advanceStatus(song, 'stage_ready')}
                 >
-                  <CheckCircle2 class="w-3 h-3" />
+                  <CircleCheck class="w-3 h-3" />
                   <span>Promote</span>
                 </Button>
               {/if}
@@ -627,7 +625,7 @@
 
             {#if song.stage === 'stage_ready'}
               <div class="inline-flex items-center justify-center gap-1.5 w-full py-1.5 text-xs font-bold text-emerald-600 bg-emerald-500/10 rounded-lg">
-                <CheckCircle2 class="w-3.5 h-3.5 text-emerald-600" />
+                <CircleCheck class="w-3.5 h-3.5 text-emerald-600" />
                 <span>100% Stage Ready</span>
               </div>
             {/if}
@@ -763,7 +761,7 @@
                     Lineup
                   </Button>
                   <div class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
-                    <CheckCircle2 class="w-3.5 h-3.5" /> Ready
+                    <CircleCheck class="w-3.5 h-3.5" /> Ready
                   </div>
                 </div>
               </Card>
@@ -872,7 +870,7 @@
                         Promote
                       </Button>
                     {:else}
-                      <CheckCircle2 class="w-4 h-4 text-emerald-600 inline-block ml-2" />
+                      <CircleCheck class="w-4 h-4 text-emerald-600 inline-block ml-2" />
                     {/if}
                   </div>
                 </TableCell>
@@ -1088,7 +1086,7 @@
             class="h-9 px-5 text-xs font-bold rounded-xl gap-1.5 shadow-sm transition-all {qcVerdict === 'pass' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}"
           >
             {#if qcVerdict === 'pass'}
-              <CheckCircle2 class="w-3.5 h-3.5" />
+              <CircleCheck class="w-3.5 h-3.5" />
             {:else}
               <RefreshCw class="w-3.5 h-3.5" />
             {/if}

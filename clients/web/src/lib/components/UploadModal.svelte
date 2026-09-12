@@ -3,7 +3,7 @@
   import { inspectExcelFiles, parseSelectedSheets, type FileInspection } from '../engine/excelParser';
   import SheetSelectionModal from './SheetSelectionModal.svelte';
   import { generateMultiTabSampleFile, generateSingleTabSampleFiles } from '../engine/sampleData';
-  import { UploadCloud, FileSpreadsheet, Check, X, AlertCircle } from '@lucide/svelte';
+  import { CloudUpload, FileSpreadsheet, Check, X, CircleAlert } from '@lucide/svelte';
   import { tStore } from '$lib/i18n';
   import * as Dialog from '$lib/components/ui/dialog';
   import { Button } from '$lib/components/ui/button';
@@ -110,7 +110,7 @@
   <Dialog.Content class="max-w-xl max-h-[90vh] overflow-y-auto">
     <Dialog.Header>
       <div class="flex items-center gap-2">
-        <UploadCloud size={20} class="text-primary" />
+        <CloudUpload size={20} class="text-primary" />
         <Dialog.Title class="text-base font-bold">{$tStore('upload_modal.title')}</Dialog.Title>
       </div>
     </Dialog.Header>
@@ -137,7 +137,7 @@
         />
 
         <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <UploadCloud size={24} />
+          <CloudUpload size={24} />
         </div>
 
         <div>
@@ -176,7 +176,7 @@
       <!-- Error alert -->
       {#if errorMsg}
         <div class="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
-          <AlertCircle size={15} />
+          <CircleAlert size={15} />
           <span>{errorMsg}</span>
         </div>
       {/if}

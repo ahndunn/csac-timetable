@@ -64,6 +64,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ new_role: newRole }),
       }),
+    updateStatus: (userId: string, status: string) =>
+      request<any>(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      }),
     createDowngradeProposal: (userId: string, payload: { target_role: string; reason: string }) =>
       request<any>(`/admin/users/${userId}/downgrade-proposal`, {
         method: 'POST',
@@ -74,10 +79,55 @@ export const api = {
       request<{ message: string; ttl_seconds: number }>(`/admin/approve/${proposalId}/request-otp`, {
         method: 'POST',
       }),
-    voteProposal: (proposalId: string, payload: { otp: string; decision: 'approve' | 'reject' }) =>
+    voteProposal: (proposalId: string, payload: { otp_code?: string; otp?: string; decision: 'approve' | 'reject' }) =>
       request<any>(`/admin/approve/${proposalId}/vote`, {
         method: 'POST',
+        body: JSON.stringify({
+          otp: payload.otp || payload.otp_code || '',
+          decision: payload.decision,
+        }),
+      }),
+  },
+  users: {
+    list: async () => {
+      const users = await request<any[]>('/admin/users');
+      return { users };
+    },
+    create: (payload: { email: string; full_name: string; password?: string; role: string }) =>
+      request<{ user: any; initial_password?: string }>('/admin/users', {
+        method: 'POST',
         body: JSON.stringify(payload),
+      }),
+    updateStatus: (userId: string, status: string) =>
+      request<any>(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      }),
+  },
+  governance: {
+    listProposals: async () => {
+      const proposals = await request<any[]>('/admin/approve/proposals');
+      return { proposals };
+    },
+    requestOtp: (proposalId: string) =>
+      request<{ message: string; ttl_seconds: number }>(`/admin/approve/${proposalId}/request-otp`, {
+        method: 'POST',
+      }),
+    submitVote: (proposalId: string, payload: { decision: 'approve' | 'reject'; otp_code: string }) =>
+      request<any>(`/admin/approve/${proposalId}/vote`, {
+        method: 'POST',
+        body: JSON.stringify({
+          otp: payload.otp_code,
+          decision: payload.decision,
+        }),
+      }),
+    proposeDemotion: (payload: { target_user_id: string; target_role: string; reason: string }) =>
+      request<any>(`/admin/users/${payload.target_user_id}/downgrade-proposal`, {
+        method: 'POST',
+        body: JSON.stringify({
+          target_role: payload.target_role,
+          reason: payload.reason,
+        }),
       }),
   },
   events: {

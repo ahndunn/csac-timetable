@@ -1,11 +1,11 @@
 <script lang="ts">
   import {
     Sparkles,
-    Loader2,
-    CheckCircle2,
+    LoaderCircle,
+    CircleCheck,
     Clock,
     Cpu,
-    AlertCircle,
+    CircleAlert,
   } from '@lucide/svelte';
   import { cn } from '$lib/utils';
 
@@ -20,13 +20,13 @@
     },
     syncing: {
       label: 'Syncing Kafka',
-      icon: Loader2,
+      icon: LoaderCircle,
       spin: true,
       classes: 'bg-amber-50/95 text-amber-700 border-amber-200'
     },
     saved: {
       label: 'Availability Saved',
-      icon: CheckCircle2,
+      icon: CircleCheck,
       spin: false,
       classes: 'bg-emerald-50/95 text-emerald-800 border-emerald-300'
     },
@@ -44,13 +44,13 @@
     },
     completed: {
       label: 'Schedule Completed',
-      icon: CheckCircle2,
+      icon: CircleCheck,
       spin: false,
       classes: 'bg-green-50/95 text-green-700 border-green-300'
     },
     failed: {
       label: 'Computation Failed',
-      icon: AlertCircle,
+      icon: CircleAlert,
       spin: false,
       classes: 'bg-red-50/95 text-red-600 border-red-200'
     }

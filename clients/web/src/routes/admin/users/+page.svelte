@@ -7,14 +7,14 @@
     UserPlus,
     ShieldAlert,
     Shield,
-    MoreVertical,
+    EllipsisVertical,
     Search,
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
-    Loader2,
+    CircleCheck,
+    CircleX,
+    CircleAlert,
+    LoaderCircle,
     Lock,
-    Unlock,
+    LockOpen,
     ArrowDown,
     X,
   } from '@lucide/svelte';
@@ -210,7 +210,7 @@
   {#if successMessage}
     <div class="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs font-semibold text-emerald-600">
       <div class="flex items-center gap-2">
-        <CheckCircle2 class="w-4 h-4" />
+        <CircleCheck class="w-4 h-4" />
         <span>{successMessage}</span>
       </div>
       <button type="button" onclick={() => successMessage = null} class="text-emerald-600 hover:text-emerald-800">
@@ -222,7 +222,7 @@
   {#if errorMessage}
     <div class="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive">
       <div class="flex items-center gap-2">
-        <AlertCircle class="w-4 h-4" />
+        <CircleAlert class="w-4 h-4" />
         <span>{errorMessage}</span>
       </div>
       <button type="button" onclick={() => errorMessage = null} class="text-destructive hover:opacity-80">
@@ -279,7 +279,7 @@
   <Card class="rounded-2xl border border-border bg-card shadow-sm overflow-hidden p-0">
     {#if isLoading}
       <div class="flex flex-col items-center justify-center p-12 text-muted-foreground">
-        <Loader2 class="w-6 h-6 animate-spin text-primary mb-2" />
+        <LoaderCircle class="w-6 h-6 animate-spin text-primary mb-2" />
         <p class="text-xs">{$tStore('admin_users.loading')}</p>
       </div>
     {:else if filteredUsers.length === 0}
@@ -325,7 +325,7 @@
                   <DropdownMenu.Trigger>
                     {#snippet child({ props })}
                       <Button {...props} variant="ghost" size="icon-sm">
-                        <MoreVertical class="w-4 h-4" />
+                        <EllipsisVertical class="w-4 h-4" />
                       </Button>
                     {/snippet}
                   </DropdownMenu.Trigger>
@@ -335,7 +335,7 @@
                         <Lock class="w-3.5 h-3.5 mr-2 text-destructive" />
                         <span>{$tStore('admin_users.action_suspend')}</span>
                       {:else}
-                        <Unlock class="w-3.5 h-3.5 mr-2 text-emerald-600" />
+                        <LockOpen class="w-3.5 h-3.5 mr-2 text-emerald-600" />
                         <span>{$tStore('admin_users.action_activate')}</span>
                       {/if}
                     </DropdownMenu.Item>

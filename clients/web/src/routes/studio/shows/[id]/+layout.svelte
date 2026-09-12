@@ -1,26 +1,26 @@
 <script lang="ts">
   import Navbar from '$lib/components/Navbar.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { tStore } from '$lib/i18n';
   import {
     Music,
     LayoutDashboard,
     Calendar,
     Users,
-    CheckCircle2,
+    CircleCheck,
   } from '@lucide/svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Card } from '$lib/components/ui/card';
 
   let { children } = $props();
 
-  const showId = $derived($page.params.id || 'show-2026-annual');
+  const showId = $derived(page.params.id || 'show-2026-annual');
   const activeTab = $derived(
-    $page.url.pathname.includes('/numbers')
+    page.url.pathname.includes('/numbers')
       ? 'numbers'
-      : $page.url.pathname.includes('/sprints')
+      : page.url.pathname.includes('/sprints')
       ? 'sprints'
-      : $page.url.pathname.includes('/roster')
+      : page.url.pathname.includes('/roster')
       ? 'roster'
       : 'overview'
   );
@@ -53,7 +53,7 @@
         </div>
 
         <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-3 py-1.5 rounded-full font-bold text-xs border border-emerald-500/20">
-          <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+          <CircleCheck class="w-4 h-4 text-emerald-600" />
           <span>75% Stage Ready</span>
         </div>
       </div>

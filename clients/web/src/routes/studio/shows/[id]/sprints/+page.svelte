@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { tStore } from '$lib/i18n';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { canTriggerScheduler, canViewHistory } from '$lib/auth';
   import TaskStatusSignal from '$lib/components/TaskStatusSignal.svelte';
   import type { UserRole, ScheduleRunHistoryItem, AvailabilityHistoryItem } from '$lib/types/timetable';
@@ -10,7 +10,7 @@
     Clock,
     Wand2,
     Check,
-    CheckCircle2,
+    CircleCheck,
     Filter,
     Sparkles,
     Music,
@@ -48,7 +48,7 @@
 
   let { data } = $props();
 
-  const userRole = $derived(($page.data?.user?.role || 'admin') as UserRole);
+  const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -77,12 +77,10 @@
   }
 
   // 15-Minute Selection Matrix State: `${dayIdx}_${slotLabel}` -> boolean
-  let selectedSlots = $state<Record<string, boolean>>(data?.sprintData?.selectedSlots || {});
+  let selectedSlots = $state<Record<string, boolean>>({});
 
   $effect(() => {
-    if (data?.sprintData?.selectedSlots) {
-      selectedSlots = data.sprintData.selectedSlots;
-    }
+    selectedSlots = data?.sprintData?.selectedSlots || {};
   });
 
   // Drag interaction state
@@ -94,11 +92,11 @@
   // Auto-scheduled sprint rehearsals state & SSE Real-time streaming
   let isAutoScheduled = $state(true);
   let isScheduling = $state(false);
-  let filterSong = $state($page.url.searchParams.get('song') || 'all');
+  let filterSong = $state(page.url.searchParams.get('song') || 'all');
   let filterRoom = $state('all');
 
   $effect(() => {
-    const urlSong = $page.url.searchParams.get('song');
+    const urlSong = page.url.searchParams.get('song');
     if (urlSong) {
       filterSong = urlSong;
     }
@@ -109,18 +107,14 @@
   let activeHistoryTab = $state<'compute' | 'registration'>('compute');
 
   // Compute Run History loaded from backend
-  let computeHistory = $state<ScheduleRunHistoryItem[]>(data?.historyData?.compute_history || []);
+  let computeHistory = $state<ScheduleRunHistoryItem[]>([]);
 
   // Free-Time Registration History loaded from backend
-  let registrationHistory = $state<AvailabilityHistoryItem[]>(data?.historyData?.registration_history || []);
+  let registrationHistory = $state<AvailabilityHistoryItem[]>([]);
 
   $effect(() => {
-    if (data?.historyData?.compute_history) {
-      computeHistory = data.historyData.compute_history;
-    }
-    if (data?.historyData?.registration_history) {
-      registrationHistory = data.historyData.registration_history;
-    }
+    computeHistory = data?.historyData?.compute_history || [];
+    registrationHistory = data?.historyData?.registration_history || [];
   });
 
   interface ScheduledRehearsal {
@@ -140,12 +134,10 @@
     color: string;
   }
 
-  let scheduledSessions = $state<ScheduledRehearsal[]>(data?.sprintData?.rehearsals || []);
+  let scheduledSessions = $state<ScheduledRehearsal[]>([]);
 
   $effect(() => {
-    if (data?.sprintData?.rehearsals) {
-      scheduledSessions = data.sprintData.rehearsals;
-    }
+    scheduledSessions = data?.sprintData?.rehearsals || [];
   });
 
   // Computed count of selected 15-min slots
@@ -227,7 +219,7 @@
     });
 
     try {
-      const showId = $page.params.id || 'show-2026-annual';
+      const showId = page.params.id || 'show-2026-annual';
       await api.shows.saveSprintAvailability(showId, 'sprint-3', slotPayload);
       taskStatus = 'saved';
       isSaved = true;
@@ -316,8 +308,8 @@
     })
   );
 
-  const uniqueSongs = Array.from(new Set(scheduledSessions.map((s) => s.songTitle)));
-  const uniqueRooms = Array.from(new Set(scheduledSessions.map((s) => s.room)));
+  let uniqueSongs = $derived(Array.from(new Set(scheduledSessions.map((s) => s.songTitle))));
+  let uniqueRooms = $derived(Array.from(new Set(scheduledSessions.map((s) => s.room))));
 </script>
 
 <div class="flex flex-col gap-5">
@@ -368,8 +360,8 @@
   </Card>
 
   {#if activeToast}
-    <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold animate-in fade-in">
-      <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 font-semibold shadow-xs">
+      <CircleCheck class="w-4 h-4 text-emerald-600 shrink-0" />
       <span>{activeToast}</span>
     </div>
   {/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData, DayOfWeek, ConflictItem, UnresolvedSong } from '../types/timetable';
   import { DAYS_OF_WEEK, DAY_DISPLAY_LABELS, DEFAULT_TIME_SLOTS } from '../constants/timetableDefaults';
-  import { AlertTriangle, CheckCircle, Plus, Info, Upload, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
+  import { TriangleAlert, CircleCheck, Plus, Info, Upload, FileSpreadsheet, Layers, Files } from '@lucide/svelte';
   import { getWeekDays, isSameDay } from '../utils/dateUtils';
   import { tStore, currentLocale } from '$lib/i18n';
   import { Button } from '$lib/components/ui/button';
@@ -70,7 +70,7 @@
   >
     <div class="flex items-center gap-3">
       {#if hasUnresolved || hasMemberConflict}
-        <AlertTriangle size={20} class="text-amber-500 shrink-0" />
+        <TriangleAlert size={20} class="text-amber-500 shrink-0" />
         <div class="flex flex-col">
           <div class="text-xs font-bold">
             {$tStore('calendar.status_conflict_title', {
@@ -84,7 +84,7 @@
           </div>
         </div>
       {:else if totalSessionsScheduled > 0}
-        <CheckCircle size={20} class="text-emerald-500 shrink-0" />
+        <CircleCheck size={20} class="text-emerald-500 shrink-0" />
         <div class="flex flex-col">
           <div class="text-xs font-bold">
             {$tStore('calendar.status_all_good_title', { count: totalSessionsScheduled })}
@@ -112,7 +112,7 @@
         size="sm"
         onclick={onOpenConflictResolver}
       >
-        <AlertTriangle size={14} class="mr-1.5" />
+        <TriangleAlert size={14} class="mr-1.5" />
         <span>{$tStore('calendar.resolve_conflicts_btn')}</span>
       </Button>
     {/if}
@@ -199,7 +199,7 @@
                       class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200"
                       title={slotConflicts.map(c => c.message).join('\n')}
                     >
-                      <AlertTriangle size={10} />
+                      <TriangleAlert size={10} />
                       <span>{$tStore('calendar.conflict_member_cell')}</span>
                     </div>
                   {/if}

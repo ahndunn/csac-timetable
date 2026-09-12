@@ -6,7 +6,7 @@
     Calendar,
     ArrowRight,
     Sparkles,
-    CheckCircle2,
+    CircleCheck,
     FileSpreadsheet,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
@@ -123,7 +123,7 @@
                 <span class="font-medium">{show.startDate} &rarr; {show.endDate}</span>
               </div>
               <div class="flex items-center gap-2">
-                <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+                <CircleCheck class="w-4 h-4 text-emerald-600" />
                 <span>QC Pass: <strong class="text-foreground">{show.qcPassRate}%</strong></span>
               </div>
             </div>

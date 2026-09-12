@@ -7,11 +7,10 @@
     Search,
     Music,
     Clock,
-    CheckCircle2,
+    CircleCheck,
     ArrowRight,
     MapPin,
     Sparkles,
-    AlertCircle,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
@@ -155,7 +154,7 @@
 
     <Card class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-        <CheckCircle2 class="w-5 h-5" />
+        <CircleCheck class="w-5 h-5" />
       </div>
       <div class="flex flex-col">
         <span class="text-lg font-bold text-foreground">

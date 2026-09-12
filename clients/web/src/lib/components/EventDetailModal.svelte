@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ScheduledSession, SongVoteData } from '../types/timetable';
-  import { Clock, MapPin, Users, FileText, Trash2, Check, AlertCircle } from '@lucide/svelte';
+  import { Clock, MapPin, Users, FileText, Trash2, Check, CircleAlert } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -71,7 +71,7 @@
                 {#if isAvail}
                   <Check size={13} class="text-emerald-600" />
                 {:else}
-                  <AlertCircle size={13} class="text-destructive" />
+                  <CircleAlert size={13} class="text-destructive" />
                 {/if}
                 <span class={isAvail ? 'font-medium' : 'line-through'}>
                   {m}

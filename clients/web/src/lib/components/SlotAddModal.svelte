@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SongVoteData, ScheduledSession, DayOfWeek } from '../types/timetable';
   import { getSlotAttendance } from '../engine/scheduler';
-  import { Plus, X, AlertCircle } from '@lucide/svelte';
+  import { Plus, X, CircleAlert } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -70,7 +70,7 @@
 
               {#if doubleBookedMembers.length > 0}
                 <div class="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400">
-                  <AlertCircle size={12} />
+                  <CircleAlert size={12} />
                   <span>{$tStore('slot_add_modal.overlap_warning', { members: doubleBookedMembers.join(', ') })}</span>
                 </div>
               {/if}

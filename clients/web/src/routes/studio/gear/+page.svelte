@@ -6,7 +6,6 @@
     Plus,
     Search,
     RefreshCw,
-    CheckCircle2,
     Shield,
     MapPin,
     UserCheck,

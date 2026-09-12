@@ -9,7 +9,7 @@
     Pencil,
     ChevronDown,
     Menu,
-    MoreVertical,
+    EllipsisVertical,
     Check,
     Calendar,
     Users,
@@ -19,7 +19,7 @@
     Music,
   } from '@lucide/svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { auth } from '$lib/stores/auth.svelte';
   import {
     tStore,
@@ -69,7 +69,7 @@
 
   function switchLanguage(code: Iso639_1Locale) {
     setLocale(code);
-    const url = new URL($page.url);
+    const url = new URL(page.url);
     url.searchParams.set('lang', code);
     goto(`?${url.searchParams.toString()}`, {
       replaceState: true,
@@ -79,11 +79,11 @@
     });
   }
 
-  const isTimetableRoute = $derived(($page.url.pathname as string) === '/utils/timetable');
-  const userRole = $derived(($page.data.user?.role || auth.user?.role || 'admin') as UserRole);
+  const isTimetableRoute = $derived((page.url.pathname as string) === '/utils/timetable');
+  const userRole = $derived((page.data.user?.role || auth.user?.role || 'admin') as UserRole);
 
   function selectDemoRole(newRole: UserRole) {
-    const url = new URL($page.url);
+    const url = new URL(page.url);
     url.searchParams.set('role', newRole);
     goto(url.toString(), { invalidateAll: true });
   }
@@ -121,9 +121,9 @@
     <nav class="hidden md:flex items-center gap-1">
       <Button
         href="/studio"
-        variant={$page.url.pathname.startsWith('/studio') && !$page.url.pathname.startsWith('/studio/gear') ? 'secondary' : 'ghost'}
+        variant={page.url.pathname.startsWith('/studio') && !page.url.pathname.startsWith('/studio/gear') ? 'secondary' : 'ghost'}
         size="sm"
-        class={$page.url.pathname.startsWith('/studio') && !$page.url.pathname.startsWith('/studio/gear') ? 'text-primary font-bold' : ''}
+        class={page.url.pathname.startsWith('/studio') && !page.url.pathname.startsWith('/studio/gear') ? 'text-primary font-bold' : ''}
       >
         <Music size={14} class="mr-1.5" />
         <span>{$tStore('nav.studio')}</span>
@@ -131,9 +131,9 @@
 
       <Button
         href="/studio/gear"
-        variant={$page.url.pathname.startsWith('/studio/gear') ? 'secondary' : 'ghost'}
+        variant={page.url.pathname.startsWith('/studio/gear') ? 'secondary' : 'ghost'}
         size="sm"
-        class={$page.url.pathname.startsWith('/studio/gear') ? 'text-primary font-bold' : ''}
+        class={page.url.pathname.startsWith('/studio/gear') ? 'text-primary font-bold' : ''}
       >
         <FileSpreadsheet size={14} class="mr-1.5" />
         <span>{$tStore('nav.gear')}</span>
@@ -142,9 +142,9 @@
       {#if canAccessAdmin(userRole)}
         <Button
           href="/admin/shows"
-          variant={$page.url.pathname.startsWith('/admin/shows') ? 'secondary' : 'ghost'}
+          variant={page.url.pathname.startsWith('/admin/shows') ? 'secondary' : 'ghost'}
           size="sm"
-          class={$page.url.pathname.startsWith('/admin/shows') ? 'text-primary font-bold' : ''}
+          class={page.url.pathname.startsWith('/admin/shows') ? 'text-primary font-bold' : ''}
         >
           <Calendar size={14} class="mr-1.5" />
           <span>{$tStore('nav.admin_shows')}</span>
@@ -152,9 +152,9 @@
 
         <Button
           href="/admin/users"
-          variant={$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'secondary' : 'ghost'}
+          variant={page.url.pathname.startsWith('/admin/users') || page.url.pathname.startsWith('/admin/approve') ? 'secondary' : 'ghost'}
           size="sm"
-          class={$page.url.pathname.startsWith('/admin/users') || $page.url.pathname.startsWith('/admin/approve') ? 'text-primary font-bold' : ''}
+          class={page.url.pathname.startsWith('/admin/users') || page.url.pathname.startsWith('/admin/approve') ? 'text-primary font-bold' : ''}
         >
           <Users size={14} class="mr-1.5" />
           <span>{$tStore('nav.users')}</span>
@@ -302,7 +302,7 @@
       onclick={() => isMobileMenuOpen = !isMobileMenuOpen}
       title={$tStore('navbar.menu')}
     >
-      <MoreVertical size={18} />
+      <EllipsisVertical size={18} />
     </Button>
   </div>
 </header>

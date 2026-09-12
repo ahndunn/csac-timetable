@@ -3,7 +3,7 @@
   import { api, ApiError } from '$lib/api/client';
   import { auth } from '$lib/stores/auth.svelte';
   import { tStore, t } from '$lib/i18n';
-  import { Lock, Mail, ArrowRight, AlertCircle, Sparkles, Loader2 } from '@lucide/svelte';
+  import { Lock, Mail, ArrowRight, CircleAlert, Sparkles, LoaderCircle } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Card } from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
@@ -61,7 +61,7 @@
 
     {#if errorMessage}
       <div class="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs font-semibold text-destructive mb-4">
-        <AlertCircle class="w-4 h-4 text-destructive" />
+        <CircleAlert class="w-4 h-4 text-destructive" />
         <span>{errorMessage}</span>
       </div>
     {/if}
@@ -105,7 +105,7 @@
 
       <Button type="submit" variant="default" size="lg" disabled={isLoading} class="w-full mt-2 font-bold gap-2">
         {#if isLoading}
-          <Loader2 class="w-4 h-4 animate-spin" />
+          <LoaderCircle class="w-4 h-4 animate-spin" />
           <span>{$tStore('auth.authenticating')}</span>
         {:else}
           <span>{$tStore('auth.sign_in_btn')}</span>

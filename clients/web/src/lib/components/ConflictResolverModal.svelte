@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UnresolvedSong, ConflictItem, DayOfWeek, SongVoteData } from '../types/timetable';
-  import { AlertTriangle, X, Check } from '@lucide/svelte';
+  import { TriangleAlert, X, Check } from '@lucide/svelte';
   import { tStore, currentLocale } from '$lib/i18n';
   import { DAY_DISPLAY_LABELS } from '../constants/timetableDefaults';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -27,8 +27,8 @@
   <Dialog.Content class="max-w-2xl max-h-[90vh] overflow-y-auto">
     <Dialog.Header>
       <div class="flex items-center gap-2">
-        <AlertTriangle size={20} class="text-amber-500" />
-        <Dialog.Title class="text-lg font-bold">{$tStore('conflict_modal.title')}</Dialog.Title>
+        <TriangleAlert size={20} class="text-amber-500" />
+        <Dialog.Title class="text-base font-bold">{$tStore('conflict_resolver.title')}</Dialog.Title>
       </div>
       <Dialog.Description class="text-xs text-slate-500">
         {$tStore('conflict_modal.intro')}

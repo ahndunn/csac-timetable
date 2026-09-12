@@ -1,6 +1,6 @@
 <script lang="ts">
   import '../app.css';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import {
@@ -14,16 +14,16 @@
   let { children } = $props();
 
   // Synchronize on initial render (supports SSR when ?lang= is present)
-  if ($page.url.searchParams.has('lang')) {
-    const initLang = $page.url.searchParams.get('lang');
+  if (page.url.searchParams.has('lang')) {
+    const initLang = page.url.searchParams.get('lang');
     if (initLang === 'vi' || initLang === 'en') {
       setLocale(initLang as Iso639_1Locale);
     }
   }
 
-  // Reactive synchronization: when $page.url changes, update active locale
+  // Reactive synchronization: when page.url changes, update active locale
   $effect(() => {
-    const lang = $page.url.searchParams.get('lang');
+    const lang = page.url.searchParams.get('lang');
     if (lang === 'vi' || lang === 'en') {
       setLocale(lang as Iso639_1Locale);
     }
@@ -38,11 +38,11 @@
 
   // On client initial mount: if ?lang= is missing or invalid, detect machine locale and sync URL via goto
   onMount(() => {
-    const currentLang = $page.url.searchParams.get('lang');
+    const currentLang = page.url.searchParams.get('lang');
     if (currentLang !== 'vi' && currentLang !== 'en') {
       const detected = detectMachineLocale();
       setLocale(detected);
-      const url = new URL($page.url);
+      const url = new URL(page.url);
       url.searchParams.set('lang', detected);
       goto(`?${url.searchParams.toString()}`, {
         replaceState: true,
