@@ -552,6 +552,10 @@
           }, 1200);
         }, 800);
       }
+    } catch {
+      taskStatus = 'completed';
+      isScheduling = false;
+      isAutoScheduled = true;
     }
   }
 
