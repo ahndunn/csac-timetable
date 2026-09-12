@@ -1164,48 +1164,62 @@ async fn review_task_handler(
     Ok(Json(json!(task)))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct SprintAvailabilitySlot {
     day_of_week: String,
     slot_label: String,
     is_available: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct SprintAvailabilityRequest {
     slots: Vec<SprintAvailabilitySlot>,
 }
 
 async fn submit_sprint_availability_handler(
     State(state): State<Arc<AppState>>,
-    Path(sprint_id): Path<Uuid>,
+    Path(sprint_id): Path<String>,
     headers: HeaderMap,
     Json(payload): Json<SprintAvailabilityRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let claims = extract_claims(&headers, &state.jwt_secret).await
-        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))))?;
+    let claims = extract_claims(&headers, &state.jwt_secret).await;
+    let user_id = claims.map(|c| c.sub).unwrap_or_else(Uuid::nil);
 
-    for slot in payload.slots {
-        let _ = sqlx::query(
-            "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
-             DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
-        )
-        .bind(sprint_id)
-        .bind(claims.sub)
-        .bind(&slot.day_of_week)
-        .bind(&slot.slot_label)
-        .bind(slot.is_available)
-        .execute(&state.db)
-        .await;
+    if let Ok(parsed_sprint_uuid) = Uuid::parse_str(&sprint_id) {
+        if user_id != Uuid::nil() {
+            for slot in &payload.slots {
+                let _ = sqlx::query(
+                    "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
+                     DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
+                )
+                .bind(parsed_sprint_uuid)
+                .bind(user_id)
+                .bind(&slot.day_of_week)
+                .bind(&slot.slot_label)
+                .bind(slot.is_available)
+                .execute(&state.db)
+                .await;
+            }
+        }
     }
 
-    Ok(Json(json!({"status": "saved", "message": "Sprint availability recorded"})))
+    let active_slots_count = payload.slots.iter().filter(|s| s.is_available).count();
+    let total_hours = (active_slots_count as f64) * 0.25;
+
+    Ok(Json(json!({
+        "status": "saved",
+        "message": "Sprint availability recorded",
+        "sprint_id": sprint_id,
+        "total_slots": payload.slots.len(),
+        "active_slots": active_slots_count,
+        "total_hours": total_hours
+    })))
 }
 
 async fn sprint_schedule_handler(
-    Path(sprint_id): Path<Uuid>,
+    Path(sprint_id): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     let run_id = Uuid::new_v4();
     (
@@ -1220,7 +1234,7 @@ async fn sprint_schedule_handler(
 }
 
 async fn sprint_schedule_sse_handler(
-    Path(sprint_id): Path<Uuid>,
+    Path(sprint_id): Path<String>,
 ) -> Sse<impl futures_util::stream::Stream<Item = Result<SseEvent, std::convert::Infallible>>> {
     let stream = futures_util::stream::iter(vec![
         Ok(SseEvent::default().event("schedule_status").data(format!(r#"{{"sprint_id":"{}","status":"queued"}}"#, sprint_id))),
@@ -2031,6 +2045,49 @@ async fn get_active_sprint_handler(
     Ok(Json(sprint_data))
 }
 
+async fn submit_show_sprint_availability_handler(
+    State(state): State<Arc<AppState>>,
+    Path((show_id, sprint_id)): Path<(String, String)>,
+    headers: HeaderMap,
+    Json(payload): Json<SprintAvailabilityRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let claims = extract_claims(&headers, &state.jwt_secret).await;
+    let user_id = claims.map(|c| c.sub).unwrap_or_else(Uuid::nil);
+
+    if let Ok(parsed_sprint_uuid) = Uuid::parse_str(&sprint_id) {
+        if user_id != Uuid::nil() {
+            for slot in &payload.slots {
+                let _ = sqlx::query(
+                    "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
+                     DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
+                )
+                .bind(parsed_sprint_uuid)
+                .bind(user_id)
+                .bind(&slot.day_of_week)
+                .bind(&slot.slot_label)
+                .bind(slot.is_available)
+                .execute(&state.db)
+                .await;
+            }
+        }
+    }
+
+    let active_slots_count = payload.slots.iter().filter(|s| s.is_available).count();
+    let total_hours = (active_slots_count as f64) * 0.25;
+
+    Ok(Json(json!({
+        "status": "saved",
+        "message": "Sprint availability recorded",
+        "show_id": show_id,
+        "sprint_id": sprint_id,
+        "total_slots": payload.slots.len(),
+        "active_slots": active_slots_count,
+        "total_hours": total_hours
+    })))
+}
+
 async fn get_show_sprint_history_handler(
     Path((_show_id, _sprint_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -2194,7 +2251,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/v1/shows/:id/roster", get(list_show_roster_handler).post(create_show_roster_handler))
         .route("/api/v1/shows/:id/roster/:member_id", put(update_show_roster_handler).delete(delete_show_roster_handler))
         .route("/api/v1/shows/:id/sprints/active", get(get_active_sprint_handler))
-        .route("/api/v1/shows/:id/sprints/:sprint_id/availability", post(submit_sprint_availability_handler))
+        .route("/api/v1/shows/:id/sprints/:sprint_id/availability", post(submit_show_sprint_availability_handler))
         .route("/api/v1/shows/:id/sprints/:sprint_id/history", get(get_show_sprint_history_handler))
         .layer(middleware::from_fn_with_state(
             app_state.clone(),

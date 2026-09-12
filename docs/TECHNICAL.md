@@ -94,7 +94,7 @@ The Show Studio web features (`/studio/shows/[id]/*`) interface directly with th
 | `/api/v1/shows/:id/roster/:mem_id` | `PUT` | Sync REST | Member update payload | Updated `ShowRosterMember` | `404 Not Found` |
 | `/api/v1/shows/:id/roster/:mem_id` | `DELETE` | Sync REST | None | `{ status: "deleted" }` | `404 Not Found` |
 | `/api/v1/shows/:id/sprints/active` | `GET` | Sync REST | None | Active sprint info, 15m selected slots, and scheduled rehearsals list | `404 Not Found` |
-| `/api/v1/shows/:id/sprints/:sprint_id/availability` | `POST` | Sync REST | `{ slots: Record<string, boolean> }` | `{ status: "saved", total_hours: number }` | `400 Bad Request` |
+| `/api/v1/shows/:id/sprints/:sprint_id/availability` | `POST` | Sync REST | `{ slots: Array<{ day_of_week: string, slot_label: string, is_available: boolean }> }` | `{ status: "saved", total_hours: number }` | `400 Bad Request` |
 | `/api/v1/sprints/:id/schedule` | `POST` | **Async (202)** | None | `{ run_id, sprint_id, status: "queued", message: string }` | `500 Internal Error` |
 | `/api/v1/sprints/:id/schedule/stream` | `GET` | **Async (SSE)** | None | Server-Sent Event stream emitting `schedule_status` and `schedule_updated` | `500 Internal Error` |
 | `/api/v1/shows/:id/sprints/:sprint_id/history` | `GET` | Sync REST | None | `{ compute_history: Array<ScheduleRunHistoryItem>, registration_history: Array<AvailabilityHistoryItem> }` | `404 Not Found` |
