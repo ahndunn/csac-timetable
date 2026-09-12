@@ -552,16 +552,7 @@
           }, 1200);
         }, 800);
       }
-    } catch {
-      taskStatus = 'completed';
-      isScheduling = false;
-      isAutoScheduled = true;
     }
-  }
-      setTimeout(() => {
-        activeToast = null;
-      }, 4000);
-    }, 700);
   }
 
   // Schedule View Mode & Day Filter State
