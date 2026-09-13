@@ -16,21 +16,34 @@ export interface ShowSummary {
 export const load: PageLoad = async ({ fetch }) => {
   try {
     const res = await api.events.list(fetch);
-    const shows: ShowSummary[] = (res || []).map((event: any) => {
-      if (!event.id || !event.title) {
-        throw new Error('Invalid show data received from server');
-      }
-      return {
-        id: event.id,
-        title: event.title,
-        description: event.description || '',
-        venue: event.venue || '',
-        startDate: event.start_date || '',
-        endDate: event.end_date || '',
-        numbersCount: Number(event.numbers_count) || 0,
-        qcPassRate: Number(event.qc_pass_rate) || 0,
-      };
-    });
+    const shows: ShowSummary[] = await Promise.all(
+      (res || []).map(async (event: any) => {
+        if (!event.id || !event.title) {
+          throw new Error('Invalid show data received from server');
+        }
+
+        let overviewData: any = null;
+        try {
+          overviewData = await api.shows.getOverview(event.id, fetch);
+        } catch {
+          overviewData = null;
+        }
+
+        const numbersCount = overviewData?.total_numbers ?? Number(event.numbers_count) ?? 0;
+        const qcPassRate = overviewData?.readiness_percent ?? Number(event.qc_pass_rate) ?? 0;
+
+        return {
+          id: event.id,
+          title: overviewData?.title || event.title,
+          description: event.description || '',
+          venue: overviewData?.venue || event.venue || 'CSAC Main Auditorium',
+          startDate: event.start_date || '',
+          endDate: event.end_date || '',
+          numbersCount,
+          qcPassRate,
+        };
+      })
+    );
 
     return { shows };
   } catch (err: any) {

@@ -18,23 +18,39 @@ export interface ShowItem {
 export const load: PageLoad = async ({ fetch }) => {
   try {
     const events = await api.events.list(fetch);
-    const shows: ShowItem[] = (events || []).map((e: any) => {
-      if (!e.id || !e.title) {
-        throw new Error('Invalid show record received from server');
-      }
-      return {
-        id: e.id,
-        title: e.title,
-        description: e.description || '',
-        venue: e.venue || '',
-        startDate: e.start_date || '',
-        endDate: e.end_date || '',
-        targetNumbers: Number(e.target_numbers) || 0,
-        activeSprints: Number(e.active_sprints) || 0,
-        qcPassRate: Number(e.qc_pass_rate) || 0,
-        rehearsalHours: Number(e.rehearsal_hours) || 0,
-      };
-    });
+    const shows: ShowItem[] = await Promise.all(
+      (events || []).map(async (e: any) => {
+        if (!e.id || !e.title) {
+          throw new Error('Invalid show record received from server');
+        }
+
+        // Fetch live overview statistics to ensure 100% sync across studio and admin
+        let overviewData: any = null;
+        try {
+          overviewData = await api.shows.getOverview(e.id, fetch);
+        } catch {
+          overviewData = null;
+        }
+
+        const targetNumbers = overviewData?.total_numbers ?? Number(e.target_numbers) ?? Number(e.numbers_count) ?? 0;
+        const activeSprints = overviewData?.milestones ? overviewData.milestones.filter((m: any) => m.status === 'active').length : (Number(e.active_sprints) || 0);
+        const qcPassRate = overviewData?.readiness_percent ?? Number(e.qc_pass_rate) ?? 0;
+        const rehearsalHours = overviewData?.total_hours ?? (targetNumbers * 4);
+
+        return {
+          id: e.id,
+          title: overviewData?.title || e.title,
+          description: e.description || '',
+          venue: overviewData?.venue || e.venue || 'CSAC Main Auditorium',
+          startDate: e.start_date || '',
+          endDate: e.end_date || '',
+          targetNumbers,
+          activeSprints,
+          qcPassRate,
+          rehearsalHours,
+        };
+      })
+    );
 
     return { shows };
   } catch (err: any) {

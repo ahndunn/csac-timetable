@@ -100,6 +100,9 @@ flowchart TB
   * **Zero Generic Role Dropdowns**: Roster members have their authority derived from `(user_id, show_id)` (Show DM) and `(user_id, show_id, number_id)` (Number PM, QC, Performer).
   * **Multi-Role Scoped Badges**: Renders specific badges identifying scoped leadership roles (e.g. `Show DM`, `PM (2 Songs)`, `QC (1 Song)`, `Performer`).
   * **Cross-Screen Deep-Linking**: Clicking assigned song chips on a member profile jumps immediately to `/studio/shows/[id]/numbers?q=[song_title]`.
+* **Dynamic Show Workspace Banner & Synchronized Metrics**:
+  * The Show Studio layout (`/studio/shows/[id]/+layout.svelte`) dynamically loads and renders the active show title, venue, production dates, and live stage readiness percentage from `api.shows.getOverview(showId)` rather than static placeholder text.
+  * The `/api/v1/events` endpoint computes live aggregate metrics (`numbers_count` / `target_numbers`, `active_sprints`, `qc_pass_rate`, `rehearsal_hours`) from `music_numbers` and `practice_sprints` to ensure `/admin/shows` and `/studio` monitor cards reflect exact live data identical to the show overview.
 * **Cross-Screen Interactivity Architecture**:
   * `/studio/shows/[id]/overview` $\rightarrow$ Metric pills deep link to `/numbers?stage=...` and `/sprints`.
   * `/studio/shows/[id]/numbers` $\rightarrow$ Song cards include "View in Sprint Calendar" deep links to `/sprints?song=[song_title]`.

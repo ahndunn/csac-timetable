@@ -623,13 +623,59 @@ struct CreateSlotItem {
 
 async fn list_events_handler(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<Event>>, (StatusCode, Json<Value>)> {
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let events = sqlx::query_as::<_, Event>("SELECT * FROM events ORDER BY created_at DESC")
         .fetch_all(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
 
-    Ok(Json(events))
+    let mut show_items = Vec::new();
+    for event in events {
+        let numbers = sqlx::query_as::<_, csac_common::MusicNumber>(
+            "SELECT * FROM music_numbers WHERE event_id = $1"
+        )
+        .bind(event.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        let sprints = sqlx::query_as::<_, csac_common::PracticeSprint>(
+            "SELECT * FROM practice_sprints WHERE event_id = $1"
+        )
+        .bind(event.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        let total_numbers = numbers.len();
+        let qc_approved_count = numbers
+            .iter()
+            .filter(|n| n.status == csac_common::MusicNumberStatus::QcApproved || n.status == csac_common::MusicNumberStatus::StageReady)
+            .count();
+        let qc_pass_rate = if total_numbers > 0 { (qc_approved_count * 100) / total_numbers } else { 0 };
+        let active_sprints = sprints.iter().filter(|s| s.is_active).count();
+        let rehearsal_hours = total_numbers * 4;
+
+        show_items.push(json!({
+            "id": event.id.to_string(),
+            "title": event.title,
+            "description": event.description.unwrap_or_default(),
+            "venue": "CSAC Main Auditorium",
+            "start_date": event.start_date.to_string(),
+            "end_date": event.end_date.to_string(),
+            "status": event.status,
+            "created_by": event.created_by,
+            "created_at": event.created_at,
+            "closed_at": event.closed_at,
+            "target_numbers": total_numbers,
+            "numbers_count": total_numbers,
+            "active_sprints": active_sprints,
+            "qc_pass_rate": qc_pass_rate,
+            "rehearsal_hours": rehearsal_hours,
+        }));
+    }
+
+    Ok(Json(json!(show_items)))
 }
 
 async fn create_event_handler(

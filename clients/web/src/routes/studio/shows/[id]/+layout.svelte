@@ -12,9 +12,17 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Card } from '$lib/components/ui/card';
 
-  let { children } = $props();
+  let { data, children } = $props();
 
   const showId = $derived(page.params.id);
+  const show = $derived(data?.showOverview || page.data?.showOverview || {
+    id: showId,
+    title: 'Music Show Workspace',
+    venue: 'CSAC Main Auditorium',
+    dates: 'Oct 1 - Oct 15, 2026',
+    readiness_percent: 0
+  });
+
   const activeTab = $derived(
     page.url.pathname.includes('/numbers')
       ? 'numbers'
@@ -27,7 +35,7 @@
 </script>
 
 <svelte:head>
-  <title>CSAC Show Studio — {showId}</title>
+  <title>{show.title || 'CSAC Show Studio'} — {showId}</title>
 </svelte:head>
 
 <Navbar />
@@ -47,14 +55,14 @@
       <div class="flex flex-col sm:flex-row justify-between sm:items-end gap-3 mt-2.5">
         <div>
           <h1 class="text-2xl sm:text-3xl font-black text-foreground tracking-tight m-0 mb-1">
-            <span class="text-primary">CSAC</span> Annual Concert 2026
+            {show.title}
           </h1>
-          <p class="text-xs text-muted-foreground m-0">Venue: CSAC Main Auditorium • Production Dates: Oct 1 - Oct 15, 2026</p>
+          <p class="text-xs text-muted-foreground m-0">Venue: {show.venue || 'CSAC Main Auditorium'} • Production Dates: {show.dates || 'TBD'}</p>
         </div>
 
         <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 px-3 py-1.5 rounded-full font-bold text-xs border border-emerald-500/20">
           <CircleCheck class="w-4 h-4 text-emerald-600" />
-          <span>75% Stage Ready</span>
+          <span>{show.readiness_percent}% Stage Ready</span>
         </div>
       </div>
     </div>
