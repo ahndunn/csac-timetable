@@ -1,0 +1,427 @@
+{
+  "show": {
+    "title": "CSAC Autumn Symphony & Rock Showcase 2026",
+    "description": "Main seasonal production showcasing 20 dynamic acoustic, rock, and pop arrangements across the university campus.",
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-15",
+    "venue": "CSAC Main Concert Auditorium",
+    "time_slots": [
+      {"day_of_week": "Thứ Hai", "slot_label": "17:00 - 18:30", "sort_order": 1},
+      {"day_of_week": "Thứ Hai", "slot_label": "18:30 - 20:00", "sort_order": 2},
+      {"day_of_week": "Thứ Ba", "slot_label": "17:00 - 18:30", "sort_order": 3},
+      {"day_of_week": "Thứ Ba", "slot_label": "18:30 - 20:00", "sort_order": 4},
+      {"day_of_week": "Thứ Tư", "slot_label": "17:00 - 18:30", "sort_order": 5},
+      {"day_of_week": "Thứ Tư", "slot_label": "18:30 - 20:00", "sort_order": 6},
+      {"day_of_week": "Thứ Năm", "slot_label": "17:00 - 18:30", "sort_order": 7},
+      {"day_of_week": "Thứ Năm", "slot_label": "18:30 - 20:00", "sort_order": 8},
+      {"day_of_week": "Thứ Sáu", "slot_label": "17:00 - 18:30", "sort_order": 9},
+      {"day_of_week": "Thứ Sáu", "slot_label": "18:30 - 20:00", "sort_order": 10},
+      {"day_of_week": "Thứ Bảy", "slot_label": "14:00 - 15:30", "sort_order": 11},
+      {"day_of_week": "Thứ Bảy", "slot_label": "15:30 - 17:00", "sort_order": 12},
+      {"day_of_week": "Thứ Bảy", "slot_label": "18:00 - 19:30", "sort_order": 13},
+      {"day_of_week": "Chủ Nhật", "slot_label": "14:00 - 15:30", "sort_order": 14},
+      {"day_of_week": "Chủ Nhật", "slot_label": "15:30 - 17:00", "sort_order": 15},
+      {"day_of_week": "Chủ Nhật", "slot_label": "18:00 - 19:30", "sort_order": 16}
+    ],
+    "sprint": {
+      "name": "Sprint 1: Harmonization & Dynamic Stage Lock",
+      "sprint_goal": "Lock rhythm section tempo, vocal harmony balance, and pass stage-ready QC audits.",
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-08",
+      "is_active": true
+    }
+  },
+  "members": [
+    {"email": "minh.tri@csac.studio", "password": "password123", "full_name": "Trần Minh Trí", "role": "admin", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_rhythm", "vocal_backing"], "phone": "+84 901 112 233"},
+    {"email": "hoang.nam@csac.studio", "password": "password123", "full_name": "Nguyễn Hoàng Nam", "role": "admin", "primary_instrument": "vocal_lead", "secondary_instruments": ["keys", "guitar_acoustic"], "phone": "+84 902 223 344"},
+    {"email": "thanh.truc@csac.studio", "password": "password123", "full_name": "Lê Thanh Trúc", "role": "admin", "primary_instrument": "keys", "secondary_instruments": ["synth", "vocal_backing"], "phone": "+84 903 334 455"},
+    {"email": "viet.anh@csac.studio", "password": "password123", "full_name": "Phạm Việt Anh", "role": "admin", "primary_instrument": "drums", "secondary_instruments": ["percussion"], "phone": "+84 904 445 566"},
+    {"email": "quynh.anh@csac.studio", "password": "password123", "full_name": "Đỗ Quỳnh Anh", "role": "admin", "primary_instrument": "bass", "secondary_instruments": ["vocal_backing"], "phone": "+84 905 556 677"},
+
+    {"email": "phap.minh@csac.studio", "password": "password123", "full_name": "Vũ Minh Pháp", "role": "moderator", "primary_instrument": "guitar_lead", "secondary_instruments": ["vocal_lead"], "phone": "+84 906 667 788"},
+    {"email": "duy.thanh@csac.studio", "password": "password123", "full_name": "Hoàng Duy Thành", "role": "moderator", "primary_instrument": "vocal_lead", "secondary_instruments": ["percussion"], "phone": "+84 907 778 899"},
+    {"email": "anh.pha@csac.studio", "password": "password123", "full_name": "Bùi Anh Pha", "role": "moderator", "primary_instrument": "bass", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 908 889 900"},
+    {"email": "gia.huy@csac.studio", "password": "password123", "full_name": "Ngô Gia Huy", "role": "moderator", "primary_instrument": "keys", "secondary_instruments": ["synth"], "phone": "+84 909 990 011"},
+    {"email": "quang.luc@csac.studio", "password": "password123", "full_name": "Trịnh Quang Lực", "role": "moderator", "primary_instrument": "drums", "secondary_instruments": ["cajon"], "phone": "+84 910 123 456"},
+
+    {"email": "bao.tram@csac.studio", "password": "password123", "full_name": "Nguyễn Bảo Trâm", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["keys"], "phone": "+84 911 234 567"},
+    {"email": "tuan.kiet@csac.studio", "password": "password123", "full_name": "Đặng Tuấn Kiệt", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_rhythm"], "phone": "+84 912 345 678"},
+    {"email": "my.duyen@csac.studio", "password": "password123", "full_name": "Phan Mỹ Duyên", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["vocal_backing"], "phone": "+84 913 456 789"},
+    {"email": "khanh.vy@csac.studio", "password": "password123", "full_name": "Lâm Khánh Vy", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 914 567 890"},
+    {"email": "duc.phuc@csac.studio", "password": "password123", "full_name": "Trương Đức Phúc", "role": "member", "primary_instrument": "drums", "secondary_instruments": ["percussion"], "phone": "+84 915 678 901"},
+    {"email": "hai.dang@csac.studio", "password": "password123", "full_name": "Võ Hải Đăng", "role": "member", "primary_instrument": "bass", "secondary_instruments": ["guitar_bass"], "phone": "+84 916 789 012"},
+    {"email": "ngoc.mai@csac.studio", "password": "password123", "full_name": "Đinh Ngọc Mai", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["vocal_backing"], "phone": "+84 917 890 123"},
+    {"email": "hoang.long@csac.studio", "password": "password123", "full_name": "Lý Hoàng Long", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 918 901 234"},
+    {"email": "thu.thao@csac.studio", "password": "password123", "full_name": "Cao Thu Thảo", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["synth"], "phone": "+84 919 012 345"},
+    {"email": "quoc.bao@csac.studio", "password": "password123", "full_name": "Dương Quốc Bảo", "role": "member", "primary_instrument": "drums", "secondary_instruments": ["cajon"], "phone": "+84 920 123 456"},
+    {"email": "thanh.ha@csac.studio", "password": "password123", "full_name": "Vũ Thanh Hà", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["keys"], "phone": "+84 921 234 567"},
+    {"email": "minh.khoa@csac.studio", "password": "password123", "full_name": "Hồ Minh Khoa", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_rhythm"], "phone": "+84 922 345 678"},
+    {"email": "kim.ngan@csac.studio", "password": "password123", "full_name": "Mai Kim Ngân", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["vocal_backing"], "phone": "+84 923 456 789"},
+    {"email": "tien.dat@csac.studio", "password": "password123", "full_name": "Đỗ Tiến Đạt", "role": "member", "primary_instrument": "bass", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 924 567 890"},
+    {"email": "van.anh@csac.studio", "password": "password123", "full_name": "Tạ Vân Anh", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["vocal_backing"], "phone": "+84 925 678 901"},
+    {"email": "xuan.bach@csac.studio", "password": "password123", "full_name": "Chu Xuân Bách", "role": "member", "primary_instrument": "drums", "secondary_instruments": ["percussion"], "phone": "+84 926 789 012"},
+    {"email": "phuong.thao@csac.studio", "password": "password123", "full_name": "Đoàn Phương Thảo", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["synth"], "phone": "+84 927 890 123"},
+    {"email": "tan.phat@csac.studio", "password": "password123", "full_name": "La Tấn Phát", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 928 901 234"},
+    {"email": "thuy.tien@csac.studio", "password": "password123", "full_name": "Lưu Thủy Tiên", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["keys"], "phone": "+84 929 012 345"},
+    {"email": "duc.anh@csac.studio", "password": "password123", "full_name": "Trịnh Đức Anh", "role": "member", "primary_instrument": "bass", "secondary_instruments": ["vocal_backing"], "phone": "+84 930 123 456"},
+    {"email": "bich.ngoc@csac.studio", "password": "password123", "full_name": "Phùng Bích Ngọc", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["vocal_backing"], "phone": "+84 931 234 567"},
+    {"email": "hieu.nghia@csac.studio", "password": "password123", "full_name": "Đinh Hiếu Nghĩa", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_rhythm"], "phone": "+84 932 345 678"},
+    {"email": "yen.nhi@csac.studio", "password": "password123", "full_name": "Tô Yến Nhi", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["synth"], "phone": "+84 933 456 789"},
+    {"email": "trong.nhan@csac.studio", "password": "password123", "full_name": "Quách Trọng Nhân", "role": "member", "primary_instrument": "drums", "secondary_instruments": ["cajon"], "phone": "+84 934 567 890"},
+    {"email": "lan.huong@csac.studio", "password": "password123", "full_name": "Kiều Lan Hương", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 935 678 901"},
+    {"email": "gia.bao@csac.studio", "password": "password123", "full_name": "Ân Gia Bảo", "role": "member", "primary_instrument": "bass", "secondary_instruments": ["guitar_bass"], "phone": "+84 936 789 012"},
+    {"email": "hong.anh@csac.studio", "password": "password123", "full_name": "Châu Hồng Ánh", "role": "member", "primary_instrument": "keys", "secondary_instruments": ["vocal_backing"], "phone": "+84 937 890 123"},
+    {"email": "quang.minh@csac.studio", "password": "password123", "full_name": "Thái Quang Minh", "role": "member", "primary_instrument": "guitar_lead", "secondary_instruments": ["guitar_acoustic"], "phone": "+84 938 901 234"},
+    {"email": "tram.anh@csac.studio", "password": "password123", "full_name": "Khổng Trâm Anh", "role": "member", "primary_instrument": "vocal_lead", "secondary_instruments": ["keys"], "phone": "+84 939 012 345"},
+    {"email": "hoang.bach@csac.studio", "password": "password123", "full_name": "Mã Hoàng Bách", "role": "member", "primary_instrument": "drums", "secondary_instruments": ["percussion"], "phone": "+84 940 123 456"}
+  ],
+  "instruments": [
+    {"name": "Roland FP-30X Digital Piano", "code": "KEYS-01", "category": "Keyboard", "ownership_type": "club_property", "custody_location": "Club Studio Locker 1", "availability_status": "free_to_borrow", "notes": "88 weighted keys, Roland PHA-4 action, includes damper pedal and stand."},
+    {"name": "Nord Stage 3 88-Key Stage Keyboard", "code": "KEYS-02", "category": "Keyboard", "ownership_type": "club_property", "custody_location": "Studio Room A", "availability_status": "free_to_borrow", "notes": "Flagship stage synth & grand piano library with dual OLED displays."},
+    {"name": "Yamaha MODX8+ Synthesizer Workstation", "code": "KEYS-03", "category": "Keyboard", "ownership_type": "member_owned", "owner_email": "thanh.truc@csac.studio", "custody_location": "Kept by Lê Thanh Trúc", "availability_status": "free_to_borrow", "notes": "88 weighted keys, FM-X and AWM2 engines. Lent for concert rehearsals."},
+    {"name": "Korg Kross 2 61 Synthesizer", "code": "KEYS-04", "category": "Keyboard", "ownership_type": "member_owned", "owner_email": "gia.huy@csac.studio", "custody_location": "Kept by Ngô Gia Huy", "availability_status": "free_to_borrow", "notes": "Ultra-lightweight 61 synth keys, custom EDM and ballad pad patches."},
+    {"name": "Fender Player Stratocaster (Lake Placid Blue)", "code": "GTR-01", "category": "Strings", "ownership_type": "club_property", "custody_location": "Club Studio Rack #1", "availability_status": "free_to_borrow", "notes": "SSS Alnico 5 pickups, freshly set up with Elixir 10-46 strings."},
+    {"name": "Gibson Les Paul Studio (Ebony)", "code": "GTR-02", "category": "Strings", "ownership_type": "member_owned", "owner_email": "phap.minh@csac.studio", "custody_location": "Kept by Vũ Minh Pháp", "availability_status": "free_to_borrow", "notes": "490R/498T humbuckers, high gain rock and blues tone."},
+    {"name": "Taylor 214ce Plus Acoustic-Electric Guitar", "code": "GTR-03", "category": "Strings", "ownership_type": "club_property", "custody_location": "Acoustic Storage Case #2", "availability_status": "free_to_borrow", "notes": "Solid Sitka spruce top with ES2 electronics for pristine acoustic tone."},
+    {"name": "Ibanez SR500E Active Bass (Brown Mahogany)", "code": "BASS-01", "category": "Strings", "ownership_type": "club_property", "custody_location": "Studio Room A Rack", "availability_status": "free_to_borrow", "notes": "Bartolini BH2 pickups, active 3-band EQ with mid-frequency switch."},
+    {"name": "Yamaha Stage Custom Birch Drum Kit (Raven Black)", "code": "DRUM-01", "category": "Percussion", "ownership_type": "club_property", "custody_location": "Studio Room A", "availability_status": "free_to_borrow", "notes": "5-piece 100% birch shell pack with Zildjian A Custom cymbal set."},
+    {"name": "Roland TD-17KVX V-Drums Electronic Kit", "code": "DRUM-02", "category": "Percussion", "ownership_type": "club_property", "custody_location": "Studio Room B", "availability_status": "free_to_borrow", "notes": "Mesh heads with VH-10 hi-hat stand, ideal for quiet night practices."},
+    {"name": "Shure SM58 Wireless Microphone System (Dual Handheld)", "code": "MIC-01", "category": "Audio Gear", "ownership_type": "club_property", "custody_location": "Mic Flight Case #1", "availability_status": "free_to_borrow", "notes": "Dual BLX288/PG58 handheld wireless transmitters with receiver base."},
+    {"name": "Boss GT-1000 Multi-Effects Guitar Processor", "code": "FX-01", "category": "Audio Gear", "ownership_type": "member_owned", "owner_email": "minh.tri@csac.studio", "custody_location": "Kept by Trần Minh Trí", "availability_status": "free_to_borrow", "notes": "AIRD technology 32-bit DSP engine with full club setlist presets."}
+  ],
+  "music_numbers": [
+    {
+      "title": "PHONECERT",
+      "genre": "Indie Pop / Acoustic",
+      "pm_email": "phap.minh@csac.studio",
+      "qc_email": "hoang.nam@csac.studio",
+      "stage": "stage_ready",
+      "target_sessions": 3,
+      "description": "Upbeat acoustic pop piece with dual harmonized vocals, rhythmic acoustic guitar, and soft drum pocket.",
+      "lineup": {
+        "vocalLead": "Vũ Minh Pháp",
+        "guitarLead": "Trần Minh Trí",
+        "bass": "Bùi Anh Pha",
+        "drums": "Trịnh Quang Lực",
+        "keys": "Lê Thanh Trúc"
+      },
+      "qc_notes": "Milestone QC passed! Pitch balance and vocal harmony in the bridge locked at 100%. Approved for Main Concert Stage."
+    },
+    {
+      "title": "NÀNG THƠ",
+      "genre": "Ballad",
+      "pm_email": "duy.thanh@csac.studio",
+      "qc_email": "thanh.truc@csac.studio",
+      "stage": "qc_approved",
+      "target_sessions": 2,
+      "description": "Emotional grand piano ballad with warm cello synth pads and soaring tenor vocal climax.",
+      "lineup": {
+        "vocalLead": "Hoàng Duy Thành",
+        "guitarLead": "Phạm Việt Anh",
+        "bass": "Đỗ Quỳnh Anh",
+        "drums": "Trương Đức Phúc",
+        "keys": "Ngô Gia Huy"
+      },
+      "qc_notes": "Vocal pitch and piano rubato phrasing passed inspection with distinction."
+    },
+    {
+      "title": "BẬT TÌNH YÊU LÊN",
+      "genre": "Pop Dance / Disco Funk",
+      "pm_email": "bao.tram@csac.studio",
+      "qc_email": "minh.tri@csac.studio",
+      "stage": "stage_ready",
+      "target_sessions": 3,
+      "description": "High-energy disco funk arrangement with slap bass grooves and sparkling 80s synth brass.",
+      "lineup": {
+        "vocalLead": "Nguyễn Bảo Trâm",
+        "guitarLead": "Đặng Tuấn Kiệt",
+        "bass": "Bùi Anh Pha",
+        "drums": "Phạm Việt Anh",
+        "keys": "Phan Mỹ Duyên"
+      },
+      "qc_notes": "Rhythm section is tight, brass synth stabs fit the mix cleanly. Full pass."
+    },
+    {
+      "title": "ĐI GIỮA TRỜI RỰC RỠ",
+      "genre": "Folk Contemporary / Pop",
+      "pm_email": "khanh.vy@csac.studio",
+      "qc_email": "quynh.anh@csac.studio",
+      "stage": "qc_approved",
+      "target_sessions": 2,
+      "description": "Inspiring folk-pop anthem celebrating youth, featuring acoustic fingerstyle and choir chorus.",
+      "lineup": {
+        "vocalLead": "Lâm Khánh Vy",
+        "guitarLead": "Vũ Minh Pháp",
+        "bass": "Võ Hải Đăng",
+        "drums": "Quách Trọng Nhân",
+        "keys": "Cao Thu Thảo"
+      },
+      "qc_notes": "Dynamic crescendo in chorus 3 is vibrant. Lead vocal passed."
+    },
+    {
+      "title": "TỪNG QUEN",
+      "genre": "R&B / Soul",
+      "pm_email": "ngoc.mai@csac.studio",
+      "qc_email": "viet.anh@csac.studio",
+      "stage": "ready_for_qc",
+      "target_sessions": 2,
+      "description": "Smooth R&B groove with neo-soul electric piano chords and expressive vocal runs.",
+      "lineup": {
+        "vocalLead": "Đinh Ngọc Mai",
+        "guitarLead": "Lý Hoàng Long",
+        "bass": "Đỗ Tiến Đạt",
+        "drums": "Trương Đức Phúc",
+        "keys": "Lê Thanh Trúc"
+      },
+      "qc_notes": "Rehearsal recordings submitted. QC review scheduled for Friday night."
+    },
+    {
+      "title": "NGÀY ĐẦU TIÊN",
+      "genre": "Acoustic Pop",
+      "pm_email": "thanh.ha@csac.studio",
+      "qc_email": "phap.minh@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Sweet acoustic wedding pop song with dual acoustic guitars and shakers.",
+      "lineup": {
+        "vocalLead": "Vũ Thanh Hà",
+        "guitarLead": "Hồ Minh Khoa",
+        "bass": "Đỗ Quỳnh Anh",
+        "drums": "Dương Quốc Bảo",
+        "keys": "Mai Kim Ngân"
+      }
+    },
+    {
+      "title": "CẮT ĐÔI NỖI SẦU",
+      "genre": "House Pop / EDM",
+      "pm_email": "minh.khoa@csac.studio",
+      "qc_email": "duy.thanh@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Dance-pop beat with four-on-the-floor kick, synth bass arpeggio, and live energetic vocals.",
+      "lineup": {
+        "vocalLead": "Nguyễn Hoàng Nam",
+        "guitarLead": "Hồ Minh Khoa",
+        "bass": "Trịnh Đức Anh",
+        "drums": "Chu Xuân Bách",
+        "keys": "Đoàn Phương Thảo"
+      }
+    },
+    {
+      "title": "CHÂN ÁI",
+      "genre": "Contemporary R&B / World Music",
+      "pm_email": "van.anh@csac.studio",
+      "qc_email": "anh.pha@csac.studio",
+      "stage": "ready_for_qc",
+      "target_sessions": 2,
+      "description": "Dramatic blend of traditional Asian scales with modern trip-hop drums and electric guitar riffs.",
+      "lineup": {
+        "vocalLead": "Tạ Vân Anh",
+        "guitarLead": "La Tấn Phát",
+        "bass": "Võ Hải Đăng",
+        "drums": "Trịnh Quang Lực",
+        "keys": "Phan Mỹ Duyên"
+      },
+      "qc_notes": "Pending audit on traditional string synth backing blend."
+    },
+    {
+      "title": "BÊN TRÊN TẦNG LẦU",
+      "genre": "Synthwave / Dark Pop",
+      "pm_email": "thuy.tien@csac.studio",
+      "qc_email": "gia.huy@csac.studio",
+      "stage": "qc_approved",
+      "target_sessions": 2,
+      "description": "Retro synthwave baseline with pulsing 80s drum machines and moody vocal tone.",
+      "lineup": {
+        "vocalLead": "Lưu Thủy Tiên",
+        "guitarLead": "Đặng Tuấn Kiệt",
+        "bass": "Ân Gia Bảo",
+        "drums": "Phạm Việt Anh",
+        "keys": "Ngô Gia Huy"
+      },
+      "qc_notes": "Synth arpeggiator sync and tempo consistency passed."
+    },
+    {
+      "title": "DỰ BÁO THỜI TIẾT HÔM NAY MƯA",
+      "genre": "R&B / Ballad",
+      "pm_email": "bich.ngoc@csac.studio",
+      "qc_email": "quang.luc@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Lush Rhodes piano ballad with rain ambient effects, tight rim-shot drums, and 5-part harmonies.",
+      "lineup": {
+        "vocalLead": "Phùng Bích Ngọc",
+        "guitarLead": "Đinh Hiếu Nghĩa",
+        "bass": "Đỗ Tiến Đạt",
+        "drums": "Quách Trọng Nhân",
+        "keys": "Tô Yến Nhi"
+      }
+    },
+    {
+      "title": "SAU LỜI TỪ KHƯỚC",
+      "genre": "Cinematic Ballad",
+      "pm_email": "lan.huong@csac.studio",
+      "qc_email": "hoang.nam@csac.studio",
+      "stage": "stage_ready",
+      "target_sessions": 3,
+      "description": "Grand cinematic score arrangement with emotional grand piano, building into thunderous rock drums.",
+      "lineup": {
+        "vocalLead": "Kiều Lan Hương",
+        "guitarLead": "Thái Quang Minh",
+        "bass": "Đỗ Quỳnh Anh",
+        "drums": "Mã Hoàng Bách",
+        "keys": "Lê Thanh Trúc"
+      },
+      "qc_notes": "Superb dynamic transition and emotional impact. Stage ready!"
+    },
+    {
+      "title": "ÁNH SAO VÀ BẦU TRỜI",
+      "genre": "Acoustic Pop",
+      "pm_email": "tram.anh@csac.studio",
+      "qc_email": "thanh.truc@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Warm acoustic duet with gentle nylon guitar picking and soothing keyboard pads.",
+      "lineup": {
+        "vocalLead": "Khổng Trâm Anh",
+        "guitarLead": "Trần Minh Trí",
+        "bass": "Bùi Anh Pha",
+        "drums": "Dương Quốc Bảo",
+        "keys": "Châu Hồng Ánh"
+      }
+    },
+    {
+      "title": "MỘT ĐÊM SAY",
+      "genre": "Indie Acoustic / Waltz",
+      "pm_email": "phap.minh@csac.studio",
+      "qc_email": "minh.tri@csac.studio",
+      "stage": "stage_ready",
+      "target_sessions": 2,
+      "description": "Classic 3/4 waltz rhythm with romantic acoustic guitar chords and playful vocal modulation.",
+      "lineup": {
+        "vocalLead": "Vũ Minh Pháp",
+        "guitarLead": "Hồ Minh Khoa",
+        "bass": "Ân Gia Bảo",
+        "drums": "Trịnh Quang Lực",
+        "keys": "Phan Mỹ Duyên"
+      },
+      "qc_notes": "Waltz swing feel and vocal phrasing approved."
+    },
+    {
+      "title": "CƠN MƯA BĂNG GIÁ",
+      "genre": "Power Ballad",
+      "pm_email": "duy.thanh@csac.studio",
+      "qc_email": "viet.anh@csac.studio",
+      "stage": "qc_approved",
+      "target_sessions": 2,
+      "description": "Legendary power ballad with screaming guitar solo, driving rock bass, and powerful high notes.",
+      "lineup": {
+        "vocalLead": "Hoàng Duy Thành",
+        "guitarLead": "Lý Hoàng Long",
+        "bass": "Trịnh Đức Anh",
+        "drums": "Phạm Việt Anh",
+        "keys": "Cao Thu Thảo"
+      },
+      "qc_notes": "Guitar solo and high C vocal sustain verified cleanly."
+    },
+    {
+      "title": "CHÚNG TA CỦA TƯƠNG LAI",
+      "genre": "Synth Pop / R&B",
+      "pm_email": "bao.tram@csac.studio",
+      "qc_email": "quynh.anh@csac.studio",
+      "stage": "draft",
+      "target_sessions": 2,
+      "description": "Modern synth-pop track with dynamic drops, 808 sub bass, and rhythmic lead vocals.",
+      "lineup": {
+        "vocalLead": "Nguyễn Bảo Trâm",
+        "guitarLead": "La Tấn Phát",
+        "bass": "Võ Hải Đăng",
+        "drums": "Chu Xuân Bách",
+        "keys": "Đoàn Phương Thảo"
+      }
+    },
+    {
+      "title": "HÀ NỘI 12 MÙA HOA",
+      "genre": "Chamber Pop / Acoustic",
+      "pm_email": "khanh.vy@csac.studio",
+      "qc_email": "phap.minh@csac.studio",
+      "stage": "ready_for_qc",
+      "target_sessions": 2,
+      "description": "Elegant arrangement honoring Hanoi with violin synth lines, classical acoustic guitar, and pure vocal tone.",
+      "lineup": {
+        "vocalLead": "Lâm Khánh Vy",
+        "guitarLead": "Đặng Tuấn Kiệt",
+        "bass": "Bùi Anh Pha",
+        "drums": "Quách Trọng Nhân",
+        "keys": "Mai Kim Ngân"
+      },
+      "qc_notes": "Rehearsal audio uploaded. Audit pending."
+    },
+    {
+      "title": "ĐƯA NHAU ĐI TRỐN",
+      "genre": "Indie Hip-hop / Acoustic",
+      "pm_email": "ngoc.mai@csac.studio",
+      "qc_email": "duy.thanh@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Signature acoustic hip-hop duet with energetic acoustic strumming and melodic rap verses.",
+      "lineup": {
+        "vocalLead": "Đinh Ngọc Mai",
+        "guitarLead": "Thái Quang Minh",
+        "bass": "Đỗ Tiến Đạt",
+        "drums": "Mã Hoàng Bách",
+        "keys": "Châu Hồng Ánh"
+      }
+    },
+    {
+      "title": "CHILL PHẾT",
+      "genre": "Lo-fi / Pop",
+      "pm_email": "thanh.ha@csac.studio",
+      "qc_email": "anh.pha@csac.studio",
+      "stage": "in_practice",
+      "target_sessions": 2,
+      "description": "Relaxing lo-fi acoustic track with laidback snare brushes and Rhodes keyboard textures.",
+      "lineup": {
+        "vocalLead": "Vũ Thanh Hà",
+        "guitarLead": "Đinh Hiếu Nghĩa",
+        "bass": "Ân Gia Bảo",
+        "drums": "Dương Quốc Bảo",
+        "keys": "Tô Yến Nhi"
+      }
+    },
+    {
+      "title": "BÀI CA HY VỌNG",
+      "genre": "Classical Epic / Symphony",
+      "pm_email": "lan.huong@csac.studio",
+      "qc_email": "gia.huy@csac.studio",
+      "stage": "stage_ready",
+      "target_sessions": 3,
+      "description": "Grand symphonic choral arrangement featuring all section leaders and full dynamic orchestration.",
+      "lineup": {
+        "vocalLead": "Kiều Lan Hương",
+        "guitarLead": "Trần Minh Trí",
+        "bass": "Đỗ Quỳnh Anh",
+        "drums": "Phạm Việt Anh",
+        "keys": "Lê Thanh Trúc"
+      },
+      "qc_notes": "Show finale centerpiece approved with honors by all reviewers."
+    },
+    {
+      "title": "BƯỚC QUA MÙA CÔ ĐƠN",
+      "genre": "Indie Ballad",
+      "pm_email": "tram.anh@csac.studio",
+      "qc_email": "quang.luc@csac.studio",
+      "stage": "qc_approved",
+      "target_sessions": 2,
+      "description": "Atmospheric indie ballad with reverberant electric guitar swells and tender vocal melodies.",
+      "lineup": {
+        "vocalLead": "Khổng Trâm Anh",
+        "guitarLead": "Lý Hoàng Long",
+        "bass": "Trịnh Đức Anh",
+        "drums": "Trương Đức Phúc",
+        "keys": "Ngô Gia Huy"
+      },
+      "qc_notes": "Guitar ambient swells and vocal pitch tracking verified."
+    }
+  ]
+}
