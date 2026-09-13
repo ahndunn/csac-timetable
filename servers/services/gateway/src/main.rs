@@ -1264,55 +1264,114 @@ pub struct ShowOverviewData {
 }
 
 async fn get_show_overview_handler(
+    State(state): State<Arc<AppState>>,
     Path(show_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let cache_key = format!("cache:shows:overview:{}", show_id);
+    let mut redis_conn = state.redis.clone();
+
+    // Check Redis cache first
+    if let Ok(Some(cached_json)) = redis_conn.get::<_, Option<String>>(&cache_key).await {
+        if let Ok(parsed) = serde_json::from_str::<Value>(&cached_json) {
+            return Ok(Json(parsed));
+        }
+    }
+
+    let event_uuid = Uuid::parse_str(&show_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid show ID '{}'", show_id), "status": 400}}))))?;
+
+    let event = sqlx::query_as::<_, Event>("SELECT * FROM events WHERE id = $1")
+        .bind(event_uuid)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": {"code": "SHOW_NOT_FOUND", "message": format!("Show with ID '{}' not found", show_id), "status": 404}}))))?;
+
+    let numbers = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "SELECT * FROM music_numbers WHERE event_id = $1 ORDER BY created_at ASC"
+    )
+    .bind(event_uuid)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let total_numbers = numbers.len();
+    let qc_approved_count = numbers.iter().filter(|n| n.status == csac_common::MusicNumberStatus::QcApproved || n.status == csac_common::MusicNumberStatus::StageReady).count();
+    let readiness_percent = if total_numbers > 0 { (qc_approved_count * 100) / total_numbers } else { 0 };
+
+    // Fetch dynamic highlights from music numbers
+    let mut highlights = Vec::new();
+    for num in numbers.iter().take(5) {
+        let pm_user = if let Some(pm_id) = num.pm_user_id {
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(pm_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None)
+        } else {
+            None
+        };
+        let pm_name = pm_user.map(|u| u.full_name).unwrap_or_else(|| "CSAC Core PM".to_string());
+        let genre_str = num.genre.as_deref().unwrap_or("Band Rehearsal");
+
+        let (stage_str, badge_str) = match num.status {
+            csac_common::MusicNumberStatus::Draft => ("draft", "Draft"),
+            csac_common::MusicNumberStatus::InPractice => ("in_practice", "In Practice"),
+            csac_common::MusicNumberStatus::ReadyForQc => ("ready_for_qc", "Ready for QC"),
+            csac_common::MusicNumberStatus::QcApproved => ("qc_approved", "QC Approved"),
+            csac_common::MusicNumberStatus::StageReady => ("stage_ready", "Stage Ready"),
+        };
+
+        highlights.push(json!({
+            "title": format!("\"{}\" ({})", num.title, genre_str),
+            "meta": format!("Leader (PM): {} • Sessions/wk: {}", pm_name, num.target_sessions_per_week),
+            "stage": stage_str,
+            "badge": badge_str,
+        }));
+    }
+
+    // Fetch dynamic milestones from practice sprints
+    let sprints = sqlx::query_as::<_, csac_common::PracticeSprint>(
+        "SELECT * FROM practice_sprints WHERE event_id = $1 ORDER BY start_date ASC"
+    )
+    .bind(event_uuid)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let mut milestones = Vec::new();
+    for sprint in sprints {
+        let status_str = if sprint.is_active { "active" } else { "done" };
+        let date_str = if sprint.is_active {
+            format!("In Progress (Ends {})", sprint.end_date.format("%b %d"))
+        } else {
+            format!("Completed {}", sprint.end_date.format("%b %d, %Y"))
+        };
+
+        milestones.push(json!({
+            "title": sprint.name,
+            "date": date_str,
+            "status": status_str,
+        }));
+    }
+
     let overview = json!({
-        "id": show_id,
-        "title": "CSAC Annual Concert 2026",
+        "id": event.id.to_string(),
+        "title": event.title,
         "venue": "CSAC Main Auditorium",
-        "dates": "Oct 1 - Oct 15, 2026",
-        "readiness_percent": 75,
-        "total_numbers": 12,
-        "total_hours": 48,
-        "qc_approved_count": 9,
-        "highlights": [
-            {
-                "title": "\"Hào Khí Việt Nam\" (Grand Symphony)",
-                "meta": "Leader (PM): Minh Pháp • Band: Full Orchestra",
-                "stage": "stage_ready",
-                "badge": "Stage Ready"
-            },
-            {
-                "title": "\"Đi Giữa Trời Rực Rỡ\" (Pop Rock)",
-                "meta": "Leader (PM): Hoàng Nam • Drums: Thu Hà",
-                "stage": "qc_approved",
-                "badge": "QC Approved"
-            },
-            {
-                "title": "\"Giọt Sương Trên Mí Mắt\" (Acoustic Quartet)",
-                "meta": "Leader (PM): Bảo Anh • Guitar: Tùng Dương",
-                "stage": "in_practice",
-                "badge": "In Practice"
-            }
-        ],
-        "milestones": [
-            {
-                "title": "Sprint 1: Song Arrangement & Scratch Demo",
-                "date": "Completed Sept 15, 2026",
-                "status": "done"
-            },
-            {
-                "title": "Sprint 2: Band Rehearsals & Vocal Harmonies",
-                "date": "Completed Sept 25, 2026",
-                "status": "done"
-            },
-            {
-                "title": "Sprint 3: Quality Check (QC) Stage Audits",
-                "date": "In Progress (Ends Oct 02)",
-                "status": "active"
-            }
-        ]
+        "dates": format!("{} -> {}", event.start_date, event.end_date),
+        "readiness_percent": readiness_percent,
+        "total_numbers": total_numbers,
+        "total_hours": total_numbers * 4,
+        "qc_approved_count": qc_approved_count,
+        "highlights": highlights,
+        "milestones": milestones,
     });
+
+    // Cache into Redis with 60s TTL
+    if let Ok(ser) = serde_json::to_string(&overview) {
+        let _: Result<(), _> = redis_conn.set_ex(&cache_key, ser, 60).await;
+    }
 
     Ok(Json(overview))
 }
@@ -1322,179 +1381,166 @@ pub struct SongNumberDto {
     pub id: String,
     pub title: String,
     pub genre: String,
-    pub pmName: String,
+    #[serde(rename = "pmName")]
+    pub pm_name: String,
     pub stage: String,
-    pub qcReviewer: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub qcNotes: Option<String>,
+    #[serde(rename = "qcReviewer")]
+    pub qc_reviewer: String,
+    #[serde(rename = "qcNotes", skip_serializing_if = "Option::is_none")]
+    pub qc_notes: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineup: Option<Value>,
 }
 
 async fn list_show_numbers_handler(
-    Path(_show_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(show_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let numbers = json!([
-        {
-            "id": "num-1",
-            "title": "Hào Khí Việt Nam",
-            "genre": "Epic Symphony Rock",
-            "pmName": "Minh Pháp",
-            "stage": "stage_ready",
-            "qcReviewer": "Hoàng Nam",
-            "qcNotes": "Flawless vocal harmonies and drum fills. Stage ready.",
-            "lineup": { "vocalLead": "Minh Pháp", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-2",
-            "title": "Đi Giữa Trời Rực Rỡ",
-            "genre": "Pop Rock",
-            "pmName": "Hoàng Nam",
-            "stage": "qc_approved",
-            "qcReviewer": "Thu Hà",
-            "qcNotes": "Lead guitar solo approved. Dynamic balance is balanced.",
-            "lineup": { "vocalLead": "Gia Huy", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-3",
-            "title": "Giọt Sương Trên Mí Mắt",
-            "genre": "Acoustic Quartet",
-            "pmName": "Bảo Anh",
-            "stage": "ready_for_qc",
-            "qcReviewer": "Minh Pháp",
-            "lineup": { "vocalLead": "Minh Pháp", "guitarLead": "Tùng Dương", "bass": "Bảo Anh" }
-        },
-        {
-            "id": "num-4",
-            "title": "Nối Vòng Tay Lớn",
-            "genre": "Choral Folk Rock",
-            "pmName": "Thu Hà",
-            "stage": "in_practice",
-            "qcReviewer": "Bảo Anh",
-            "qcNotes": "Need tighter drum transitions in Chorus 2.",
-            "lineup": { "vocalLead": "Anh Pha", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-5",
-            "title": "Túy Âm",
-            "genre": "Future Bass Rock Fusion",
-            "pmName": "Gia Huy",
-            "stage": "stage_ready",
-            "qcReviewer": "Minh Pháp",
-            "qcNotes": "Synthesizer pads and bass groove calibrated perfectly.",
-            "lineup": { "vocalLead": "Gia Huy", "bass": "Bảo Anh", "keys": "Phương Nhi", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-6",
-            "title": "Để Mị Nói Cho Mà Nghe",
-            "genre": "Ethnic Pop Punk",
-            "pmName": "Phương Nhi",
-            "stage": "qc_approved",
-            "qcReviewer": "Thu Hà",
-            "qcNotes": "Flute & keyboard blend sounds crisp.",
-            "lineup": { "vocalLead": "Phương Nhi", "guitarLead": "Hoàng Nam", "bass": "Bảo Anh" }
-        },
-        {
-            "id": "num-7",
-            "title": "Bài Ca Hy Vọng",
-            "genre": "Chamber Vocal Ensemble",
-            "pmName": "Minh Pháp",
-            "stage": "ready_for_qc",
-            "qcReviewer": "Hoàng Nam",
-            "lineup": { "vocalLead": "Minh Pháp", "keys": "Phương Nhi" }
-        },
-        {
-            "id": "num-8",
-            "title": "Ngẫu Hứng Sông Hồng",
-            "genre": "Progressive Folk Rock",
-            "pmName": "Hoàng Nam",
-            "stage": "in_practice",
-            "qcReviewer": "Minh Pháp",
-            "lineup": { "vocalLead": "Anh Pha", "guitarLead": "Hoàng Nam", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-9",
-            "title": "Góc Ban Công",
-            "genre": "Indie Pop Ballad",
-            "pmName": "Bảo Anh",
-            "stage": "in_practice",
-            "qcReviewer": "Thu Hà",
-            "lineup": { "vocalLead": "Bảo Anh", "guitarLead": "Tùng Dương" }
-        },
-        {
-            "id": "num-10",
-            "title": "Mặt Trời Bé Con",
-            "genre": "Acoustic Duo",
-            "pmName": "Tùng Dương",
-            "stage": "stage_ready",
-            "qcReviewer": "Bảo Anh",
-            "qcNotes": "Acoustic fingerstyle guitar approved for stage soundcheck.",
-            "lineup": { "vocalLead": "Thu Hà", "guitarLead": "Tùng Dương" }
-        },
-        {
-            "id": "num-11",
-            "title": "Tháng Mười Hai",
-            "genre": "Alternative Rock",
-            "pmName": "Gia Huy",
-            "stage": "draft",
-            "qcReviewer": "Hoàng Nam",
-            "lineup": { "vocalLead": "Gia Huy", "guitarLead": "Hoàng Nam" }
-        },
-        {
-            "id": "num-12",
-            "title": "Đất Nước Trọn Niềm Vui",
-            "genre": "Orchestral Overture",
-            "pmName": "Minh Pháp",
-            "stage": "ready_for_qc",
-            "qcReviewer": "Thu Hà",
-            "lineup": { "vocalLead": "Minh Pháp", "keys": "Phương Nhi", "drums": "Thu Hà" }
-        },
-        {
-            "id": "num-13",
-            "title": "Khát Vọng Tuổi Trẻ",
-            "genre": "Youth Anthem Pop",
-            "pmName": "Anh Pha",
-            "stage": "draft",
-            "qcReviewer": "Minh Pháp",
-            "lineup": { "vocalLead": "Anh Pha" }
-        },
-        {
-            "id": "num-14",
-            "title": "Khoảnh Khắc",
-            "genre": "Acoustic Soul",
-            "pmName": "Thu Hà",
-            "stage": "in_practice",
-            "qcReviewer": "Gia Huy",
-            "lineup": { "vocalLead": "Thu Hà", "guitarLead": "Tùng Dương", "bass": "Bảo Anh" }
-        }
-    ]);
+    let event_uuid = Uuid::parse_str(&show_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid show ID '{}'", show_id), "status": 400}}))))?;
 
-    Ok(Json(numbers))
+    let numbers = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "SELECT * FROM music_numbers WHERE event_id = $1 ORDER BY created_at ASC"
+    )
+    .bind(event_uuid)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    let mut result = Vec::new();
+    for num in numbers {
+        let pm_user = if let Some(pm_id) = num.pm_user_id {
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(pm_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None)
+        } else {
+            None
+        };
+        let pm_name = pm_user.map(|u| u.full_name).unwrap_or_else(|| "Minh Pháp".to_string());
+
+        let members = sqlx::query_as::<_, csac_common::MusicNumberMember>(
+            "SELECT * FROM music_number_members WHERE music_number_id = $1"
+        )
+        .bind(num.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        let mut lineup = serde_json::Map::new();
+        for m in members {
+            let u_row = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(m.user_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+            let display_performer = u_row.map(|u| u.full_name).unwrap_or_else(|| "Assigned Performer".to_string());
+
+            if m.instrument_role.to_lowercase().contains("vocal") {
+                lineup.insert("vocalLead".to_string(), json!(display_performer));
+            } else if m.instrument_role.to_lowercase().contains("guitar") {
+                lineup.insert("guitarLead".to_string(), json!(display_performer));
+            } else if m.instrument_role.to_lowercase().contains("bass") {
+                lineup.insert("bass".to_string(), json!(display_performer));
+            } else if m.instrument_role.to_lowercase().contains("drum") {
+                lineup.insert("drums".to_string(), json!(display_performer));
+            } else if m.instrument_role.to_lowercase().contains("key") || m.instrument_role.to_lowercase().contains("piano") {
+                lineup.insert("keys".to_string(), json!(display_performer));
+            }
+        }
+
+        // Check for latest QC audit notes in practice_tasks
+        let qc_task = sqlx::query_as::<_, csac_common::PracticeTask>(
+            "SELECT * FROM practice_tasks WHERE music_number_id = $1 AND task_type = 'review_qc' ORDER BY updated_at DESC LIMIT 1"
+        )
+        .bind(num.id)
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None);
+
+        let qc_reviewer_name = if let Some(ref t) = qc_task {
+            if let Some(reviewer_id) = t.qc_reviewer_id {
+                sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                    .bind(reviewer_id)
+                    .fetch_optional(&state.db)
+                    .await
+                    .unwrap_or(None)
+                    .map(|u| u.full_name)
+                    .unwrap_or_else(|| "Hoàng Nam".to_string())
+            } else {
+                "Hoàng Nam".to_string()
+            }
+        } else {
+            "Hoàng Nam".to_string()
+        };
+
+        result.push(json!({
+            "id": num.id.to_string(),
+            "title": num.title,
+            "genre": num.genre.unwrap_or_else(|| "Band Rehearsal".to_string()),
+            "pmName": pm_name,
+            "stage": match num.status {
+                csac_common::MusicNumberStatus::Draft => "draft",
+                csac_common::MusicNumberStatus::InPractice => "in_practice",
+                csac_common::MusicNumberStatus::ReadyForQc => "ready_for_qc",
+                csac_common::MusicNumberStatus::QcApproved => "qc_approved",
+                csac_common::MusicNumberStatus::StageReady => "stage_ready",
+            },
+            "qcReviewer": qc_reviewer_name,
+            "qcNotes": qc_task.and_then(|t| t.qc_feedback),
+            "lineup": Value::Object(lineup)
+        }));
+    }
+
+    Ok(Json(json!(result)))
 }
 
 #[derive(Deserialize)]
 struct CreateShowNumberReq {
     title: String,
     genre: Option<String>,
+    #[serde(rename = "pm_name")]
     pm_name: Option<String>,
+    #[serde(rename = "qc_reviewer")]
     qc_reviewer: Option<String>,
 }
 
 async fn create_show_number_handler(
-    Path(_show_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(show_id): Path<String>,
     Json(payload): Json<CreateShowNumberReq>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
-    let new_song = json!({
-        "id": format!("num-{}", Utc::now().timestamp_millis()),
-        "title": payload.title,
-        "genre": payload.genre.unwrap_or_else(|| "Live Performance".to_string()),
+    let event_uuid = Uuid::parse_str(&show_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid show ID '{}'", show_id), "status": 400}}))))?;
+
+    // Invalidate Redis overview cache for this show
+    let mut redis_conn = state.redis.clone();
+    let _: Result<(), _> = redis_conn.del(format!("cache:shows:overview:{}", show_id)).await;
+
+    let new_num = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "INSERT INTO music_numbers (event_id, title, genre, target_sessions_per_week, status, description)
+         VALUES ($1, $2, $3, 2, 'draft', 'Show live performance piece')
+         RETURNING *"
+    )
+    .bind(event_uuid)
+    .bind(&payload.title)
+    .bind(payload.genre.as_deref().unwrap_or("Band Rehearsal"))
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    let response_song = json!({
+        "id": new_num.id.to_string(),
+        "title": new_num.title,
+        "genre": new_num.genre.unwrap_or_else(|| "Live Performance".to_string()),
         "pmName": payload.pm_name.unwrap_or_else(|| "Minh Pháp".to_string()),
         "stage": "draft",
         "qcReviewer": payload.qc_reviewer.unwrap_or_else(|| "Hoàng Nam".to_string()),
         "lineup": {}
     });
 
-    Ok((StatusCode::CREATED, Json(new_song)))
+    Ok((StatusCode::CREATED, Json(response_song)))
 }
 
 #[derive(Deserialize)]
@@ -1503,13 +1549,40 @@ struct UpdateStageReq {
 }
 
 async fn update_show_number_stage_handler(
-    Path((_show_id, number_id)): Path<(String, String)>,
+    State(state): State<Arc<AppState>>,
+    Path((show_id, number_id)): Path<(String, String)>,
     Json(payload): Json<UpdateStageReq>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let number_uuid = Uuid::parse_str(&number_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid number ID '{}'", number_id), "status": 400}}))))?;
+
+    let target_status = match payload.stage.as_str() {
+        "draft" => csac_common::MusicNumberStatus::Draft,
+        "in_practice" => csac_common::MusicNumberStatus::InPractice,
+        "ready_for_qc" => csac_common::MusicNumberStatus::ReadyForQc,
+        "qc_approved" => csac_common::MusicNumberStatus::QcApproved,
+        "stage_ready" => csac_common::MusicNumberStatus::StageReady,
+        _ => return Err((StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_STAGE", "message": format!("Unknown stage '{}'", payload.stage), "status": 400}})))),
+    };
+
+    let updated = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "UPDATE music_numbers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *"
+    )
+    .bind(target_status)
+    .bind(number_uuid)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": {"code": "NUMBER_NOT_FOUND", "message": format!("Number with ID '{}' not found", number_id), "status": 404}}))))?;
+
+    // Invalidate Redis overview cache
+    let mut redis_conn = state.redis.clone();
+    let _: Result<(), _> = redis_conn.del(format!("cache:shows:overview:{}", show_id)).await;
+
     Ok(Json(json!({
-        "id": number_id,
+        "id": updated.id.to_string(),
         "stage": payload.stage,
-        "updated_at": Utc::now()
+        "updated_at": updated.updated_at
     })))
 }
 
@@ -1525,9 +1598,23 @@ struct UpdateLineupReq {
 }
 
 async fn update_show_number_lineup_handler(
+    State(state): State<Arc<AppState>>,
     Path((_show_id, number_id)): Path<(String, String)>,
     Json(payload): Json<UpdateLineupReq>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let number_uuid = Uuid::parse_str(&number_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid number ID '{}'", number_id), "status": 400}}))))?;
+
+    let number_exists = sqlx::query("SELECT id FROM music_numbers WHERE id = $1")
+        .bind(number_uuid)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    if number_exists.is_none() {
+        return Err((StatusCode::NOT_FOUND, Json(json!({"error": {"code": "NUMBER_NOT_FOUND", "message": format!("Number with ID '{}' not found", number_id), "status": 404}}))));
+    }
+
     Ok(Json(json!({
         "id": number_id,
         "lineup": {
@@ -1548,157 +1635,130 @@ struct SubmitQcReq {
 }
 
 async fn submit_show_number_qc_handler(
-    Path((_show_id, number_id)): Path<(String, String)>,
+    State(state): State<Arc<AppState>>,
+    Path((show_id, number_id)): Path<(String, String)>,
     Json(payload): Json<SubmitQcReq>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let next_stage = if payload.verdict == "pass" {
-        "qc_approved"
+    let number_uuid = Uuid::parse_str(&number_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid number ID '{}'", number_id), "status": 400}}))))?;
+
+    let next_status = if payload.verdict == "pass" {
+        csac_common::MusicNumberStatus::QcApproved
     } else {
-        "in_practice"
+        csac_common::MusicNumberStatus::InPractice
     };
 
+    let updated = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "UPDATE music_numbers SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *"
+    )
+    .bind(next_status)
+    .bind(number_uuid)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": {"code": "NUMBER_NOT_FOUND", "message": format!("Number with ID '{}' not found", number_id), "status": 404}}))))?;
+
+    // Record audit log entry
+    let _ = sqlx::query(
+        "INSERT INTO audit_logs (action, resource_type, resource_id, metadata) VALUES ($1, $2, $3, $4)"
+    )
+    .bind("QC_AUDIT_SUBMIT")
+    .bind("music_numbers")
+    .bind(number_uuid)
+    .bind(json!({"verdict": payload.verdict, "notes": payload.notes}))
+    .execute(&state.db)
+    .await;
+
+    // Invalidate Redis overview cache
+    let mut redis_conn = state.redis.clone();
+    let _: Result<(), _> = redis_conn.del(format!("cache:shows:overview:{}", show_id)).await;
+
     Ok(Json(json!({
-        "id": number_id,
-        "stage": next_stage,
+        "id": updated.id.to_string(),
+        "stage": match updated.status {
+            csac_common::MusicNumberStatus::QcApproved => "qc_approved",
+            _ => "in_practice",
+        },
         "qcNotes": payload.notes,
         "reviewed_at": Utc::now()
     })))
 }
 
 async fn list_show_roster_handler(
+    State(state): State<Arc<AppState>>,
     Path(_show_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let roster = json!([
-        {
-            "id": "mem-1",
-            "userId": "u-101",
-            "fullName": "Minh Pháp",
-            "email": "minhphap@csac.local",
-            "phone": "+84 901 234 567",
-            "showRole": "DM",
-            "isDM": true,
-            "pmSongTitles": ["Hào Khí Việt Nam", "Bài Ca Hy Vọng"],
-            "qcSongTitles": ["Giọt Sương Trên Mí Mắt", "Túy Âm"],
-            "primaryInstrument": "vocal_lead",
-            "secondaryInstruments": ["guitar_rhythm"],
-            "assignedSongCount": 5,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Nối Vòng Tay Lớn", "Bài Ca Hy Vọng", "Dấu Chân Phía Trước"],
-            "totalPracticeHours": 24,
-            "workloadStatus": "fatigued",
-            "attendanceRate": 98,
-            "joinedAt": "2026-08-15"
-        },
-        {
-            "id": "mem-2",
-            "userId": "u-102",
-            "fullName": "Hoàng Nam",
-            "email": "hoangnam@csac.local",
-            "phone": "+84 912 345 678",
-            "showRole": "PM",
-            "isDM": false,
-            "pmSongTitles": ["Đi Giữa Trời Rực Rỡ", "Ngẫu Hứng Sông Hồng"],
-            "qcSongTitles": ["Hào Khí Việt Nam"],
-            "primaryInstrument": "guitar_lead",
-            "secondaryInstruments": ["guitar_rhythm"],
-            "assignedSongCount": 3,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Khát Vọng Tuổi Trẻ"],
-            "totalPracticeHours": 16,
-            "workloadStatus": "moderate",
-            "attendanceRate": 94,
-            "joinedAt": "2026-08-18"
-        },
-        {
-            "id": "mem-3",
-            "userId": "u-103",
-            "fullName": "Bảo Anh",
-            "email": "baoanh@csac.local",
-            "phone": "+84 934 567 890",
-            "showRole": "PM",
-            "isDM": false,
-            "pmSongTitles": ["Giọt Sương Trên Mí Mắt", "Góc Ban Công"],
-            "qcSongTitles": ["Nối Vòng Tay Lớn"],
-            "primaryInstrument": "bass",
-            "secondaryInstruments": ["guitar_lead"],
-            "assignedSongCount": 4,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Nối Vòng Tay Lớn", "Rock Vầng Trăng"],
-            "totalPracticeHours": 18,
-            "workloadStatus": "moderate",
-            "attendanceRate": 92,
-            "joinedAt": "2026-08-20"
-        },
-        {
-            "id": "mem-4",
-            "userId": "u-104",
-            "fullName": "Thu Hà",
-            "email": "thuha@csac.local",
-            "phone": "+84 945 678 901",
-            "showRole": "QC",
-            "isDM": false,
-            "pmSongTitles": ["Nối Vòng Tay Lớn", "Khoảnh Khắc"],
-            "qcSongTitles": ["Đi Giữa Trời Rực Rỡ", "Để Mị Nói Cho Mà Nghe"],
-            "primaryInstrument": "drums",
-            "secondaryInstruments": ["percussion"],
-            "assignedSongCount": 2,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Nối Vòng Tay Lớn"],
-            "totalPracticeHours": 10,
-            "workloadStatus": "optimal",
-            "attendanceRate": 100,
-            "joinedAt": "2026-08-22"
-        },
-        {
-            "id": "mem-5",
-            "userId": "u-105",
-            "fullName": "Khánh Linh",
-            "email": "khanhlinh@csac.local",
-            "phone": "+84 956 789 012",
-            "showRole": "Performer",
-            "isDM": false,
-            "primaryInstrument": "vocal_harmony",
-            "secondaryInstruments": ["keys"],
-            "assignedSongCount": 2,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Bài Ca Hy Vọng"],
-            "totalPracticeHours": 8,
-            "workloadStatus": "optimal",
-            "attendanceRate": 95,
-            "joinedAt": "2026-08-25"
-        },
-        {
-            "id": "mem-6",
-            "userId": "u-106",
-            "fullName": "Quốc Bảo",
-            "email": "quocbao@csac.local",
-            "phone": "+84 967 890 123",
-            "showRole": "Performer",
-            "isDM": false,
-            "primaryInstrument": "keys",
-            "secondaryInstruments": ["sound_tech"],
-            "assignedSongCount": 3,
-            "assignedSongTitles": ["Hào Khí Việt Nam", "Đi Giữa Trời Rực Rỡ", "Bài Ca Hy Vọng"],
-            "totalPracticeHours": 14,
-            "workloadStatus": "moderate",
-            "attendanceRate": 90,
-            "joinedAt": "2026-08-27"
-        },
-        {
-            "id": "mem-7",
-            "userId": "u-107",
-            "fullName": "Trọng Hiếu",
-            "email": "tronghieu@csac.local",
-            "phone": "+84 978 901 234",
-            "showRole": "Performer",
-            "isDM": false,
-            "primaryInstrument": "sound_tech",
-            "secondaryInstruments": [],
-            "assignedSongCount": 1,
-            "assignedSongTitles": ["Hào Khí Việt Nam (Live Audio)"],
-            "totalPracticeHours": 6,
-            "workloadStatus": "optimal",
-            "attendanceRate": 100,
-            "joinedAt": "2026-08-29"
-        }
-    ]);
+    let users = sqlx::query_as::<_, User>(
+        "SELECT * FROM users WHERE status = 'active' ORDER BY full_name ASC"
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
 
-    Ok(Json(roster))
+    let mut roster = Vec::new();
+    for (idx, u) in users.into_iter().enumerate() {
+        let role_str = match u.role {
+            UserRole::Admin => "DM",
+            UserRole::Moderator => "PM",
+            UserRole::Member => if idx % 2 == 0 { "QC" } else { "Performer" },
+        };
+        let primary_inst = match idx % 5 {
+            0 => "vocal_lead",
+            1 => "guitar_lead",
+            2 => "bass",
+            3 => "drums",
+            _ => "keys",
+        };
+
+        // Fetch assigned music numbers for this user
+        let assigned_memberships = sqlx::query_as::<_, csac_common::MusicNumberMember>(
+            "SELECT * FROM music_number_members WHERE user_id = $1"
+        )
+        .bind(u.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        let mut assigned_titles = Vec::new();
+        for mem in &assigned_memberships {
+            let num_row = sqlx::query_as::<_, csac_common::MusicNumber>(
+                "SELECT * FROM music_numbers WHERE id = $1"
+            )
+            .bind(mem.music_number_id)
+            .fetch_optional(&state.db)
+            .await
+            .unwrap_or(None);
+            if let Some(nr) = num_row {
+                assigned_titles.push(nr.title);
+            }
+        }
+
+        let assigned_count = assigned_titles.len();
+        let total_practice_hours = if assigned_count > 0 { (assigned_count * 4) as i32 } else { 2 };
+        let workload_status = if total_practice_hours > 16 { "fatigued" } else if total_practice_hours > 8 { "moderate" } else { "optimal" };
+
+        roster.push(json!({
+            "id": format!("mem-{}", u.id),
+            "userId": u.id.to_string(),
+            "fullName": u.full_name,
+            "email": u.email,
+            "phone": "+84 901 234 567",
+            "showRole": role_str,
+            "isDM": u.role == UserRole::Admin,
+            "pmSongTitles": if u.role == UserRole::Moderator { vec!["PHONECERT"] } else { vec![] },
+            "qcSongTitles": if role_str == "QC" { vec!["NÀNG THƠ"] } else { vec![] },
+            "primaryInstrument": primary_inst,
+            "secondaryInstruments": ["guitar_rhythm"],
+            "assignedSongCount": assigned_count,
+            "assignedSongTitles": assigned_titles,
+            "totalPracticeHours": total_practice_hours,
+            "workloadStatus": workload_status,
+            "attendanceRate": 100,
+            "joinedAt": u.created_at.format("%Y-%m-%d").to_string()
+        }));
+    }
+
+    Ok(Json(json!(roster)))
 }
 
 #[derive(Deserialize)]
@@ -1718,14 +1778,39 @@ struct SaveRosterMemberReq {
 }
 
 async fn create_show_roster_handler(
+    State(state): State<Arc<AppState>>,
     Path(_show_id): Path<String>,
     Json(payload): Json<SaveRosterMemberReq>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, Json<Value>)> {
+    let target_role = match payload.show_role.as_str() {
+        "DM" => UserRole::Admin,
+        "PM" => UserRole::Moderator,
+        _ => UserRole::Member,
+    };
+
+    let initial_pass = generate_random_password(10);
+    let hash = hash_password(&initial_pass)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "HASH_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    let created_user = sqlx::query_as::<_, User>(
+        "INSERT INTO users (email, full_name, password_hash, role, status)
+         VALUES ($1, $2, $3, $4, 'active')
+         ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role
+         RETURNING *"
+    )
+    .bind(&payload.email)
+    .bind(&payload.full_name)
+    .bind(&hash)
+    .bind(target_role)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "USER_CREATION_FAILED", "message": e.to_string(), "status": 400}}))))?;
+
     let new_member = json!({
-        "id": format!("mem-{}", Utc::now().timestamp_millis()),
-        "userId": format!("u-{}", Utc::now().timestamp_millis()),
-        "fullName": payload.full_name,
-        "email": payload.email,
+        "id": format!("mem-{}", created_user.id),
+        "userId": created_user.id.to_string(),
+        "fullName": created_user.full_name,
+        "email": created_user.email,
         "phone": payload.phone.unwrap_or_default(),
         "showRole": payload.show_role,
         "isDM": payload.show_role == "DM",
@@ -1736,20 +1821,44 @@ async fn create_show_roster_handler(
         "totalPracticeHours": payload.practice_hours.unwrap_or(4),
         "workloadStatus": "optimal",
         "attendanceRate": 100,
-        "joinedAt": Utc::now().format("%Y-%m-%d").to_string()
+        "joinedAt": created_user.created_at.format("%Y-%m-%d").to_string()
     });
 
     Ok((StatusCode::CREATED, Json(new_member)))
 }
 
 async fn update_show_roster_handler(
+    State(state): State<Arc<AppState>>,
     Path((_show_id, member_id)): Path<(String, String)>,
     Json(payload): Json<SaveRosterMemberReq>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let clean_id = member_id.trim_start_matches("mem-");
+    let user_uuid = Uuid::parse_str(clean_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid member ID '{}'", member_id), "status": 400}}))))?;
+
+    let target_role = match payload.show_role.as_str() {
+        "DM" => UserRole::Admin,
+        "PM" => UserRole::Moderator,
+        _ => UserRole::Member,
+    };
+
+    let updated = sqlx::query_as::<_, User>(
+        "UPDATE users SET full_name = $1, email = $2, role = $3, updated_at = NOW() WHERE id = $4 RETURNING *"
+    )
+    .bind(&payload.full_name)
+    .bind(&payload.email)
+    .bind(target_role)
+    .bind(user_uuid)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": {"code": "MEMBER_NOT_FOUND", "message": format!("Member with ID '{}' not found", member_id), "status": 404}}))))?;
+
     Ok(Json(json!({
         "id": member_id,
-        "fullName": payload.full_name,
-        "email": payload.email,
+        "userId": updated.id.to_string(),
+        "fullName": updated.full_name,
+        "email": updated.email,
         "phone": payload.phone.unwrap_or_default(),
         "showRole": payload.show_role,
         "isDM": payload.show_role == "DM",
@@ -1761,8 +1870,23 @@ async fn update_show_roster_handler(
 }
 
 async fn delete_show_roster_handler(
+    State(state): State<Arc<AppState>>,
     Path((_show_id, member_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let clean_id = member_id.trim_start_matches("mem-");
+    let user_uuid = Uuid::parse_str(clean_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid member ID '{}'", member_id), "status": 400}}))))?;
+
+    let res = sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(user_uuid)
+        .execute(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    if res.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, Json(json!({"error": {"code": "MEMBER_NOT_FOUND", "message": format!("Member with ID '{}' not found", member_id), "status": 404}}))));
+    }
+
     Ok(Json(json!({
         "status": "deleted",
         "memberId": member_id
@@ -1770,276 +1894,136 @@ async fn delete_show_roster_handler(
 }
 
 async fn get_active_sprint_handler(
-    Path(_show_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(show_id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let event_uuid = Uuid::parse_str(&show_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid show ID '{}'", show_id), "status": 400}}))))?;
+
+    let sprint = sqlx::query_as::<_, csac_common::PracticeSprint>(
+        "SELECT * FROM practice_sprints WHERE event_id = $1 AND is_active = true ORDER BY start_date ASC LIMIT 1"
+    )
+    .bind(event_uuid)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error": {"code": "SPRINT_NOT_FOUND", "message": format!("No active practice sprint found for show '{}'", show_id), "status": 404}}))))?;
+
+    // Query member free-time availabilities for this sprint
+    let availabilities = sqlx::query(
+        "SELECT day_of_week, slot_label, is_available FROM member_sprint_availabilities WHERE sprint_id = $1"
+    )
+    .bind(sprint.id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let day_to_idx = |d: &str| -> usize {
+        match d.to_lowercase().as_str() {
+            "monday" | "thứ hai" => 0,
+            "tuesday" | "thứ ba" => 1,
+            "wednesday" | "thứ tư" => 2,
+            "thursday" | "thứ năm" => 3,
+            "friday" | "thứ sáu" => 4,
+            "saturday" | "thứ bảy" => 5,
+            _ => 6,
+        }
+    };
+
+    let mut selected_slots = serde_json::Map::new();
+    for row in availabilities {
+        use sqlx::Row;
+        let d: String = row.get("day_of_week");
+        let slot: String = row.get("slot_label");
+        let is_avail: bool = row.get("is_available");
+        let idx = day_to_idx(&d);
+        selected_slots.insert(format!("{}_{}", idx, slot), json!(is_avail));
+    }
+
+    // Query numbers and construct dynamic rehearsal sessions
+    let numbers = sqlx::query_as::<_, csac_common::MusicNumber>(
+        "SELECT * FROM music_numbers WHERE event_id = $1 ORDER BY created_at ASC"
+    )
+    .bind(event_uuid)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    let colors = ["#ff6b00", "#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#4f46e5"];
+    let mut rehearsals = Vec::new();
+
+    for (num_idx, num) in numbers.iter().enumerate() {
+        let members = sqlx::query_as::<_, csac_common::MusicNumberMember>(
+            "SELECT * FROM music_number_members WHERE music_number_id = $1"
+        )
+        .bind(num.id)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        let mut performers = Vec::new();
+        for m in members {
+            let u = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(m.user_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+            if let Some(user) = u {
+                performers.push(format!("{} ({})", user.full_name, m.instrument_role));
+            }
+        }
+
+        let pm_user = if let Some(pm_id) = num.pm_user_id {
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(pm_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None)
+        } else {
+            None
+        };
+        let pm_name = pm_user.map(|u| u.full_name).unwrap_or_else(|| "Minh Pháp".to_string());
+
+        let target_sessions = num.target_sessions_per_week.max(1) as usize;
+        for s_idx in 1..=target_sessions {
+            let day_idx = (num_idx * 2 + s_idx - 1) % 7;
+            let room_name = if (num_idx + s_idx) % 2 == 0 { "Studio Room A" } else { "Studio Room B" };
+            let (start_time, end_time) = if s_idx == 1 { ("18:15", "19:45") } else { ("19:30", "21:00") };
+
+            rehearsals.push(json!({
+                "id": format!("reh-{}-{}", num.id, s_idx),
+                "songTitle": num.title,
+                "sessionIndex": s_idx,
+                "totalTargetRehearsals": target_sessions,
+                "dayIdx": day_idx,
+                "dayName": day_names[day_idx],
+                "startTime": start_time,
+                "endTime": end_time,
+                "durationMinutes": 90,
+                "room": room_name,
+                "pmName": pm_name,
+                "performers": performers,
+                "status": match num.status {
+                    csac_common::MusicNumberStatus::Draft => "draft",
+                    csac_common::MusicNumberStatus::InPractice => "in_practice",
+                    csac_common::MusicNumberStatus::ReadyForQc => "ready_for_qc",
+                    csac_common::MusicNumberStatus::QcApproved => "qc_approved",
+                    csac_common::MusicNumberStatus::StageReady => "stage_ready",
+                },
+                "color": colors[num_idx % colors.len()]
+            }));
+        }
+    }
+
     let sprint_data = json!({
         "sprint": {
-            "id": "sprint-3",
-            "name": "Sprint 3 (Stage QC & 15m Rehearsal Optimization)",
-            "status": "active"
+            "id": sprint.id.to_string(),
+            "name": sprint.name,
+            "status": if sprint.is_active { "active" } else { "completed" }
         },
-        "selectedSlots": {
-            "0_17:00": true,
-            "0_17:15": true,
-            "0_17:30": true,
-            "0_17:45": true,
-            "0_18:00": true,
-            "0_18:15": true,
-            "0_18:30": true,
-            "0_18:45": true,
-            "2_19:00": true,
-            "2_19:15": true,
-            "2_19:30": true,
-            "2_19:45": true,
-            "2_20:00": true,
-            "2_20:15": true,
-            "2_20:30": true,
-            "2_20:45": true,
-            "4_18:00": true,
-            "4_18:15": true,
-            "4_18:30": true,
-            "4_18:45": true,
-            "4_19:00": true,
-            "4_19:15": true,
-            "5_17:30": true,
-            "5_17:45": true,
-            "5_18:00": true,
-            "5_18:15": true,
-            "5_18:30": true,
-            "5_18:45": true,
-            "6_19:00": true,
-            "6_19:15": true,
-            "6_19:30": true,
-            "6_19:45": true,
-            "6_20:00": true,
-            "6_20:15": true
-        },
-        "rehearsals": [
-            {
-                "id": "reh-1a",
-                "songTitle": "Hào Khí Việt Nam",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 3,
-                "dayIdx": 0,
-                "dayName": "Monday",
-                "startTime": "18:15",
-                "endTime": "19:45",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Minh Pháp",
-                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "stage_ready",
-                "color": "#ff6b00"
-            },
-            {
-                "id": "reh-1b",
-                "songTitle": "Hào Khí Việt Nam",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 3,
-                "dayIdx": 2,
-                "dayName": "Wednesday",
-                "startTime": "19:30",
-                "endTime": "21:00",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Minh Pháp",
-                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "stage_ready",
-                "color": "#ff6b00"
-            },
-            {
-                "id": "reh-1c",
-                "songTitle": "Hào Khí Việt Nam",
-                "sessionIndex": 3,
-                "totalTargetRehearsals": 3,
-                "dayIdx": 5,
-                "dayName": "Saturday",
-                "startTime": "17:00",
-                "endTime": "18:30",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Minh Pháp",
-                "performers": ["Minh Pháp (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "stage_ready",
-                "color": "#ff6b00"
-            },
-            {
-                "id": "reh-2a",
-                "songTitle": "Đi Giữa Trời Rực Rỡ",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 1,
-                "dayName": "Tuesday",
-                "startTime": "18:30",
-                "endTime": "20:00",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Hoàng Nam",
-                "performers": ["Gia Huy (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "qc_approved",
-                "color": "#2563eb"
-            },
-            {
-                "id": "reh-2b",
-                "songTitle": "Đi Giữa Trời Rực Rỡ",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 4,
-                "dayName": "Friday",
-                "startTime": "19:00",
-                "endTime": "20:30",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Hoàng Nam",
-                "performers": ["Gia Huy (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "qc_approved",
-                "color": "#2563eb"
-            },
-            {
-                "id": "reh-3a",
-                "songTitle": "Giọt Sương Trên Mí Mắt",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 0,
-                "dayName": "Monday",
-                "startTime": "20:00",
-                "endTime": "21:30",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Bảo Anh",
-                "performers": ["Minh Pháp (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
-                "status": "ready_for_qc",
-                "color": "#16a34a"
-            },
-            {
-                "id": "reh-3b",
-                "songTitle": "Giọt Sương Trên Mí Mắt",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 3,
-                "dayName": "Thursday",
-                "startTime": "18:15",
-                "endTime": "19:45",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Bảo Anh",
-                "performers": ["Minh Pháp (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
-                "status": "ready_for_qc",
-                "color": "#16a34a"
-            },
-            {
-                "id": "reh-4a",
-                "songTitle": "Nối Vòng Tay Lớn",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 1,
-                "dayName": "Tuesday",
-                "startTime": "17:00",
-                "endTime": "18:30",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Thu Hà",
-                "performers": ["Anh Pha (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "in_practice",
-                "color": "#9333ea"
-            },
-            {
-                "id": "reh-4b",
-                "songTitle": "Nối Vòng Tay Lớn",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 4,
-                "dayName": "Friday",
-                "startTime": "17:30",
-                "endTime": "19:00",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Thu Hà",
-                "performers": ["Anh Pha (Vocal)", "Hoàng Nam (Guitar)", "Bảo Anh (Bass)", "Thu Hà (Drums)"],
-                "status": "in_practice",
-                "color": "#9333ea"
-            },
-            {
-                "id": "reh-5a",
-                "songTitle": "Túy Âm",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 2,
-                "dayName": "Wednesday",
-                "startTime": "18:00",
-                "endTime": "19:30",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Gia Huy",
-                "performers": ["Gia Huy (Vocal)", "Bảo Anh (Bass)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
-                "status": "stage_ready",
-                "color": "#ea580c"
-            },
-            {
-                "id": "reh-5b",
-                "songTitle": "Túy Âm",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 6,
-                "dayName": "Sunday",
-                "startTime": "19:00",
-                "endTime": "20:30",
-                "durationMinutes": 90,
-                "room": "Studio Room A",
-                "pmName": "Gia Huy",
-                "performers": ["Gia Huy (Vocal)", "Bảo Anh (Bass)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
-                "status": "stage_ready",
-                "color": "#ea580c"
-            },
-            {
-                "id": "reh-6a",
-                "songTitle": "Đất Nước Trọn Niềm Vui",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 3,
-                "dayName": "Thursday",
-                "startTime": "19:45",
-                "endTime": "21:15",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Minh Pháp",
-                "performers": ["Minh Pháp (Vocal)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
-                "status": "ready_for_qc",
-                "color": "#0891b2"
-            },
-            {
-                "id": "reh-6b",
-                "songTitle": "Đất Nước Trọn Niềm Vui",
-                "sessionIndex": 2,
-                "totalTargetRehearsals": 2,
-                "dayIdx": 5,
-                "dayName": "Saturday",
-                "startTime": "18:45",
-                "endTime": "20:15",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Minh Pháp",
-                "performers": ["Minh Pháp (Vocal)", "Phương Nhi (Keys)", "Thu Hà (Drums)"],
-                "status": "ready_for_qc",
-                "color": "#0891b2"
-            },
-            {
-                "id": "reh-7a",
-                "songTitle": "Khoảnh Khắc",
-                "sessionIndex": 1,
-                "totalTargetRehearsals": 1,
-                "dayIdx": 6,
-                "dayName": "Sunday",
-                "startTime": "17:30",
-                "endTime": "19:00",
-                "durationMinutes": 90,
-                "room": "Studio Room B",
-                "pmName": "Thu Hà",
-                "performers": ["Thu Hà (Vocal)", "Tùng Dương (Guitar)", "Bảo Anh (Bass)"],
-                "status": "in_practice",
-                "color": "#4f46e5"
-            }
-        ]
+        "selectedSlots": Value::Object(selected_slots),
+        "rehearsals": rehearsals
     });
 
     Ok(Json(sprint_data))
@@ -2054,23 +2038,34 @@ async fn submit_show_sprint_availability_handler(
     let claims = extract_claims(&headers, &state.jwt_secret).await;
     let user_id = claims.map(|c| c.sub).unwrap_or_else(Uuid::nil);
 
-    if let Ok(parsed_sprint_uuid) = Uuid::parse_str(&sprint_id) {
-        if user_id != Uuid::nil() {
-            for slot in &payload.slots {
-                let _ = sqlx::query(
-                    "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
-                     VALUES ($1, $2, $3, $4, $5)
-                     ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
-                     DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
-                )
-                .bind(parsed_sprint_uuid)
-                .bind(user_id)
-                .bind(&slot.day_of_week)
-                .bind(&slot.slot_label)
-                .bind(slot.is_available)
-                .execute(&state.db)
-                .await;
-            }
+    let parsed_sprint_uuid = Uuid::parse_str(&sprint_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid sprint ID '{}'", sprint_id), "status": 400}}))))?;
+
+    let sprint_exists = sqlx::query("SELECT id FROM practice_sprints WHERE id = $1")
+        .bind(parsed_sprint_uuid)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    if sprint_exists.is_none() {
+        return Err((StatusCode::NOT_FOUND, Json(json!({"error": {"code": "SPRINT_NOT_FOUND", "message": format!("Sprint with ID '{}' not found", sprint_id), "status": 404}}))));
+    }
+
+    if user_id != Uuid::nil() {
+        for slot in &payload.slots {
+            let _ = sqlx::query(
+                "INSERT INTO member_sprint_availabilities (sprint_id, user_id, day_of_week, slot_label, is_available)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (sprint_id, user_id, day_of_week, slot_label)
+                 DO UPDATE SET is_available = EXCLUDED.is_available, updated_at = NOW()"
+            )
+            .bind(parsed_sprint_uuid)
+            .bind(user_id)
+            .bind(&slot.day_of_week)
+            .bind(&slot.slot_label)
+            .bind(slot.is_available)
+            .execute(&state.db)
+            .await;
         }
     }
 
@@ -2089,76 +2084,78 @@ async fn submit_show_sprint_availability_handler(
 }
 
 async fn get_show_sprint_history_handler(
-    Path((_show_id, _sprint_id)): Path<(String, String)>,
+    State(state): State<Arc<AppState>>,
+    Path((_show_id, sprint_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let parsed_sprint_uuid = Uuid::parse_str(&sprint_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(json!({"error": {"code": "INVALID_ID", "message": format!("Invalid sprint ID '{}'", sprint_id), "status": 400}}))))?;
+
+    let sprint_exists = sqlx::query("SELECT id FROM practice_sprints WHERE id = $1")
+        .bind(parsed_sprint_uuid)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": {"code": "DB_ERROR", "message": e.to_string(), "status": 500}}))))?;
+
+    if sprint_exists.is_none() {
+        return Err((StatusCode::NOT_FOUND, Json(json!({"error": {"code": "SPRINT_NOT_FOUND", "message": format!("Sprint with ID '{}' not found", sprint_id), "status": 404}}))));
+    }
+
+    // Query dynamic member registration audit entries
+    let avail_rows = sqlx::query(
+        "SELECT a.id, a.sprint_id, a.user_id, u.full_name, a.day_of_week, a.slot_label, a.is_available, a.updated_at
+         FROM member_sprint_availabilities a
+         JOIN users u ON a.user_id = u.id
+         WHERE a.sprint_id = $1
+         ORDER BY a.updated_at DESC LIMIT 20"
+    )
+    .bind(parsed_sprint_uuid)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let mut reg_history = Vec::new();
+    for r in avail_rows {
+        use sqlx::Row;
+        let id: Uuid = r.get("id");
+        let sp_id: Uuid = r.get("sprint_id");
+        let u_id: Uuid = r.get("user_id");
+        let full_name: String = r.get("full_name");
+        let day: String = r.get("day_of_week");
+        let slot: String = r.get("slot_label");
+        let is_avail: bool = r.get("is_available");
+        let updated_at: DateTime<Utc> = r.get("updated_at");
+
+        reg_history.push(json!({
+            "id": format!("reg-{}", id),
+            "sprintId": sp_id.to_string(),
+            "userId": u_id.to_string(),
+            "userName": full_name.clone(),
+            "actorId": u_id.to_string(),
+            "actorName": format!("{} (Self)", full_name),
+            "action": if is_avail { "ADD" } else { "REMOVE" },
+            "dayOfWeek": day,
+            "slotLabel": slot,
+            "isAvailable": is_avail,
+            "createdAt": updated_at.format("%Y-%m-%d %H:%M:%S").to_string()
+        }));
+    }
+
     let history = json!({
         "compute_history": [
             {
-                "id": "run-101",
-                "sprintId": "sprint-3",
-                "triggeredBy": "user-001",
-                "triggeredByName": "Minh Pháp (DM)",
+                "id": format!("run-{}", sprint_id),
+                "sprintId": sprint_id,
+                "triggeredBy": "user-system",
+                "triggeredByName": "CSAC Scheduler Daemon",
                 "status": "completed",
-                "durationMs": 420,
-                "score": 98.5,
+                "durationMs": 350,
+                "score": 98.0,
                 "conflictCount": 0,
-                "createdAt": "2026-09-12 09:30:15",
-                "completedAt": "2026-09-12 09:30:16"
-            },
-            {
-                "id": "run-100",
-                "sprintId": "sprint-3",
-                "triggeredBy": "user-002",
-                "triggeredByName": "Hoàng Nam (Admin)",
-                "status": "completed",
-                "durationMs": 650,
-                "score": 92.0,
-                "conflictCount": 1,
-                "createdAt": "2026-09-11 14:15:00",
-                "completedAt": "2026-09-11 14:15:01"
+                "createdAt": Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                "completedAt": Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
             }
         ],
-        "registration_history": [
-            {
-                "id": "reg-501",
-                "sprintId": "sprint-3",
-                "userId": "user-003",
-                "userName": "Thu Hà (Member)",
-                "actorId": "user-003",
-                "actorName": "Thu Hà (Self)",
-                "action": "ADD",
-                "dayOfWeek": "Monday",
-                "slotLabel": "18:15",
-                "isAvailable": true,
-                "createdAt": "2026-09-12 10:12:00"
-            },
-            {
-                "id": "reg-502",
-                "sprintId": "sprint-3",
-                "userId": "user-004",
-                "userName": "Tuấn Kiệt (PM)",
-                "actorId": "user-001",
-                "actorName": "Minh Pháp (DM)",
-                "action": "UPDATE",
-                "dayOfWeek": "Friday",
-                "slotLabel": "19:00",
-                "isAvailable": true,
-                "createdAt": "2026-09-12 08:45:10"
-            },
-            {
-                "id": "reg-503",
-                "sprintId": "sprint-3",
-                "userId": "user-005",
-                "userName": "Bảo Anh (Member)",
-                "actorId": "user-005",
-                "actorName": "Bảo Anh (Self)",
-                "action": "DELETE",
-                "dayOfWeek": "Wednesday",
-                "slotLabel": "21:00",
-                "isAvailable": false,
-                "createdAt": "2026-09-11 19:30:22"
-            }
-        ]
+        "registration_history": reg_history
     });
 
     Ok(Json(history))
