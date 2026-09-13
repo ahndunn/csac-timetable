@@ -54,172 +54,21 @@
   import * as Table from '$lib/components/ui/table';
   import * as Dialog from '$lib/components/ui/dialog';
 
+  let { data } = $props();
+
   // Active Tab & View Modes
   let activeTab = $state<'catalog' | 'show_checklist' | 'orphans'>('catalog');
   let catalogViewMode = $state<'cards' | 'table'>('cards');
   let showViewMode = $state<'cards' | 'table'>('cards');
 
-  // Master Gear Catalog
-  let gearList = $state<GearItem[]>([
-    {
-      id: 'inst-1',
-      name: 'Fender Player Plus Stratocaster HSS (Club Property)',
-      category: 'strings',
-      ownership: 'club_property',
-      custodianName: 'Minh Pháp',
-      locationNote: 'Studio Rehearsal Room A - Rack 1',
-      status: 'free_to_borrow',
-      lendingPolicy: 'open_to_all',
-      serialNumber: 'MX22049182',
-      estimatedValueVND: 22000000,
-    },
-    {
-      id: 'inst-2',
-      name: 'Yamaha TRBX504 Active 4-String Bass (Hoàng Nam)',
-      category: 'strings',
-      ownership: 'member_owned',
-      ownerName: 'Hoàng Nam',
-      ownerId: 'user-nam',
-      custodianName: 'Hoàng Nam',
-      locationNote: 'CSAC Storage Locker #3',
-      status: 'in_use',
-      lendingPolicy: 'show_only',
-      serialNumber: 'YAM-504-88',
-      estimatedValueVND: 14500000,
-    },
-    {
-      id: 'inst-3',
-      name: 'Roland RD-88 Stage Piano 88-Keys (Club Property)',
-      category: 'keys',
-      ownership: 'club_property',
-      custodianName: 'Bảo Anh',
-      locationNote: 'Auditorium Main Stage Left',
-      status: 'in_use',
-      lendingPolicy: 'open_to_all',
-      serialNumber: 'ROL-RD88-9901',
-      estimatedValueVND: 31000000,
-    },
-    {
-      id: 'inst-4',
-      name: 'Pearl Export EXX 5-Piece Drum Kit (Club Property)',
-      category: 'drums',
-      ownership: 'club_property',
-      custodianName: 'Thu Hà',
-      locationNote: 'Studio Rehearsal Room B - Drum Riser',
-      status: 'free_to_borrow',
-      lendingPolicy: 'open_to_all',
-      estimatedValueVND: 26000000,
-    },
-    {
-      id: 'inst-5',
-      name: 'Radial ProDI Passive Direct Box (Duy Anh)',
-      category: 'audio_di',
-      ownership: 'member_owned',
-      ownerName: 'Duy Anh',
-      ownerId: 'user-duyanh',
-      custodianName: 'Duy Anh',
-      locationNote: 'Duy Anh Personal Gig Bag',
-      status: 'free_to_borrow',
-      lendingPolicy: 'approval_required',
-      estimatedValueVND: 3200000,
-    },
-    {
-      id: 'inst-6',
-      name: 'Boss Katana-100 MkII Guitar Amp (Club Property)',
-      category: 'amps_cabs',
-      ownership: 'club_property',
-      custodianName: 'Minh Pháp',
-      locationNote: 'Studio Rehearsal Room A',
-      status: 'in_maintenance',
-      lendingPolicy: 'open_to_all',
-      estimatedValueVND: 11500000,
-      notes: 'Undergoing power jack soldering maintenance',
-    },
-    {
-      id: 'inst-7',
-      name: 'Strymon BigSky Reverberator Pedal (Quang Huy)',
-      category: 'pedals_fx',
-      ownership: 'member_owned',
-      ownerName: 'Quang Huy',
-      ownerId: 'user-huy',
-      custodianName: 'Quang Huy',
-      locationNote: 'Huy FX Pedalboard Case',
-      status: 'unavailable',
-      lendingPolicy: 'locked_private',
-      estimatedValueVND: 12000000,
-    },
-  ]);
+  // Master Gear Catalog & Show Allocations loaded from +page.ts
+  let gearList = $state<GearItem[]>([]);
+  let showAllocations = $state<ShowGearAllocation[]>([]);
 
-  // Live Show Gear Allocations Checklist
-  let showAllocations = $state<ShowGearAllocation[]>([
-    {
-      id: 'alloc-1',
-      showId: 'autumn-concert-2026',
-      gearId: 'inst-1',
-      gearName: 'Fender Player Plus Stratocaster HSS',
-      category: 'strings',
-      ownership: 'club_property',
-      allocatedFor: 'music_number',
-      musicNumberTitle: 'Bài Ca Hy Vọng (Lead Guitar)',
-      primaryPerformerName: 'Văn Tuấn',
-      status: 'active_stage',
-      isOnBehalfRetrieval: false,
-    },
-    {
-      id: 'alloc-2',
-      showId: 'autumn-concert-2026',
-      gearId: 'inst-2',
-      gearName: 'Yamaha TRBX504 Active 4-String Bass',
-      category: 'strings',
-      ownership: 'member_owned',
-      ownerName: 'Hoàng Nam',
-      allocatedFor: 'music_number',
-      musicNumberTitle: 'Hương Mùa Hè (Bass)',
-      primaryPerformerName: 'Hoàng Nam',
-      status: 'checked_in_venue',
-      isOnBehalfRetrieval: false,
-    },
-    {
-      id: 'alloc-3',
-      showId: 'autumn-concert-2026',
-      gearId: 'inst-3',
-      gearName: 'Roland RD-88 Stage Piano 88-Keys',
-      category: 'keys',
-      ownership: 'club_property',
-      allocatedFor: 'backline_common',
-      primaryPerformerName: 'Bảo Anh',
-      status: 'active_stage',
-      isOnBehalfRetrieval: false,
-    },
-    {
-      id: 'alloc-4',
-      showId: 'autumn-concert-2026',
-      gearId: 'inst-5',
-      gearName: 'Radial ProDI Passive Direct Box',
-      category: 'audio_di',
-      ownership: 'member_owned',
-      ownerName: 'Duy Anh',
-      allocatedFor: 'sound_desk',
-      primaryPerformerName: 'Tech Sound Desk',
-      status: 'orphan', // Left behind at venue!
-      isOnBehalfRetrieval: false,
-    },
-    {
-      id: 'alloc-5',
-      showId: 'autumn-concert-2026',
-      gearId: 'inst-7',
-      gearName: 'Strymon BigSky Reverberator Pedal',
-      category: 'pedals_fx',
-      ownership: 'member_owned',
-      ownerName: 'Quang Huy',
-      allocatedFor: 'emergency_backup',
-      primaryPerformerName: 'Stage Backline',
-      status: 'retrieved_proxy', // Retrieved on behalf
-      isOnBehalfRetrieval: true,
-      retrievedByName: 'Trần Đăng (Guitarist)',
-      retrievalNote: 'Brought home in gear bag for Quang Huy',
-    },
-  ]);
+  $effect(() => {
+    gearList = data?.gearList || [];
+    showAllocations = data?.showAllocations || [];
+  });
 
   // Catalog Filters & Search
   let search = $state('');

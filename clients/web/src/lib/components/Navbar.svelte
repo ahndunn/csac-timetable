@@ -225,8 +225,10 @@
             class="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
           >
             <UserCircle size={15} class="text-primary" />
-            <span class="max-w-[80px] truncate">{auth.user?.full_name || auth.user?.email || 'Guest'}</span>
-            <span class={cn("rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase", roleBadgeStyles[userRole] || roleBadgeStyles.member)}>
+            <span class="max-w-[120px] truncate">
+              {auth.user?.full_name || auth.user?.email || page.data.user?.fullName || 'System Admin'}
+            </span>
+            <span class={cn("rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase", roleBadgeStyles[userRole] || roleBadgeStyles.admin)}>
               {userRole}
             </span>
             <ChevronDown size={12} class="text-muted-foreground" />

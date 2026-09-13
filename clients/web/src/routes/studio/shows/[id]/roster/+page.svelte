@@ -202,20 +202,24 @@
         console.error('Failed to update roster member in backend:', err);
       }
     } else {
+      if (!formEmail.trim() || !formPhone.trim()) {
+        alert('Please provide valid contact email and phone number for the new roster member.');
+        return;
+      }
       const newMember: ShowRosterMember = {
         id: `mem-${Date.now()}`,
         userId: `u-${Date.now()}`,
         fullName: formFullName.trim(),
-        email: formEmail.trim() || `${formFullName.toLowerCase().replace(/\s+/g, '')}@csac.local`,
-        phone: formPhone.trim() || '+84 900 000 000',
+        email: formEmail.trim(),
+        phone: formPhone.trim(),
         showRole: formShowRole,
         isDM: formShowRole === 'DM',
         primaryInstrument: formPrimaryInst,
         secondaryInstruments: formSecondaryInst,
-        assignedSongCount: 1,
-        assignedSongTitles: ['Intro / Warmup Rehearsal'],
-        totalPracticeHours: Number(formPracticeHours) || 4,
-        workloadStatus: calculateWorkload(1),
+        assignedSongCount: 0,
+        assignedSongTitles: [],
+        totalPracticeHours: Number(formPracticeHours) || 0,
+        workloadStatus: calculateWorkload(0),
         attendanceRate: 100,
         joinedAt: new Date().toISOString().split('T')[0],
       };

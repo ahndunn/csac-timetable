@@ -16,18 +16,8 @@
   import { Badge } from '$lib/components/ui/badge';
 
   let { data } = $props();
-
-  const showId = $derived(page.params.id || 'show-2026-annual');
-  const overview = $derived(
-    data?.overview || {
-      readiness_percent: 75,
-      total_numbers: 12,
-      total_hours: 48,
-      qc_approved_count: 9,
-      highlights: [],
-      milestones: [],
-    }
-  );
+  const showId = $derived(page.params.id);
+  const overview = $derived(data?.overview);
 </script>
 
 <div class="flex flex-col gap-5">
@@ -149,43 +139,27 @@
           <h3 class="text-base font-extrabold text-foreground m-0">Show Lineup Highlights</h3>
         </div>
         <a href="/studio/shows/{showId}/numbers" class="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
-          <span>View All 12 Numbers</span>
+          <span>View All {overview.total_numbers} Numbers</span>
           <ChevronRight class="w-3.5 h-3.5" />
         </a>
       </div>
       <div class="flex flex-col gap-2.5">
-        <a href="/studio/shows/{showId}/numbers?q=H%C3%A0o%20Kh%C3%AD%20Vi%E1%BB%87t%20Nam" class="flex items-center gap-3 p-3 bg-muted/40 hover:bg-primary/5 rounded-xl transition-all hover:translate-x-1 border border-border/50 hover:border-primary/40">
-          <div class="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-            <Music class="w-4 h-4 text-primary" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-foreground truncate">"Hào Khí Việt Nam" (Grand Symphony)</div>
-            <div class="text-xs text-muted-foreground truncate">Leader (PM): Minh Pháp • Band: Full Orchestra</div>
-          </div>
-          <Badge class="bg-emerald-500/15 text-emerald-600 border-0 font-bold text-xs shrink-0">Stage Ready</Badge>
-        </a>
-
-        <a href="/studio/shows/{showId}/numbers?q=%C4%90i%20Gi%E1%BB%AFa%20Tr%E1%BB%9Di%20R%E1%BB%B1c%20R%E1%BB%A1" class="flex items-center gap-3 p-3 bg-muted/40 hover:bg-primary/5 rounded-xl transition-all hover:translate-x-1 border border-border/50 hover:border-primary/40">
-          <div class="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-            <Music class="w-4 h-4 text-primary" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-foreground truncate">"Đi Giữa Trời Rực Rỡ" (Pop Rock)</div>
-            <div class="text-xs text-muted-foreground truncate">Leader (PM): Hoàng Nam • Drums: Thu Hà</div>
-          </div>
-          <Badge class="bg-primary/15 text-primary border border-primary/30 font-bold text-xs shrink-0">QC Approved</Badge>
-        </a>
-
-        <a href="/studio/shows/{showId}/numbers?q=Gi%E1%BB%8Dt%20S%C6%B0%C6%A1ng%20Tr%C3%AAn%20M%C3%AD%20M%E1%BA%AFt" class="flex items-center gap-3 p-3 bg-muted/40 hover:bg-primary/5 rounded-xl transition-all hover:translate-x-1 border border-border/50 hover:border-primary/40">
-          <div class="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-            <Music class="w-4 h-4 text-primary" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-bold text-foreground truncate">"Giọt Sương Trên Mí Mắt" (Acoustic Quartet)</div>
-            <div class="text-xs text-muted-foreground truncate">Leader (PM): Bảo Anh • Guitar: Tùng Dương</div>
-          </div>
-          <Badge class="bg-primary/10 text-primary border-0 font-bold text-xs shrink-0">In Practice</Badge>
-        </a>
+        {#each overview.highlights as highlight}
+          <a href="/studio/shows/{showId}/numbers?q={encodeURIComponent(highlight.title)}" class="flex items-center gap-3 p-3 bg-muted/40 hover:bg-primary/5 rounded-xl transition-all hover:translate-x-1 border border-border/50 hover:border-primary/40">
+            <div class="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+              <Music class="w-4 h-4 text-primary" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-bold text-foreground truncate">{highlight.title}</div>
+              <div class="text-xs text-muted-foreground truncate">{highlight.meta}</div>
+            </div>
+            <Badge class={highlight.stage === 'stage_ready' ? 'bg-emerald-500/15 text-emerald-600 border-0 font-bold text-xs shrink-0' : highlight.stage === 'qc_approved' ? 'bg-primary/15 text-primary border border-primary/30 font-bold text-xs shrink-0' : 'bg-primary/10 text-primary border-0 font-bold text-xs shrink-0'}>
+              {highlight.badge}
+            </Badge>
+          </a>
+        {:else}
+          <div class="text-center py-6 text-xs text-muted-foreground">No highlights available</div>
+        {/each}
       </div>
     </Card>
 
@@ -203,35 +177,23 @@
         </a>
       </div>
       <div class="flex flex-col gap-4 mt-1">
-        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-muted/30 border border-border/50">
-          <div class="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-            <CircleCheck class="w-4 h-4" />
+        {#each overview.milestones as milestone}
+          <div class="flex items-start gap-3 p-2.5 rounded-xl {milestone.status === 'active' ? 'bg-primary/10 border border-primary/30 shadow-xs' : 'bg-muted/30 border border-border/50'}">
+            <div class="w-7 h-7 rounded-full {milestone.status === 'active' ? 'bg-primary text-primary-foreground shadow-xs shadow-primary/30' : 'bg-emerald-500/15 text-emerald-600'} flex items-center justify-center shrink-0 mt-0.5 font-bold">
+              {#if milestone.status === 'active'}
+                <Clock class="w-4 h-4" />
+              {:else}
+                <CircleCheck class="w-4 h-4" />
+              {/if}
+            </div>
+            <div>
+              <div class="text-xs font-bold text-foreground">{milestone.title}</div>
+              <div class="text-[11px] {milestone.status === 'active' ? 'text-primary font-bold' : 'text-muted-foreground font-medium'}">{milestone.date}</div>
+            </div>
           </div>
-          <div>
-            <div class="text-xs font-bold text-foreground">Sprint 1: Song Arrangement & Scratch Demo</div>
-            <div class="text-[11px] text-muted-foreground font-medium">Completed Sept 15, 2026</div>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-muted/30 border border-border/50">
-          <div class="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 font-bold">
-            <CircleCheck class="w-4 h-4" />
-          </div>
-          <div>
-            <div class="text-xs font-bold text-foreground">Sprint 2: Band Rehearsals & Vocal Harmonies</div>
-            <div class="text-[11px] text-muted-foreground font-medium">Completed Sept 25, 2026</div>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3 p-2.5 rounded-xl bg-primary/10 border border-primary/30 shadow-xs">
-          <div class="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 mt-0.5 font-bold shadow-xs shadow-primary/30">
-            <Clock class="w-4 h-4" />
-          </div>
-          <div>
-            <div class="text-xs font-extrabold text-foreground">Sprint 3: Quality Check (QC) Stage Audits</div>
-            <div class="text-[11px] text-primary font-bold">In Progress (Ends Oct 02)</div>
-          </div>
-        </div>
+        {:else}
+          <div class="text-center py-6 text-xs text-muted-foreground">No milestones tracked</div>
+        {/each}
       </div>
     </Card>
   </div>

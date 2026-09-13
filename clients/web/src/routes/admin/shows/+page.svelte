@@ -18,54 +18,23 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Dialog from '$lib/components/ui/dialog';
+  import type { ShowItem } from './+page';
 
-  interface ShowItem {
-    id: string;
-    title: string;
-    description: string;
-    venue: string;
-    startDate: string;
-    endDate: string;
-    targetNumbers: number;
-    activeSprints: number;
-    qcPassRate: number;
-    rehearsalHours: number;
-  }
+  let { data } = $props();
 
-  let shows = $state<ShowItem[]>([
-    {
-      id: 'show-2026-annual',
-      title: 'CSAC Annual Concert 2026',
-      description: 'Grand annual showcase featuring multi-genre band performances, acoustic arrangements, and orchestral medleys.',
-      venue: 'CSAC Main Auditorium',
-      startDate: '2026-10-01',
-      endDate: '2026-10-15',
-      targetNumbers: 12,
-      activeSprints: 3,
-      qcPassRate: 75,
-      rehearsalHours: 48,
-    },
-    {
-      id: 'show-acoustic-vol4',
-      title: 'Acoustic Night Vol. 4',
-      description: 'Intimate unplugged acoustic showcase emphasizing close vocal harmonies, fingerstyle guitars, and jazz fusion.',
-      venue: 'Studio Lounge B',
-      startDate: '2026-11-05',
-      endDate: '2026-11-12',
-      targetNumbers: 6,
-      activeSprints: 2,
-      qcPassRate: 40,
-      rehearsalHours: 18,
-    },
-  ]);
+  let shows = $state<ShowItem[]>([]);
+
+  $effect(() => {
+    shows = data?.shows || [];
+  });
 
   let search = $state('');
   let isCreateModalOpen = $state(false);
   let newTitle = $state('');
   let newDescription = $state('');
-  let newVenue = $state('CSAC Main Auditorium');
-  let newStartDate = $state('2026-12-01');
-  let newEndDate = $state('2026-12-15');
+  let newVenue = $state('');
+  let newStartDate = $state('');
+  let newEndDate = $state('');
   let newTargetNumbers = $state(8);
 
   let filteredShows = $derived(
@@ -78,17 +47,17 @@
 
   function handleCreateShow(e: Event) {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || !newVenue.trim() || !newStartDate.trim() || !newEndDate.trim()) return;
 
     const newShow: ShowItem = {
       id: `show-${Date.now()}`,
       title: newTitle.trim(),
-      description: newDescription.trim() || 'New music show workspace.',
-      venue: newVenue.trim() || 'CSAC Studio',
+      description: newDescription.trim(),
+      venue: newVenue.trim(),
       startDate: newStartDate,
       endDate: newEndDate,
-      targetNumbers: Number(newTargetNumbers) || 8,
-      activeSprints: 1,
+      targetNumbers: Number(newTargetNumbers) || 1,
+      activeSprints: 0,
       qcPassRate: 0,
       rehearsalHours: 0,
     };
@@ -286,13 +255,14 @@
 
         <div class="flex flex-col gap-1.5">
           <Label for="show-venue" class="text-xs font-semibold">
-            {$tStore('admin_shows.modal_venue_label')}
+            {$tStore('admin_shows.modal_venue_label')} *
           </Label>
           <Input
             id="show-venue"
             type="text"
             placeholder={$tStore('admin_shows.modal_venue_placeholder')}
             bind:value={newVenue}
+            required
             class="h-8 text-xs"
           />
         </div>
@@ -300,24 +270,26 @@
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1.5">
             <Label for="start-date" class="text-xs font-semibold">
-              {$tStore('admin_shows.modal_start_date')}
+              {$tStore('admin_shows.modal_start_date')} *
             </Label>
             <Input
               id="start-date"
               type="date"
               bind:value={newStartDate}
+              required
               class="h-8 text-xs"
             />
           </div>
 
           <div class="flex flex-col gap-1.5">
             <Label for="end-date" class="text-xs font-semibold">
-              {$tStore('admin_shows.modal_end_date')}
+              {$tStore('admin_shows.modal_end_date')} *
             </Label>
             <Input
               id="end-date"
               type="date"
               bind:value={newEndDate}
+              required
               class="h-8 text-xs"
             />
           </div>

@@ -14,7 +14,7 @@
 
   let { children } = $props();
 
-  const showId = $derived(page.params.id || 'show-2026-annual');
+  const showId = $derived(page.params.id);
   const activeTab = $derived(
     page.url.pathname.includes('/numbers')
       ? 'numbers'
@@ -94,6 +94,8 @@
 
   <!-- Sub-Page Main Content View -->
   <main class="min-h-[400px]">
-    {@render children()}
+    {#key page.url.pathname}
+      {@render children()}
+    {/key}
   </main>
 </div>

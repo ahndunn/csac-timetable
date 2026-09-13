@@ -13,39 +13,8 @@
   import { Card } from '$lib/components/ui/card';
   import { Badge } from '$lib/components/ui/badge';
 
-  interface ShowSummary {
-    id: string;
-    title: string;
-    description: string;
-    venue: string;
-    startDate: string;
-    endDate: string;
-    numbersCount: number;
-    qcPassRate: number;
-  }
-
-  let activeShows = $state<ShowSummary[]>([
-    {
-      id: 'show-2026-annual',
-      title: 'CSAC Annual Concert 2026',
-      description: 'Main annual cultural concert featuring 12 band numbers and orchestral arrangements.',
-      venue: 'CSAC Main Auditorium',
-      startDate: '2026-10-01',
-      endDate: '2026-10-15',
-      numbersCount: 12,
-      qcPassRate: 75,
-    },
-    {
-      id: 'show-acoustic-vol4',
-      title: 'Acoustic Night Vol. 4',
-      description: 'Intimate acoustic unplugged session with vocal harmonies & classical guitars.',
-      venue: 'Studio Lounge B',
-      startDate: '2026-11-05',
-      endDate: '2026-11-12',
-      numbersCount: 6,
-      qcPassRate: 40,
-    },
-  ]);
+  let { data } = $props();
+  let activeShows = $derived(data?.shows || []);
 </script>
 
 <svelte:head>
@@ -75,9 +44,9 @@
       </p>
 
       <div class="flex flex-wrap items-center gap-3 pt-3">
-        <Button href="/studio/shows/show-2026-annual/overview" variant="default" size="lg" class="shadow-md shadow-primary/30 font-bold gap-2 px-5 text-sm h-10">
+        <Button href="/studio/shows/{activeShows[0]?.id || 'e0000000-0000-0000-0000-000000000001'}/overview" variant="default" size="lg" class="shadow-md shadow-primary/30 font-bold gap-2 px-5 text-sm h-10">
           <Music class="w-4 h-4" />
-          <span>Enter Annual Concert 2026</span>
+          <span>Enter {activeShows[0]?.title || 'Concert Studio'}</span>
           <ArrowRight class="w-4 h-4" />
         </Button>
         <Button href="/studio/gear" variant="outline" size="lg" class="gap-2 px-5 text-sm h-10 hover:border-primary/40 hover:text-primary transition-all">

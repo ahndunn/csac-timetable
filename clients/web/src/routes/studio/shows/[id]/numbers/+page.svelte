@@ -74,7 +74,7 @@
 
   let { data } = $props();
 
-  const showId = $derived(page.params.id || 'show-2026-annual');
+  const showId = $derived(page.params.id || '');
   const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
   const currentUserName = $derived(page.data?.user?.fullName || 'Administrator');
 
@@ -84,24 +84,23 @@
     numbers = data?.numbers || [];
   });
 
-  let availableRoster = [
-    'Minh Pháp',
-    'Hoàng Nam',
-    'Bảo Anh',
-    'Thu Hà',
-    'Gia Huy',
-    'Anh Pha',
-    'Phương Nhi',
-    'Tùng Dương',
-  ];
-
-  let currentView = $state<'grid' | 'kanban' | 'table'>(
-    (page.url.searchParams.get('view') as 'grid' | 'kanban' | 'table') || 'grid'
+  const availableRoster = $derived(
+    data?.roster ? data.roster.map((m: any) => m.fullName) : []
   );
 
-  let searchQuery = $state(page.url.searchParams.get('q') || '');
-  let selectedStageFilter = $state<string>(page.url.searchParams.get('stage') || 'all');
+  let currentView = $state<'grid' | 'kanban' | 'table'>('grid');
+  let searchQuery = $state('');
+  let selectedStageFilter = $state<string>('all');
   let selectedPmFilter = $state<string>('all');
+
+  $effect(() => {
+    const q = page.url.searchParams.get('q');
+    const stage = page.url.searchParams.get('stage');
+    const view = page.url.searchParams.get('view') as 'grid' | 'kanban' | 'table' | null;
+    if (q !== null) searchQuery = q;
+    if (stage !== null) selectedStageFilter = stage;
+    if (view !== null) currentView = view;
+  });
 
   let isQcDrawerOpen = $state(false);
   let activeSongForQc = $state<SongNumber | null>(null);
@@ -119,8 +118,15 @@
   let isAddModalOpen = $state(false);
   let newTitle = $state('');
   let newGenre = $state('');
-  let newPm = $state('Minh Pháp');
-  let newQcReviewer = $state('Hoàng Nam');
+  let newPm = $state('');
+  let newQcReviewer = $state('');
+
+  $effect(() => {
+    if (availableRoster.length > 0) {
+      if (!newPm) newPm = availableRoster[0];
+      if (!newQcReviewer) newQcReviewer = availableRoster[1] || availableRoster[0];
+    }
+  });
 
   const stageStats = $derived({
     total: numbers.length,
@@ -245,8 +251,8 @@
   function openAddModal() {
     newTitle = '';
     newGenre = '';
-    newPm = availableRoster[0] || 'Minh Pháp';
-    newQcReviewer = availableRoster[1] || 'Hoàng Nam';
+    newPm = availableRoster[0] || '';
+    newQcReviewer = availableRoster[1] || availableRoster[0] || '';
     isAddModalOpen = true;
   }
 

@@ -37,8 +37,10 @@
     expires_at: string;
   }
 
+  let { data } = $props();
+
   let proposals = $state<DemotionProposal[]>([]);
-  let isLoading = $state(true);
+  let isLoading = $state(false);
   let isRequestingOtp = $state(false);
   let otpRequestedInfo = $state<string | null>(null);
 
@@ -50,47 +52,38 @@
   let successMessage = $state<string | null>(null);
   let errorMessage = $state<string | null>(null);
 
+  $effect(() => {
+    proposals = data?.proposals || [];
+  });
+
   async function loadProposals() {
     isLoading = true;
     try {
       const res = await api.governance.listProposals();
-      proposals = (res?.proposals || []).map((p: any) => ({
-        id: p.id,
-        target_user_id: p.target_user_id,
-        target_name: p.target_name || 'Admin User',
-        target_email: p.target_email || 'admin@csac.local',
-        target_role: p.target_role || 'member',
-        reason: p.reason || 'Admin accountability review',
-        initiator_name: p.initiator_name || 'System',
-        required_approvals: p.required_approvals || 3,
-        current_approvals: p.current_approvals || 1,
-        status: p.status || 'pending',
-        expires_at: p.expires_at || new Date(Date.now() + 86400000 * 2).toISOString(),
-      }));
-    } catch {
-      proposals = [
-        {
-          id: 'prop-1',
-          target_user_id: 'u-admin-1',
-          target_name: 'Quang Lực',
-          target_email: 'quangluc@csac.local',
-          target_role: 'member',
-          reason: 'Inactive administrative duties for 90+ consecutive days',
-          initiator_name: 'Hoàng Nam',
-          required_approvals: 3,
-          current_approvals: 2,
-          status: 'pending',
-          expires_at: '2026-10-18T00:00:00Z',
-        },
-      ];
+      proposals = (res?.proposals || []).map((p: any) => {
+        if (!p.id || !p.target_user_id) {
+          throw new Error('Invalid proposal record');
+        }
+        return {
+          id: p.id,
+          target_user_id: p.target_user_id,
+          target_name: p.target_name || p.target_email || p.target_user_id,
+          target_email: p.target_email || '',
+          target_role: p.target_role || 'member',
+          reason: p.reason || '',
+          initiator_name: p.initiator_name || '',
+          required_approvals: Number(p.required_approvals) || 0,
+          current_approvals: Number(p.current_approvals) || 0,
+          status: p.status || 'pending',
+          expires_at: p.expires_at || '',
+        };
+      });
+    } catch (err: any) {
+      errorMessage = err.message || 'Failed to refresh proposals';
     } finally {
       isLoading = false;
     }
   }
-
-  $effect(() => {
-    loadProposals();
-  });
 
   async function handleRequestOtp(proposal: DemotionProposal) {
     isRequestingOtp = true;

@@ -33,10 +33,16 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
 
+  let { data } = $props();
+
   let users = $state<UserAccount[]>([]);
-  let isLoading = $state(true);
+  let isLoading = $state(false);
   let search = $state('');
   let roleFilter = $state<'all' | 'admin' | 'moderator' | 'member' | 'pending'>('all');
+
+  $effect(() => {
+    users = data?.users || [];
+  });
 
   // Modal States
   let isInviteModalOpen = $state(false);
@@ -66,49 +72,12 @@
     try {
       const res = await api.users.list();
       users = res.users || [];
-    } catch {
-      users = [
-        {
-          id: 'u-1',
-          email: 'admin@csac.local',
-          full_name: 'System Administrator',
-          role: 'admin',
-          status: 'active',
-          created_at: '2026-01-01T00:00:00Z',
-        },
-        {
-          id: 'u-2',
-          email: 'hoangnam@csac.local',
-          full_name: 'Hoàng Nam',
-          role: 'moderator',
-          status: 'active',
-          created_at: '2026-02-15T00:00:00Z',
-        },
-        {
-          id: 'u-3',
-          email: 'minhphap@csac.local',
-          full_name: 'Minh Pháp',
-          role: 'member',
-          status: 'active',
-          created_at: '2026-03-01T00:00:00Z',
-        },
-        {
-          id: 'u-4',
-          email: 'new_guitarist@csac.local',
-          full_name: 'Guitarist Invitee',
-          role: 'member',
-          status: 'pending_activation',
-          created_at: '2026-09-12T10:00:00Z',
-        },
-      ];
+    } catch (err: any) {
+      errorMessage = err.message || 'Failed to refresh user accounts';
     } finally {
       isLoading = false;
     }
   }
-
-  $effect(() => {
-    loadUsers();
-  });
 
   let filteredUsers = $derived(
     users.filter((u) => {
