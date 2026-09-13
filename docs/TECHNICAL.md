@@ -50,13 +50,31 @@ flowchart TB
     SchedSvc -->|JSON Telemetry Logs| OpenObserve
 ```
 
-### 1.2 Web Client Reverse Proxy Architecture
+### 1.2 Web Client Reverse Proxy & Data Loading Architecture
+* **Universal Page Loaders (`+page.ts` / `+page.server.ts`) & Zero-Mock Policy**:
+  * **No Inline Mock Data**: Client `.svelte` components and frontend `.ts` modules are strictly forbidden from embedding mock fallback data structures or static mock responses in `catch` blocks.
+  * **SSR/CSR Prefetching**: All page data is loaded via universal `+page.ts` load functions using SvelteKit's fetch, preloading on link hover (`data-sveltekit-preload-data="hover"`). This eliminates layout flickering, flash of empty state, and post-hydration shift.
+  * **Standard Error Boundaries (`+error.svelte`)**: Load failures throw SvelteKit's standard `error(status, { message })` handled by the Bento-styled universal error boundary with retry and diagnostics.
+  * **Authenticated Load Execution**: SvelteKit's `load` handles Bearer token authorization via `$lib/stores/auth.svelte.ts` across client-side transitions.
 * **SvelteKit SSR Proxy Hook (`clients/web/src/hooks.server.ts`)**:
   * Intercepts all incoming client requests matching `/api/*`.
   * Forwards requests seamlessly to the Rust API Gateway backend at `PUBLIC_GATEWAY_URL` or `GATEWAY_URL` (defaulting to `http://gateway:8080` in containerized environments, and `http://localhost:8080` in local development).
   * Forwards HTTP method, request headers, query parameters, and streaming request body, while returning the Gateway's response and status code.
 * **Vite Dev Server Proxy (`clients/web/vite.config.ts`)**:
   * Configures development server proxy for `/api` pointing to `http://localhost:8080`.
+
+### 1.2.1 Redis Caching & Microservice Invalidation Mechanism
+* **Cache-Aside Pattern**:
+  * Read requests (`/api/v1/shows/:id/overview`, `/api/v1/music/instruments`) check Redis key `cache:shows:overview:<id>` (TTL 60s) before hitting PostgreSQL.
+  * On cache hit, returns cached payload immediately in sub-millisecond latency.
+  * On cache miss, loads from PostgreSQL via SQLx, caches into Redis with TTL, and returns payload.
+* **Write Invalidation**:
+  * Any mutation (e.g. updating number stage, reserving instrument, updating roster) synchronously invalidates affected Redis cache keys (`DEL cache:shows:overview:<id>`).
+* **Structured Error Envelope**:
+  * Every backend error returns status code >= 400 with a structured body:
+  ```json
+  { "error": { "code": "STRING_CODE", "message": "Human readable explanation", "status": 404 } }
+  ```
 
 ### 1.3 Web Client Component & Styling Specifications
 * **Styling Architecture**: Built on **Tailwind CSS v4** (`@tailwindcss/vite`) and **shadcn-svelte** (Svelte 5 runes). All legacy vanilla CSS and inline `<style>` tags are replaced with Tailwind utility classes and accessible UI primitives.
