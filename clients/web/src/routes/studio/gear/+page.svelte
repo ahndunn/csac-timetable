@@ -788,13 +788,14 @@
     {#if catalogViewMode === 'cards'}
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {#each filteredGear as item (item.id)}
+          {@const CategoryIcon = getCategoryIcon(item.category)}
           <Card class="flex flex-col justify-between rounded-3xl border border-black/[0.08] dark:border-white/[0.08] bg-card p-5 shadow-sm hover:shadow-md transition-all gap-4 {item.isRevoked ? 'opacity-65 bg-muted/10' : ''}">
             <!-- Top Card Row -->
             <div class="flex flex-col gap-3">
               <div class="flex items-start justify-between gap-2">
                 <div class="flex items-center gap-3">
                   <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0 shadow-sm">
-                    <svelte:component this={getCategoryIcon(item.category)} class="h-5 w-5" />
+                    <CategoryIcon class="h-5 w-5" />
                   </div>
                   <div class="flex flex-col">
                     <span class="text-sm font-black text-foreground line-clamp-1">{item.name}</span>
@@ -925,12 +926,13 @@
             </Table.TableHeader>
             <Table.TableBody>
               {#each filteredGear as item (item.id)}
+                {@const CategoryIcon = getCategoryIcon(item.category)}
                 <Table.TableRow class={item.isRevoked ? 'opacity-60 bg-muted/20' : ''}>
                   <Table.TableCell>
                     <div class="flex flex-col gap-0.5">
                       <div class="flex items-center gap-2">
                         <div class="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
-                          <svelte:component this={getCategoryIcon(item.category)} class="w-3.5 h-3.5" />
+                          <CategoryIcon class="w-3.5 h-3.5" />
                         </div>
                         <span class="text-xs font-bold text-foreground">{item.name}</span>
                       </div>
@@ -1588,13 +1590,14 @@
             <Label class="text-xs font-bold text-foreground">{$tStore('gear.field_category')}</Label>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {#each categoryOptions as opt}
+                {@const OptIcon = opt.icon}
                 <button
                   type="button"
                   class="flex items-center gap-2 p-2.5 rounded-2xl border text-left text-xs font-bold transition-all {newGearCategory === opt.id ? 'border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-sm' : 'border-border/70 bg-muted/20 hover:bg-muted/50 text-foreground'}"
                   onclick={() => (newGearCategory = opt.id)}
                 >
                   <div class="p-1 rounded-lg {newGearCategory === opt.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}">
-                    <svelte:component this={opt.icon} class="w-3.5 h-3.5" />
+                    <OptIcon class="w-3.5 h-3.5" />
                   </div>
                   <span class="truncate">{$tStore(opt.labelKey)}</span>
                 </button>
@@ -1663,13 +1666,14 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {#each policyOptions as pol}
+              {@const PolIcon = pol.icon}
               <button
                 type="button"
                 class="flex items-start gap-3 p-3 rounded-2xl border text-left transition-all {newGearPolicy === pol.id ? 'border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm' : 'border-border/70 bg-muted/20 hover:bg-muted/40'}"
                 onclick={() => (newGearPolicy = pol.id)}
               >
                 <div class="p-1.5 rounded-xl mt-0.5 {newGearPolicy === pol.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}">
-                  <svelte:component this={pol.icon} class="w-3.5 h-3.5" />
+                  <PolIcon class="w-3.5 h-3.5" />
                 </div>
                 <div class="flex flex-col gap-0.5">
                   <span class="text-xs font-bold text-foreground">{$tStore(pol.labelKey)}</span>
