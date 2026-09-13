@@ -57,6 +57,9 @@ class AuthState {
     if (browser) {
       localStorage.setItem('csac_token', token);
       localStorage.setItem('csac_user', JSON.stringify(user));
+      // Synchronize cookies for SSR
+      document.cookie = `csac_role=${user.role}; Path=/; SameSite=Lax; Max-Age=2592000`;
+      document.cookie = `csac_token=${token}; Path=/; SameSite=Lax; Max-Age=2592000`;
       this.syncChannel?.postMessage({ type: 'SESSION_UPDATED', token, user });
       this.initSseListener();
     }
@@ -68,6 +71,9 @@ class AuthState {
     if (browser) {
       localStorage.removeItem('csac_token');
       localStorage.removeItem('csac_user');
+      // Clear cookies
+      document.cookie = 'csac_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+      document.cookie = 'csac_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
       this.syncChannel?.postMessage({ type: 'SESSION_CLEARED' });
       this.closeSse();
     }

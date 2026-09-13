@@ -35,7 +35,14 @@ async function request<T>(path: string, options: RequestInit = {}, customFetch?:
     headers,
   });
 
-  const isJson = res.headers.get('content-type')?.includes('application/json');
+  let isJson = false;
+  try {
+    const contentType = res.headers?.get?.('content-type');
+    isJson = typeof contentType === 'string' && contentType.includes('application/json');
+  } catch {
+    // If header inspection fails due to environment restrictions
+    isJson = false;
+  }
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {

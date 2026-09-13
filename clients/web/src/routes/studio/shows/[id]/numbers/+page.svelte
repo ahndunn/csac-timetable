@@ -55,6 +55,8 @@
     TableRow,
   } from '$lib/components/ui/table';
 
+  import { auth } from '$lib/stores/auth.svelte';
+
   interface SongNumber {
     id: string;
     title: string;
@@ -75,8 +77,9 @@
   let { data } = $props();
 
   const showId = $derived(page.params.id || '');
-  const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
-  const currentUserName = $derived(page.data?.user?.fullName || 'Administrator');
+  const activeUser = $derived(auth.user || page.data?.user || null);
+  const userRole = $derived((activeUser?.role || 'member') as UserRole);
+  const currentUserName = $derived(activeUser?.full_name || activeUser?.email || 'Guest');
 
   let numbers = $state<SongNumber[]>([]);
 
@@ -656,7 +659,7 @@
                 <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
                 <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
                 <div class="text-[11px] text-muted-foreground">{song.genre}</div>
-                {#if canManageNumbers(userRole)}
+                {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
                   <div class="flex gap-1.5 mt-2">
                     <Button variant="outline" size="sm" class="flex-1 text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
                       <Users class="w-3 h-3 mr-1" /> Lineup
@@ -690,7 +693,7 @@
                   </div>
                 {/if}
 
-                {#if canManageNumbers(userRole)}
+                {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
                   <div class="flex gap-1.5 mt-2">
                     <Button variant="outline" size="sm" class="flex-1 text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
                       Lineup
@@ -717,11 +720,13 @@
                 <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
                 <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
                 <div class="text-[11px] text-muted-foreground">QC: {song.qcReviewer}</div>
-                <div class="mt-2">
-                  <Button size="sm" class="w-full text-[11px] h-7 bg-orange-600 hover:bg-orange-700 text-white gap-1" onclick={() => openQcDrawer(song)}>
-                    <UserCheck class="w-3 h-3" /> Audit & Submit QC
-                  </Button>
-                </div>
+                {#if canAuditSongScoped(userRole, false, song.qcReviewer === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                  <div class="mt-2">
+                    <Button size="sm" class="w-full text-[11px] h-7 bg-orange-600 hover:bg-orange-700 text-white gap-1" onclick={() => openQcDrawer(song)}>
+                      <UserCheck class="w-3 h-3" /> Audit & Submit QC
+                    </Button>
+                  </div>
+                {/if}
               </Card>
             {/each}
           </div>
@@ -741,11 +746,13 @@
                 {#if song.qcNotes}
                   <div class="text-[11px] p-1.5 bg-slate-50 text-slate-700 rounded border border-slate-200">{song.qcNotes}</div>
                 {/if}
-                <div class="mt-2">
-                  <Button size="sm" class="w-full text-[11px] h-7 bg-emerald-600 hover:bg-emerald-700 text-white" onclick={() => advanceStatus(song, 'stage_ready')}>
-                    Promote to Ready
-                  </Button>
-                </div>
+                {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                  <div class="mt-2">
+                    <Button size="sm" class="w-full text-[11px] h-7 bg-emerald-600 hover:bg-emerald-700 text-white" onclick={() => advanceStatus(song, 'stage_ready')}>
+                      Promote to Ready
+                    </Button>
+                  </div>
+                {/if}
               </Card>
             {/each}
           </div>
@@ -763,9 +770,11 @@
                 <h4 class="text-sm font-bold text-foreground m-0">{song.title}</h4>
                 <div class="text-xs text-muted-foreground">Leader (PM): {song.pmName}</div>
                 <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                  <Button variant="outline" size="sm" class="text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
-                    Lineup
-                  </Button>
+                  {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                    <Button variant="outline" size="sm" class="text-[11px] h-7 px-2" onclick={() => openLineupDrawer(song)}>
+                      Lineup
+                    </Button>
+                  {/if}
                   <div class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                     <CircleCheck class="w-3.5 h-3.5" /> Ready
                   </div>
@@ -832,34 +841,38 @@
                       <span>Sprint</span>
                     </a>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      class="h-7 px-2"
-                      onclick={() => openLineupDrawer(song)}
-                      title="Assign Band Lineup"
-                    >
-                      <Users class="w-3.5 h-3.5" />
-                    </Button>
+                    {#if canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        class="h-7 px-2"
+                        onclick={() => openLineupDrawer(song)}
+                        title="Assign Band Lineup"
+                      >
+                        <Users class="w-3.5 h-3.5" />
+                      </Button>
 
-                    {#if song.stage === 'draft'}
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        class="h-7 px-2.5 text-xs border border-border/70 font-semibold"
-                        onclick={() => advanceStatus(song, 'in_practice')}
-                      >
-                        Start
-                      </Button>
-                    {:else if song.stage === 'in_practice'}
-                      <Button
-                        size="sm"
-                        class="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                        onclick={() => advanceStatus(song, 'ready_for_qc')}
-                      >
-                        Submit QC
-                      </Button>
-                    {:else if song.stage === 'ready_for_qc'}
+                      {#if song.stage === 'draft'}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          class="h-7 px-2.5 text-xs border border-border/70 font-semibold"
+                          onclick={() => advanceStatus(song, 'in_practice')}
+                        >
+                          Start
+                        </Button>
+                      {:else if song.stage === 'in_practice'}
+                        <Button
+                          size="sm"
+                          class="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                          onclick={() => advanceStatus(song, 'ready_for_qc')}
+                        >
+                          Submit QC
+                        </Button>
+                      {/if}
+                    {/if}
+
+                    {#if song.stage === 'ready_for_qc' && canAuditSongScoped(userRole, false, song.qcReviewer === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
                       <Button
                         size="sm"
                         class="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
@@ -867,7 +880,9 @@
                       >
                         Audit
                       </Button>
-                    {:else if song.stage === 'qc_approved'}
+                    {/if}
+
+                    {#if song.stage === 'qc_approved' && canManageSongScoped(userRole, false, song.pmName === currentUserName || userRole === 'admin' || userRole === 'moderator' || userRole === 'dm')}
                       <Button
                         size="sm"
                         class="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -875,7 +890,9 @@
                       >
                         Promote
                       </Button>
-                    {:else}
+                    {/if}
+
+                    {#if song.stage === 'stage_ready'}
                       <CircleCheck class="w-4 h-4 text-emerald-600 inline-block ml-2" />
                     {/if}
                   </div>

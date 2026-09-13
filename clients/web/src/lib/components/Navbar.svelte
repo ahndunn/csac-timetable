@@ -80,21 +80,16 @@
   }
 
   const isTimetableRoute = $derived((page.url.pathname as string) === '/utils/timetable');
-  const userRole = $derived((page.data.user?.role || auth.user?.role || 'admin') as UserRole);
-
-  function selectDemoRole(newRole: UserRole) {
-    const url = new URL(page.url);
-    url.searchParams.set('role', newRole);
-    goto(url.toString(), { invalidateAll: true });
-  }
+  const activeUser = $derived(auth.user || page.data.user || null);
+  const userRole = $derived((activeUser?.role || 'member') as UserRole);
 
   const roleBadgeStyles: Record<string, string> = {
-    member: 'bg-sky-100 text-sky-800 border-sky-200',
-    qc: 'bg-purple-100 text-purple-800 border-purple-200',
-    pm: 'bg-amber-100 text-amber-800 border-amber-200',
-    dm: 'bg-green-100 text-green-800 border-green-200',
-    moderator: 'bg-orange-100 text-orange-800 border-orange-200',
-    admin: 'bg-rose-100 text-rose-800 border-rose-200',
+    member: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30',
+    qc: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/30',
+    pm: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30',
+    dm: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30',
+    moderator: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30',
+    admin: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30',
   };
 </script>
 
@@ -139,7 +134,7 @@
         <span>{$tStore('nav.gear')}</span>
       </Button>
 
-      {#if canAccessAdmin(userRole)}
+      {#if canAccessAdmin(userRole) && auth.isAuthenticated}
         <Button
           href="/admin/shows"
           variant={page.url.pathname.startsWith('/admin/shows') ? 'secondary' : 'ghost'}
@@ -215,50 +210,75 @@
       {/if}
     {/if}
 
-    <!-- User Profile / Interactive Role Switcher Dropdown -->
+    <!-- User Profile Dropdown -->
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}
           <button
             {...props}
             type="button"
-            class="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
+            class="flex h-8 items-center gap-2 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground shadow-2xs hover:bg-muted/70 transition-all active:scale-[0.98]"
+            aria-label="User Profile Menu"
           >
-            <UserCircle size={15} class="text-primary" />
-            <span class="max-w-[120px] truncate">
-              {auth.user?.full_name || auth.user?.email || page.data.user?.fullName || 'System Admin'}
+            <UserCircle size={15} class="text-primary shrink-0" />
+            <span class="max-w-[120px] truncate font-medium">
+              {#if auth.isAuthenticated}
+                {auth.user?.full_name || auth.user?.email || 'Member'}
+              {:else}
+                Guest
+              {/if}
             </span>
-            <span class={cn("rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase", roleBadgeStyles[userRole] || roleBadgeStyles.admin)}>
-              {userRole}
-            </span>
-            <ChevronDown size={12} class="text-muted-foreground" />
+            {#if auth.isAuthenticated}
+              <span class={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none shadow-2xs", roleBadgeStyles[userRole] || roleBadgeStyles.member)}>
+                <span class="size-1 rounded-full bg-current opacity-75"></span>
+                <span>{userRole}</span>
+              </span>
+            {/if}
+            <ChevronDown size={12} class="text-muted-foreground shrink-0 ml-0.5" />
           </button>
         {/snippet}
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end" class="w-64">
-        <DropdownMenu.Label class="text-xs text-muted-foreground uppercase">Simulation & Role View</DropdownMenu.Label>
-        <DropdownMenu.Separator />
-        {#each ['member', 'qc', 'pm', 'dm', 'moderator', 'admin'] as roleItem}
-          <DropdownMenu.Item
-            class="flex items-center justify-between py-1.5"
-            onclick={() => selectDemoRole(roleItem as UserRole)}
-          >
-            <span class={cn("rounded px-1.5 py-0.5 text-[10px] font-bold uppercase", roleBadgeStyles[roleItem])}>
-              {roleItem}
-            </span>
-            {#if userRole === roleItem}
-              <Check size={14} class="text-primary" />
-            {/if}
-          </DropdownMenu.Item>
-        {/each}
-        <DropdownMenu.Separator />
+      <DropdownMenu.Content align="end" class="w-60 p-1.5">
         {#if auth.isAuthenticated}
-          <DropdownMenu.Item onclick={() => auth.logout()} class="text-destructive">
+          <div class="px-2.5 py-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-semibold text-xs text-foreground truncate max-w-[130px]">
+                {auth.user?.full_name || 'CSAC Member'}
+              </span>
+              <span class={cn("inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider leading-none shadow-2xs", roleBadgeStyles[userRole] || roleBadgeStyles.member)}>
+                <span class="size-1 rounded-full bg-current opacity-75"></span>
+                <span>{userRole}</span>
+              </span>
+            </div>
+            {#if auth.user?.email}
+              <span class="block text-[11px] text-muted-foreground truncate mt-0.5">
+                {auth.user?.email}
+              </span>
+            {/if}
+          </div>
+          <DropdownMenu.Separator />
+          {#if canAccessAdmin(userRole)}
+            <DropdownMenu.Item onclick={() => goto('/admin/users')} class="cursor-pointer">
+              <Users size={14} class="mr-2 text-muted-foreground" />
+              <span>{$tStore('nav.users')}</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator />
+          {/if}
+          <DropdownMenu.Item onclick={() => auth.logout()} class="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
             <LogOut size={14} class="mr-2" />
             <span>Sign Out</span>
           </DropdownMenu.Item>
         {:else}
-          <DropdownMenu.Item onclick={() => goto('/auth/login')}>
+          <div class="px-2.5 py-2">
+            <span class="font-semibold text-xs text-foreground block">
+              Guest User
+            </span>
+            <span class="text-[11px] text-muted-foreground block mt-0.5">
+              Sign in to manage shows, numbers & rosters
+            </span>
+          </div>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item onclick={() => goto('/auth/login')} class="cursor-pointer">
             <UserCircle size={14} class="mr-2 text-primary" />
             <span>Sign In</span>
           </DropdownMenu.Item>

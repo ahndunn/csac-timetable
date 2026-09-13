@@ -46,9 +46,12 @@
     TableRow,
   } from '$lib/components/ui/table';
 
+  import { auth } from '$lib/stores/auth.svelte';
+
   let { data } = $props();
 
-  const userRole = $derived((page.data?.user?.role || 'admin') as UserRole);
+  const activeUser = $derived(auth.user || page.data?.user || null);
+  const userRole = $derived((activeUser?.role || 'member') as UserRole);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

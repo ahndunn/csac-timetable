@@ -42,5 +42,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	return resolve(event);
+	return resolve(event, {
+		filterSerializedResponseHeaders: (name) =>
+			name.toLowerCase() === 'content-type' || name.toLowerCase().startsWith('x-')
+	});
 };
