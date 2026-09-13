@@ -1,23 +1,21 @@
 import type { PageLoad } from './$types';
+import { error } from '@sveltejs/kit';
 import { api } from '$lib/api/client';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-  const showId = params.id || 'show-2026-annual';
+  const showId = params.id || 'e0000000-0000-0000-0000-000000000001';
   try {
     const [sprintData, historyData] = await Promise.all([
-      api.shows.getActiveSprint(showId, fetch).catch(() => null),
-      api.shows.getSprintHistory(showId, 'sprint-3', fetch).catch(() => null),
+      api.shows.getActiveSprint(showId, fetch),
+      api.shows.getSprintHistory(showId, 'b0000000-0000-0000-0000-000000000001', fetch).catch(() => null),
     ]);
 
     return {
       sprintData,
       historyData,
     };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to load show sprint data:', err);
-    return {
-      sprintData: null,
-      historyData: null,
-    };
+    throw error(err.status || 500, err.message || 'Failed to load sprint timetable data');
   }
 };

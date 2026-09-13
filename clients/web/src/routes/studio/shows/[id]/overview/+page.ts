@@ -1,26 +1,14 @@
 import type { PageLoad } from './$types';
+import { error } from '@sveltejs/kit';
 import { api } from '$lib/api/client';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-  const showId = params.id || 'show-2026-annual';
+  const showId = params.id || 'e0000000-0000-0000-0000-000000000001';
   try {
     const overview = await api.shows.getOverview(showId, fetch);
     return { overview };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to load show overview:', err);
-    return {
-      overview: {
-        id: showId,
-        title: 'CSAC Annual Concert 2026',
-        venue: 'CSAC Main Auditorium',
-        dates: 'Oct 1 - Oct 15, 2026',
-        readiness_percent: 75,
-        total_numbers: 12,
-        total_hours: 48,
-        qc_approved_count: 9,
-        highlights: [],
-        milestones: [],
-      },
-    };
+    throw error(err.status || 500, err.message || 'Failed to load show overview');
   }
 };
