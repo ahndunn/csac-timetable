@@ -18,16 +18,19 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, customFetch?: typeof fetch): Promise<T> {
   const headers = new Headers(options.headers || {});
-  headers.set('Content-Type', 'application/json');
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const token = authModule?.auth?.token;
-  if (token) {
+  if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const fetchFn = customFetch || fetch;
+  const res = await fetchFn(`${API_BASE}${path}`, {
     ...options,
     headers,
   });
@@ -36,7 +39,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    const errorMsg = data?.error || (typeof data === 'string' ? data : 'API Request Failed');
+    const errorMsg =
+      (typeof data === 'object' && data !== null && 'error' in data
+        ? typeof data.error === 'object' && data.error !== null && 'message' in data.error
+          ? data.error.message
+          : data.error
+        : null) ||
+      (typeof data === 'string' ? data : 'API Request Failed');
     throw new ApiError(res.status, errorMsg, data);
   }
 
@@ -70,7 +79,7 @@ export const api = {
     me: () => request<any>('/auth/me'),
   },
   admin: {
-    listUsers: () => request<any[]>('/admin/users'),
+    listUsers: (customFetch?: typeof fetch) => request<any[]>('/admin/users', {}, customFetch),
     inviteUser: (payload: { email: string; full_name?: string; role?: string; show_id?: string; phone?: string }) =>
       request<{ user: any; message: string }>('/admin/users/invite', {
         method: 'POST',
@@ -100,7 +109,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
-    listProposals: () => request<any[]>('/admin/approve/proposals'),
+    listProposals: (customFetch?: typeof fetch) => request<any[]>('/admin/approve/proposals', {}, customFetch),
     requestOtp: (proposalId: string) =>
       request<{ message: string; ttl_seconds: number }>(`/admin/approve/${proposalId}/request-otp`, {
         method: 'POST',
@@ -115,8 +124,8 @@ export const api = {
       }),
   },
   users: {
-    list: async () => {
-      const users = await request<any[]>('/admin/users');
+    list: async (customFetch?: typeof fetch) => {
+      const users = await request<any[]>('/admin/users', {}, customFetch);
       return { users };
     },
     invite: (payload: { email: string; full_name?: string; role?: string; show_id?: string; phone?: string }) =>
@@ -140,8 +149,8 @@ export const api = {
       }),
   },
   governance: {
-    listProposals: async () => {
-      const proposals = await request<any[]>('/admin/approve/proposals');
+    listProposals: async (customFetch?: typeof fetch) => {
+      const proposals = await request<any[]>('/admin/approve/proposals', {}, customFetch);
       return { proposals };
     },
     requestOtp: (proposalId: string) =>
@@ -166,8 +175,8 @@ export const api = {
       }),
   },
   events: {
-    list: () => request<any[]>('/events'),
-    get: (eventId: string) => request<{ event: any; time_slots: any[] }>(`/events/${eventId}`),
+    list: (customFetch?: typeof fetch) => request<any[]>('/events', {}, customFetch),
+    get: (eventId: string, customFetch?: typeof fetch) => request<{ event: any; time_slots: any[] }>(`/events/${eventId}`, {}, customFetch),
     create: (payload: {
       title: string;
       description?: string;
@@ -190,7 +199,7 @@ export const api = {
       }),
   },
   music: {
-    listNumbers: () => request<any[]>('/music/numbers'),
+    listNumbers: (customFetch?: typeof fetch) => request<any[]>('/music/numbers', {}, customFetch),
     createNumber: (payload: {
       title: string;
       genre?: string;
@@ -202,7 +211,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
-    listInstruments: () => request<{ instruments: any[]; reservations: any[] }>('/music/instruments'),
+    listInstruments: (customFetch?: typeof fetch) => request<{ instruments: any[]; reservations: any[] }>('/music/instruments', {}, customFetch),
     registerInstrument: (payload: {
       name: string;
       code: string;
