@@ -258,10 +258,39 @@ CREATE TABLE IF NOT EXISTS member_sprint_availabilities (
     CONSTRAINT unique_sprint_user_slot UNIQUE (sprint_id, user_id, day_of_week, slot_label)
 );
 
+-- Member Sprint Availabilities History Audit Log
+CREATE TABLE IF NOT EXISTS member_sprint_availabilities_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    actor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action VARCHAR(20) NOT NULL, -- 'ADD', 'UPDATE', 'DELETE'
+    day_of_week VARCHAR(50) NOT NULL,
+    slot_label VARCHAR(100) NOT NULL,
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Practice Sprint Schedule Compute Runs & Audit History
+CREATE TABLE IF NOT EXISTS sprint_schedule_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sprint_id UUID NOT NULL REFERENCES practice_sprints(id) ON DELETE CASCADE,
+    triggered_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'queued', -- 'queued', 'processing', 'completed', 'failed'
+    duration_ms INT,
+    score DOUBLE PRECISION,
+    conflict_count INT DEFAULT 0,
+    assignments JSONB,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
 CREATE INDEX IF NOT EXISTS idx_instruments_code ON instruments(code);
 CREATE INDEX IF NOT EXISTS idx_music_numbers_pm ON music_numbers(pm_user_id);
 CREATE INDEX IF NOT EXISTS idx_practice_tasks_sprint ON practice_tasks(sprint_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_instrument ON instrument_reservations(instrument_id);
+CREATE INDEX IF NOT EXISTS idx_sprint_runs_sprint ON sprint_schedule_runs(sprint_id);
 
 -- ==========================================
 -- SEED REALISTIC CSAC CLUB ASSETS & MEMBERS

@@ -130,7 +130,7 @@ services:
     networks:
       - csac-network
 
-  # CSP Timetable Solver Microservice (gRPC)
+  # CSP Timetable Solver Microservice (gRPC + Kafka Consumer)
   scheduler-service:
     build:
       context: ../servers
@@ -143,12 +143,18 @@ services:
       - "50051:50051"
     environment:
       RUST_LOG: info
+      DATABASE_URL: postgres://csac_admin:csac_password@postgres:5432/csac_timetable
       REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
       OPENOBSERVE_URL: http://openobserve:5080/api/default/default/_json
       OPENOBSERVE_AUTH: Basic YWRtaW5AY3NhYy5sb2NhbDpjc2FjX29ic2VydmVfcGFzc3dvcmQ=
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - csac-network
 

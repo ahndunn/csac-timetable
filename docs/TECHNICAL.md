@@ -14,37 +14,40 @@ CSAC Timetable Studio is architected as a production-grade multi-service monorep
 ```mermaid
 flowchart TB
     subgraph Clients ["Client Layer (clients/)"]
-        Web["Web Client (SvelteKit SSR / Svelte 5 Runes)<br/>Routes: /, /utils/*, /admin/*, /auth/login, /events/*"]
+        Web["Web Client (SvelteKit SSR / Svelte 5 Runes)<br/>Routes: /, /utils/*, /admin/*, /auth/login, /events/*, /studio/*"]
     end
 
     subgraph GatewayLayer ["Reverse Proxy & Edge Gateway"]
-        GW["API Gateway (Rust / Axum + Tower)<br/>Argon2id Auth, JWT Middleware, RBAC, REST API"]
+        GW["API Gateway (Rust / Axum + Tower)<br/>Argon2id Auth, JWT Middleware, RBAC, REST API, SSE Delegator"]
     end
 
     subgraph EventAndCache ["Event Bus, Cache & Observability"]
-        Redis[("Redis 7.4<br/>OTP Storage (TTL 10m), Token Rate Limiting")]
-        Kafka{{"Apache Kafka 3.9 (KRaft Mode)<br/>Topics: user.created, otp.generated, event.status_changed"}}
+        Redis[("Redis 7.4<br/>OTP Storage (TTL 10m), Cache-Aside, Rate Limiting, Pub/Sub SSE Bus")]
+        Kafka{{"Apache Kafka 3.9 (KRaft Mode)<br/>Topics: user.created, otp.generated, event.status_changed, scheduler.requested, scheduler.completed"}}
         OpenObserve[("OpenObserve v0.14<br/>Unified Structured JSON Logs & OTLP Traces (:5080)")]
         Mailpit[("Mailpit / SMTP<br/>Dev/Prod SMTP Email Dispatcher (:1025/:8025)")]
     end
 
     subgraph Microservices ["Backend Services & Workers (servers/)"]
-        SchedSvc["Scheduler Service (Rust 1.85+ / Tonic gRPC)<br/>CSP Timetable Engine"]
+        SchedSvc["Scheduler Service (Rust 1.85+ / rdkafka + CSP Engine)<br/>Async Sprint CSP Timetable Engine"]
         NotifyWorker["Notification Worker (Rust 1.85+ / rdkafka + lettre)<br/>Async SMTP Email Dispatcher"]
     end
 
     subgraph DataStore ["Persistence Layer"]
-        PG[("PostgreSQL 17<br/>users, events, event_time_slots, votes, admin_downgrade_proposals, admin_downgrade_votes, audit_logs")]
+        PG[("PostgreSQL 17<br/>users, events, event_time_slots, votes, sprint_schedule_runs, audit_logs")]
     end
 
     Web -->|HTTP / REST Proxy (:3000 -> :8080)| GW
-    GW <-->|Check / Consume OTP & Rate Limits| Redis
+    GW <-->|Check / Consume OTP, Cache & Pub/Sub SSE| Redis
     GW <-->|CRUD & Relational Integrity| PG
-    GW -->|Produce Events| Kafka
-    GW -->|Sync RPC: solve| SchedSvc
+    GW -->|Produce Events (User, OTP, Schedule Requests)| Kafka
     GW -->|JSON Telemetry Logs| OpenObserve
 
     Kafka -->|Consume Events| NotifyWorker
+    Kafka -->|Consume Schedule Requests| SchedSvc
+    SchedSvc -->|Persist Completed Runs| PG
+    SchedSvc -->|Broadcast Status & Updated Run| Redis
+    SchedSvc -->|Produce Completed Events| Kafka
     NotifyWorker -->|Send Email Credentials / OTP| Mailpit
     NotifyWorker -->|JSON Telemetry Logs| OpenObserve
     SchedSvc -->|JSON Telemetry Logs| OpenObserve
@@ -509,7 +512,9 @@ CREATE TABLE sprint_schedule_runs (
 * `POST /api/v1/sprints/:id/tasks`: Create practice task `{ music_number_id, task_type, title, description, assigned_to, qc_reviewer_id }`.
 * `PUT /api/v1/sprints/:id/tasks/:task_id/review`: Submit QC review verdict `{ status: 'passed' | 'blocked' | 'in_progress', qc_feedback: string }`.
 * `POST /api/v1/sprints/:id/availability`: Fast 1-click member free-time slot registration `{ slots: [{ day_of_week, slot_label, is_available }] }`.
-* `POST /api/v1/sprints/:id/schedule`: Backend CSP scheduling engine stub $\rightarrow$ returns `{ "status": "not_implemented", "message": "Backend CSP scheduling engine will be implemented in upcoming release" }` with HTTP status `501 Not Implemented`.
+* `POST /api/v1/sprints/:id/schedule`: Asynchronous CSP scheduling trigger $\rightarrow$ enqueues job to Kafka `csac.scheduler.requested`, inserts `sprint_schedule_runs` (`status: queued`), and returns HTTP status `202 Accepted` with `{ run_id, sprint_id, status: "queued", message: "..." }`.
+* `GET /api/v1/sprints/:id/schedule/stream`: Server-Sent Events (SSE) stream backed by Redis Pub/Sub (`sprint:schedule:<id>`). Emits real-time progress events `schedule_status` (`queued`, `processing`) and `schedule_updated` (`completed`, `failed`).
+* `GET /api/v1/shows/:id/sprints/:sprint_id/history`: Retrieves persistent compute execution history (`sprint_schedule_runs`) and member free-time registration audit entries (`member_sprint_availabilities_history`).
 
 ---
 
