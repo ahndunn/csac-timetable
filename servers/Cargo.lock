@@ -744,6 +744,7 @@ dependencies = [
 name = "gateway"
 version = "0.1.0"
 dependencies = [
+ "async-stream",
  "axum",
  "axum-extra",
  "chrono",
@@ -2166,15 +2167,20 @@ dependencies = [
 name = "scheduler-service"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "csac-common",
+ "csac-kafka-events",
  "csac-proto",
+ "rdkafka",
  "redis",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
  "tonic",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
