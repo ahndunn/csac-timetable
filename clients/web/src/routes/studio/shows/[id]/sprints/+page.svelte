@@ -266,30 +266,88 @@
     }
   }
 
+  // Lifecycle-managed EventSource reference (cleaned up on component destroy via $effect)
+  let activeEventSource = $state<EventSource | null>(null);
+
+  $effect(() => {
+    return () => {
+      // Svelte 5: $effect cleanup — close SSE stream when component is destroyed
+      if (activeEventSource) {
+        activeEventSource.close();
+        activeEventSource = null;
+      }
+    };
+  });
+
   // Trigger CSP Auto-Scheduler via Async Kafka & SSE Pipeline
   async function handleAutoSchedule() {
     isScheduling = true;
     taskStatus = 'queued';
 
+    // Use the real sprint UUID from the loaded sprint data so the Redis Pub/Sub
+    // channel (sprint:schedule:<uuid>) matches the channel the scheduler broadcasts to.
+    // Using a non-UUID string (e.g. 'sprint-1') causes the gateway to generate a
+    // random UUID for the Kafka event, making the SSE channel unreachable.
+    const sprintId = data?.sprintData?.sprint?.id;
+    const showId = page.params.id || 'e0000000-0000-0000-0000-000000000001';
+
+    if (!sprintId) {
+      console.error('[SSE] No sprint ID available from sprintData — cannot trigger scheduler');
+      taskStatus = 'failed';
+      isScheduling = false;
+      return;
+    }
+
     try {
-      const res = await fetch('/api/v1/sprints/sprint-1/schedule', { method: 'POST' });
+      const res = await fetch(`/api/v1/sprints/${sprintId}/schedule`, { method: 'POST' });
       if (res.ok) {
-        const eventSource = new EventSource('/api/v1/sprints/sprint-1/schedule/stream');
+        // Close any existing stream before opening a new one
+        if (activeEventSource) {
+          activeEventSource.close();
+        }
+
+        const eventSource = new EventSource(`/api/v1/sprints/${sprintId}/schedule/stream`);
+        activeEventSource = eventSource;
+
         eventSource.addEventListener('schedule_status', (e: MessageEvent) => {
           const sseData = JSON.parse(e.data);
           if (sseData.status === 'processing') {
             taskStatus = 'processing';
           }
         });
-        eventSource.addEventListener('schedule_updated', () => {
+
+        eventSource.addEventListener('schedule_updated', async () => {
           taskStatus = 'completed';
           isScheduling = false;
           isAutoScheduled = true;
-          activeToast = $tStore('studio.scheduled_toast', { count: scheduledSessions.length });
           eventSource.close();
+          activeEventSource = null;
+
+          // Reload scheduled rehearsals from backend so the calendar reflects the
+          // CSP solver's output without requiring a full page navigation.
+          try {
+            const refreshed = await api.shows.getActiveSprint(showId);
+            scheduledSessions = refreshed?.rehearsals || [];
+          } catch (refreshErr) {
+            console.warn('[SSE] Could not refresh sprint sessions after schedule completion:', refreshErr);
+          }
+
+          activeToast = $tStore('studio.scheduled_toast', { count: scheduledSessions.length });
           setTimeout(() => { activeToast = null; }, 4000);
         });
+
+        eventSource.onerror = (err) => {
+          console.error('[SSE] EventSource error:', err);
+          eventSource.close();
+          activeEventSource = null;
+          if (taskStatus !== 'completed') {
+            taskStatus = 'failed';
+            isScheduling = false;
+          }
+        };
       } else {
+        // Gateway returned a non-2xx response — fall back to optimistic UI simulation
+        console.warn('[SSE] Schedule trigger returned', res.status, '— using fallback simulation');
         setTimeout(() => {
           taskStatus = 'processing';
           setTimeout(() => {

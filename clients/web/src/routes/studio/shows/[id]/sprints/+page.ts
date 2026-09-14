@@ -5,10 +5,14 @@ import { api } from '$lib/api/client';
 export const load: PageLoad = async ({ params, fetch }) => {
   const showId = params.id || 'e0000000-0000-0000-0000-000000000001';
   try {
-    const [sprintData, historyData] = await Promise.all([
-      api.shows.getActiveSprint(showId, fetch),
-      api.shows.getSprintHistory(showId, 'b0000000-0000-0000-0000-000000000001', fetch).catch(() => null),
-    ]);
+    // Load sprint data first so we can use the real sprint UUID for history fetch.
+    // Previously used a hardcoded seeded UUID which would fail for different environments.
+    const sprintData = await api.shows.getActiveSprint(showId, fetch);
+    const sprintId: string | undefined = sprintData?.sprint?.id;
+
+    const historyData = sprintId
+      ? await api.shows.getSprintHistory(showId, sprintId, fetch).catch(() => null)
+      : null;
 
     return {
       sprintData,
