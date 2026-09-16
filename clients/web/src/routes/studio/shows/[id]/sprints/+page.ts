@@ -3,7 +3,10 @@ import { error } from '@sveltejs/kit';
 import { api } from '$lib/api/client';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-  const showId = params.id || 'e0000000-0000-0000-0000-000000000001';
+  const showId = params.id;
+  if (!showId) {
+    throw error(400, 'Show ID is required');
+  }
   try {
     // Load sprint data first so we can use the real sprint UUID for history fetch.
     // Previously used a hardcoded seeded UUID which would fail for different environments.
