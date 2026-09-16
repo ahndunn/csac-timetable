@@ -16,8 +16,19 @@
   import { Badge } from '$lib/components/ui/badge';
 
   let { data } = $props();
-  const showId = $derived(page.params.id);
-  const overview = $derived(data?.overview);
+  const showId = $derived(page.params.id || '');
+  const overview = $derived(data?.overview || {
+    id: showId,
+    title: '',
+    venue: '',
+    dates: '',
+    readiness_percent: 0,
+    total_numbers: 0,
+    total_hours: 0,
+    qc_approved_count: 0,
+    highlights: [],
+    milestones: [],
+  });
 </script>
 
 <div class="flex flex-col gap-5">

@@ -44,14 +44,16 @@
       </p>
 
       <div class="flex flex-wrap items-center gap-3 pt-3">
-        <Button href="/studio/shows/{activeShows[0]?.id || 'e0000000-0000-0000-0000-000000000001'}/overview" variant="default" size="lg" class="shadow-md shadow-primary/30 font-bold gap-2 px-5 text-sm h-10">
-          <Music class="w-4 h-4" />
-          <span>Enter {activeShows[0]?.title || 'Concert Studio'}</span>
-          <ArrowRight class="w-4 h-4" />
-        </Button>
+        {#if activeShows.length > 0}
+          <Button href="/studio/shows/{activeShows[0].id}/overview" variant="default" size="lg" class="shadow-md shadow-primary/30 font-bold gap-2 px-5 text-sm h-10">
+            <Music class="w-4 h-4" />
+            <span>Enter {activeShows[0].title}</span>
+            <ArrowRight class="w-4 h-4" />
+          </Button>
+        {/if}
         <Button href="/studio/gear" variant="outline" size="lg" class="gap-2 px-5 text-sm h-10 hover:border-primary/40 hover:text-primary transition-all">
           <FileSpreadsheet class="w-4 h-4 text-primary" />
-          <span>Instrument Fleet</span>
+          <span>{$tStore('nav.gear')}</span>
         </Button>
       </div>
     </div>
