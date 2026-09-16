@@ -155,20 +155,20 @@
   {/if}
 
   <!-- Bento Calendar Viewport -->
-  <div class="flex-1 overflow-x-auto rounded-[18px] border border-black/[0.08] bg-white shadow-sm dark:border-white/[0.08] dark:bg-card">
+  <div class="flex-1 overflow-x-auto rounded-[18px] border border-border bg-card shadow-xs">
     <table class="w-full border-collapse text-left min-w-[760px]">
       <thead>
-        <tr class="border-b border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50">
-          <th class="w-20 p-3 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800">GMT+7</th>
+        <tr class="border-b border-border bg-muted/50">
+          <th class="w-20 p-3 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-r border-border">GMT+7</th>
           {#each days as day, idx}
             {@const dayDate = weekDays[idx]}
             {@const dateNum = dayDate ? dayDate.getDate() : idx + 1}
             {@const isToday = dayDate ? isSameDay(dayDate, new Date()) : false}
             {@const labels = DAY_DISPLAY_LABELS[$currentLocale] || DAY_DISPLAY_LABELS.vi}
-            <th class={cn("p-3 border-r border-slate-200 dark:border-slate-800 last:border-r-0", isToday && "bg-primary/10")}>
+            <th class={cn("p-3 border-r border-border last:border-r-0", isToday && "bg-primary/10")}>
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{labels[day]?.short || day}</span>
-                <span class={cn("text-[11px] font-semibold text-slate-400", isToday && "text-primary font-bold")}>
+                <span class="text-xs font-bold text-foreground">{labels[day]?.short || day}</span>
+                <span class={cn("text-[11px] font-semibold text-muted-foreground", isToday && "text-primary font-bold")}>
                   {$tStore('calendar.day_date', { date: dateNum })}
                 </span>
               </div>
@@ -179,9 +179,9 @@
 
       <tbody>
         {#each slots as slot}
-          <tr class="border-b border-slate-100 dark:border-slate-800/60 last:border-b-0">
+          <tr class="border-b border-border/60 last:border-b-0">
             <!-- Time Gutter -->
-            <td class="p-2.5 text-center text-xs font-semibold text-slate-500 border-r border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-900/20">{slot}</td>
+            <td class="p-2.5 text-center text-xs font-semibold text-muted-foreground border-r border-border bg-muted/30">{slot}</td>
 
             <!-- Day Columns -->
             {#each days as day}
@@ -191,7 +191,7 @@
                 ? sessionsInSlot.some(s => s.allMembers.includes(selectedMember))
                 : false}
 
-              <td class={cn("group/slot relative p-1.5 align-top border-r border-slate-100 min-h-[64px] transition-colors dark:border-slate-800/60 last:border-r-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30", containsSelectedMember && "bg-primary/10 border-primary")}>
+              <td class={cn("group/slot relative p-1.5 align-top border-r border-border/60 min-h-[64px] transition-colors last:border-r-0 hover:bg-muted/30", containsSelectedMember && "bg-primary/10 border-primary")}>
                 <div class="flex flex-col gap-1.5 min-h-[50px]">
                   <!-- Conflict notification in cell if any -->
                   {#if slotConflicts.length > 0}

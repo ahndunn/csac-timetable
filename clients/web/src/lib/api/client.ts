@@ -149,10 +149,31 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    updateRole: (userId: string, newRole: string) =>
+      request<any>(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ new_role: newRole }),
+      }),
     updateStatus: (userId: string, status: string) =>
       request<any>(`/admin/users/${userId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status }),
+      }),
+    batchInvite: async (payload: { emails: string[]; role: string }) => {
+      const results = await Promise.all(
+        payload.emails.map((email) =>
+          request<{ user: any; message: string }>('/admin/users/invite', {
+            method: 'POST',
+            body: JSON.stringify({ email, role: payload.role }),
+          }).catch(() => null)
+        )
+      );
+      return { invited_count: results.filter(Boolean).length };
+    },
+    proposeDemotion: (userId: string, payload: { target_role: string; reason: string }) =>
+      request<any>(`/admin/users/${userId}/downgrade-proposal`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
       }),
   },
   governance: {
