@@ -356,6 +356,21 @@ def seed_data_via_gateway(token: str, data: Dict[str, Any]):
 
     # 4.6 Seed Realistic Instrument Reservations
     print("\n   [4.6] Seeding Non-Conflicting Instrument Reservations...")
+    # Authenticate as first seeded admin to ensure reservations & availability persist after seed user deallocation
+    first_admin = next(u for u in data["members"] if u["role"] == "admin")
+    admin_auth_resp = requests.post(
+        f"{GATEWAY_URL}/api/v1/auth/login",
+        json={"email": first_admin["email"], "password": first_admin.get("password", "password123")},
+        timeout=10,
+    )
+    if admin_auth_resp.ok and "token" in admin_auth_resp.json():
+        persisted_headers = {
+            "Authorization": f"Bearer {admin_auth_resp.json()['token']}",
+            "Content-Type": "application/json",
+        }
+    else:
+        persisted_headers = headers
+
     sample_reservations = [
         ("KEYS-01", "PHONECERT", "Thứ Hai", "17:00 - 18:30", "Roland FP-30X for Phonecert rhythm rehearsal"),
         ("KEYS-02", "NÀNG THƠ", "Thứ Ba", "18:30 - 20:00", "Nord Stage 3 for Nàng Thơ grand piano rehearsal"),
@@ -374,7 +389,7 @@ def seed_data_via_gateway(token: str, data: Dict[str, Any]):
                 "slot_label": slot,
                 "notes": notes,
             }
-            resp = requests.post(f"{GATEWAY_URL}/api/v1/music/instruments/reserve", json=res_payload, headers=headers, timeout=10)
+            resp = requests.post(f"{GATEWAY_URL}/api/v1/music/instruments/reserve", json=res_payload, headers=persisted_headers, timeout=10)
             if resp.ok:
                 print(f"   ✅ Reserved '{code}' for '{song_title}' on {day} ({slot})")
 
@@ -391,7 +406,7 @@ def seed_data_via_gateway(token: str, data: Dict[str, Any]):
         avail_resp = requests.post(
             f"{GATEWAY_URL}/api/v1/shows/{show_id}/sprints/{sprint_id}/availability",
             json={"slots": sample_15m_slots},
-            headers=headers,
+            headers=persisted_headers,
             timeout=10,
         )
         if avail_resp.ok:
